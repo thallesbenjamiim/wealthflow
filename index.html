@@ -11,6 +11,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
   import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, orderBy, query } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCejJT1foVuX1bCiqK0PMiLLrK5pg6hwKA",
@@ -24,8 +25,11 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const auth = getAuth(app);
   window._db = db;
+  window._auth = auth;
   window._dbFns = { doc, setDoc, getDoc, collection, getDocs, addDoc, orderBy, query };
+  window._authFns = { signInAnonymously, onAuthStateChanged };
   window._dbReady = true;
   window.dispatchEvent(new Event('dbready'));
 </script>
@@ -448,9 +452,34 @@ textarea::placeholder { color: var(--muted2); }
 </head>
 <body>
 
+<!-- PIN LOCK SCREEN -->
+<div class="pin-lock" id="pinLock">
+  <div class="pin-logo"><div class="logo-dot" style="width:10px;height:10px;border-radius:50%;background:var(--green);animation:pulse 2s infinite"></div>WealthFlow</div>
+  <div class="pin-sub">Digite seu PIN para entrar</div>
+  <div class="pin-dots" id="pinDots">
+    <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+  </div>
+  <div class="pin-error-msg" id="pinError"></div>
+  <div class="pin-keypad" id="pinKeypad">
+    <button class="pin-key" data-num="1">1</button>
+    <button class="pin-key" data-num="2">2</button>
+    <button class="pin-key" data-num="3">3</button>
+    <button class="pin-key" data-num="4">4</button>
+    <button class="pin-key" data-num="5">5</button>
+    <button class="pin-key" data-num="6">6</button>
+    <button class="pin-key" data-num="7">7</button>
+    <button class="pin-key" data-num="8">8</button>
+    <button class="pin-key" data-num="9">9</button>
+    <button class="pin-key empty"></button>
+    <button class="pin-key" data-num="0">0</button>
+    <button class="pin-key" id="pinBackspace">⌫</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
-<div class="shell">
+<div class="shell" id="appShell" style="display:none">
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
@@ -1396,6 +1425,113 @@ function showToast(msg) {
 }
 
 // ─────────────────────────────────────────
+// PIN LOCK
+// ─────────────────────────────────────────
+const PIN_HASH = '18a2c351a154bda5eb86114c87f6a90e2d5288ffa5d713c30df8be074b3bf92d'; // SHA-256, PIN não fica visível no código
+let enteredPin = '';
+
+async function sha256(text) {
+  const enc = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function updatePinDots() {
+  const dots = document.querySelectorAll('.pin-dot');
+  dots.forEach((d, i) => d.classList.toggle('filled', i < enteredPin.length));
+}
+
+async function checkPin() {
+  const hash = await sha256(enteredPin);
+  if (hash === PIN_HASH) {
+    // PIN correto — autentica no Firebase e libera o app
+    try {
+      if (window._authFns && window._auth) {
+        await window._authFns.signInAnonymously(window._auth);
+      }
+    } catch (e) { console.error('Erro de autenticação:', e); }
+
+    localStorage.setItem('wf_pin_session', Date.now().toString());
+    document.getElementById('pinLock').style.display = 'none';
+    document.getElementById('appShell').style.display = 'flex';
+    init();
+  } else {
+    document.getElementById('pinError').textContent = 'PIN incorreto';
+    document.querySelectorAll('.pin-dot').forEach(d => d.classList.add('error'));
+    setTimeout(() => {
+      enteredPin = '';
+      updatePinDots();
+      document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('error'));
+      document.getElementById('pinError').textContent = '';
+    }, 500);
+  }
+}
+
+function setupPinKeypad() {
+  document.querySelectorAll('.pin-key[data-num]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (enteredPin.length < 6) {
+        enteredPin += btn.dataset.num;
+        updatePinDots();
+        if (enteredPin.length === 6) {
+          setTimeout(checkPin, 150);
+        }
+      }
+    });
+  });
+  document.getElementById('pinBackspace').addEventListener('click', () => {
+    enteredPin = enteredPin.slice(0, -1);
+    updatePinDots();
+  });
+
+  // Allow physical keyboard input too
+  document.addEventListener('keydown', (e) => {
+    if (document.getElementById('pinLock').style.display === 'none') return;
+    if (e.key >= '0' && e.key <= '9' && enteredPin.length < 6) {
+      enteredPin += e.key;
+      updatePinDots();
+      if (enteredPin.length === 6) setTimeout(checkPin, 150);
+    } else if (e.key === 'Backspace') {
+      enteredPin = enteredPin.slice(0, -1);
+      updatePinDots();
+    }
+  });
+}
+
+// Verifica se já tem sessão válida (24h)
+function checkExistingSession() {
+  const session = localStorage.getItem('wf_pin_session');
+  if (session) {
+    const elapsed = Date.now() - parseInt(session);
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    if (elapsed < TWENTY_FOUR_HOURS) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function startApp() {
+  setupPinKeypad();
+  if (checkExistingSession()) {
+    try {
+      if (window._authFns && window._auth) {
+        await window._authFns.signInAnonymously(window._auth);
+      }
+    } catch (e) { console.error(e); }
+    document.getElementById('pinLock').style.display = 'none';
+    document.getElementById('appShell').style.display = 'flex';
+    init();
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  startApp();
+}
+
+// ─────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────
 async function init() {
@@ -1413,8 +1549,6 @@ async function init() {
   renderAlertas();
   setInterval(loadMarketData, 5 * 60 * 1000);
 }
-
-init();
 </script>
 </body>
 </html>
