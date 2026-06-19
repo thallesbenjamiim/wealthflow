@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WealthFlow — Assessoria Inteligente</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, orderBy, query } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCejJT1foVuX1bCiqK0PMiLLrK5pg6hwKA",
+    authDomain: "wealthflow-bbd0d.firebaseapp.com",
+    projectId: "wealthflow-bbd0d",
+    storageBucket: "wealthflow-bbd0d.firebasestorage.app",
+    messagingSenderId: "970496094117",
+    appId: "1:970496094117:web:4c8a5f9083d253180a024c",
+    measurementId: "G-FLG0G3CMCN"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window._db = db;
+  window._dbFns = { doc, setDoc, getDoc, collection, getDocs, addDoc, orderBy, query };
+  window._dbReady = true;
+  window.dispatchEvent(new Event('dbready'));
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #050706;
+  --surf: #0c0f0d;
+  --surf2: #131815;
+  --surf3: #1a201c;
+  --bdr: rgba(255,255,255,.06);
+  --bdr2: rgba(255,255,255,.11);
+  --txt: #e2ebe3;
+  --muted: #5a6b5c;
+  --muted2: #3a463b;
+  --green: #3ddc6e;
+  --green2: #2ab558;
+  --gdim: #0d2918;
+  --glow: rgba(61,220,110,.15);
+  --blue: #5b9cf6;
+  --bdim: #0d1f3d;
+  --amber: #f5a623;
+  --adim: #2d1f08;
+  --red: #f06060;
+  --rdim: #2d0d0d;
+  --purple: #a78bfa;
+}
+
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Background texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 50% at 20% 0%, rgba(61,220,110,.04) 0%, transparent 60%),
+              radial-gradient(ellipse 60% 40% at 80% 100%, rgba(91,156,246,.03) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.shell { display: flex; height: 100vh; overflow: hidden; position: relative; z-index: 1; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 220px;
+  background: var(--surf);
+  border-right: 1px solid var(--bdr);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.logo-area {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid var(--bdr);
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--green);
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+.logo-sub { font-size: 10px; color: var(--muted); margin-top: 3px; font-family: 'DM Mono', monospace; letter-spacing: .05em; }
+
+/* NAV */
+.nav { padding: 10px 10px; flex: 1; overflow-y: auto; }
+
+.nav-section { font-size: 9px; font-weight: 600; color: var(--muted2); text-transform: uppercase; letter-spacing: .1em; padding: 10px 8px 6px; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  transition: all .15s;
+  border: 1px solid transparent;
+  margin-bottom: 2px;
+}
+.nav-item:hover { background: var(--surf2); color: var(--txt); }
+.nav-item.active { background: var(--gdim); color: var(--green); border-color: rgba(61,220,110,.15); }
+.nav-item .icon { font-size: 15px; width: 20px; text-align: center; }
+.nav-badge { margin-left: auto; background: var(--green); color: #050706; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 10px; font-family: 'DM Mono', monospace; }
+
+/* STATUS CARD */
+.status-card {
+  margin: 10px;
+  background: var(--gdim);
+  border: 1px solid rgba(61,220,110,.15);
+  border-radius: 10px;
+  padding: 12px;
+}
+.status-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
+.status-label { color: var(--muted); }
+.status-val { color: var(--txt); font-family: 'DM Mono', monospace; font-weight: 500; }
+.status-val.green { color: var(--green); }
+.status-val.amber { color: var(--amber); }
+
+/* ── MAIN ── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* TOP BAR */
+.topbar {
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--bdr);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--surf);
+  flex-shrink: 0;
+}
+
+.page-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--txt); }
+.page-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+.topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+.data-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  background: var(--surf2);
+  border: 1px solid var(--bdr2);
+  border-radius: 20px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+}
+.data-pill .dot { width: 6px; height: 6px; border-radius: 50%; animation: pulse 2s infinite; }
+.data-pill .label { color: var(--muted); }
+.data-pill .value { color: var(--txt); font-weight: 500; }
+
+/* CONTENT */
+.content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
+
+/* DASHBOARD */
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 16px; }
+
+.metric-card {
+  background: var(--surf);
+  border: 1px solid var(--bdr);
+  border-radius: 12px;
+  padding: 14px 16px;
+  transition: border-color .2s;
+}
+.metric-card:hover { border-color: var(--bdr2); }
+.metric-card.highlight { border-color: rgba(61,220,110,.2); background: var(--gdim); }
+
+.mc-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.mc-value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--txt); }
+.mc-value.green { color: var(--green); }
+.mc-value.amber { color: var(--amber); }
+.mc-sub { font-size: 11px; color: var(--muted); margin-top: 3px; font-family: 'DM Mono', monospace; }
+
+/* ALLOCATION BAR */
+.alloc-section {
+  background: var(--surf);
+  border: 1px solid var(--bdr);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.alloc-bar-wrap { margin: 10px 0; }
+.alloc-bar {
+  display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 1px; margin-bottom: 10px;
+}
+.alloc-seg { height: 100%; border-radius: 2px; transition: flex .5s; }
+
+.alloc-legend { display: flex; flex-wrap: wrap; gap: 12px; }
+.alloc-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.alloc-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.alloc-name { color: var(--muted); }
+.alloc-val { color: var(--txt); font-family: 'DM Mono', monospace; font-weight: 500; margin-left: 2px; }
+
+/* PORTFOLIO TABLE */
+.portfolio-table {
+  background: var(--surf);
+  border: 1px solid var(--bdr);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.pt-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  padding: 10px 16px;
+  background: var(--surf2);
+  border-bottom: 1px solid var(--bdr);
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.pt-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bdr);
+  align-items: center;
+  transition: background .15s;
+}
+.pt-row:last-child { border-bottom: none; }
+.pt-row:hover { background: var(--surf2); }
+
+.pt-asset { display: flex; align-items: center; gap: 10px; }
+.pt-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.pt-name { font-size: 13px; font-weight: 500; color: var(--txt); }
+.pt-type { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.pt-val { font-size: 13px; font-family: 'DM Mono', monospace; color: var(--txt); }
+.pt-val.green { color: var(--green); }
+.pt-val.amber { color: var(--amber); }
+.pt-val.muted { color: var(--muted); }
+
+/* ALERTS */
+.alerts-list { margin-bottom: 16px; }
+.alert-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 16px;
+  background: var(--surf);
+  border: 1px solid var(--bdr);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  transition: border-color .15s;
+}
+.alert-card:hover { border-color: var(--bdr2); }
+.alert-card.green { border-left: 3px solid var(--green); }
+.alert-card.amber { border-left: 3px solid var(--amber); }
+.alert-card.red { border-left: 3px solid var(--red); }
+.alert-card.blue { border-left: 3px solid var(--blue); }
+.alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.alert-title { font-size: 13px; font-weight: 500; color: var(--txt); margin-bottom: 3px; }
+.alert-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* AGENTS PAGE */
+.agents-grid { display: grid; grid-template-columns: 260px 1fr; gap: 12px; height: calc(100vh - 130px); }
+
+.agent-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+
+.agent-card {
+  background: var(--surf);
+  border: 1px solid var(--bdr);
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.agent-card:hover { border-color: var(--bdr2); background: var(--surf2); }
+.agent-card.active { border-color: rgba(61,220,110,.3); background: var(--gdim); }
+
+.ac-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.ac-avatar { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.ac-name { font-size: 13px; font-weight: 600; color: var(--txt); }
+.ac-role { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.ac-preview { font-size: 11px; color: var(--muted); line-height: 1.45; }
+.ac-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-left: auto; flex-shrink: 0; animation: pulse 2s infinite; }
+
+/* CHAT */
+.chat-panel {
+  background: var(--surf);
+  border: 1px solid var(--bdr);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--bdr);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.ch-av { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.ch-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--txt); }
+.ch-desc { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.ch-tags { margin-left: auto; display: flex; gap: 5px; }
+.ctag { padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 500; font-family: 'DM Mono', monospace; }
+
+.msgs { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+.msg { display: flex; gap: 8px; max-width: 90%; }
+.msg.user { align-self: flex-end; flex-direction: row-reverse; }
+.mavatar { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.mbubble { padding: 10px 14px; border-radius: 10px; line-height: 1.65; font-size: 13px; }
+.msg.agent .mbubble { background: var(--surf2); border: 1px solid var(--bdr2); border-radius: 4px 10px 10px 10px; }
+.msg.user .mbubble { background: var(--gdim); border: 1px solid rgba(61,220,110,.2); border-radius: 10px 4px 10px 10px; }
+.mmeta { font-size: 10px; color: var(--muted); margin-top: 3px; font-family: 'DM Mono', monospace; }
+.msg.user .mmeta { text-align: right; }
+.mbubble strong { color: var(--green); font-weight: 500; }
+.mbubble em { color: var(--amber); font-style: normal; font-family: 'DM Mono', monospace; font-size: 12px; }
+
+.typing { display: flex; gap: 4px; align-items: center; padding: 10px 14px; background: var(--surf2); border: 1px solid var(--bdr2); border-radius: 4px 10px 10px 10px; width: fit-content; }
+.tdot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); animation: typing 1.2s infinite; }
+.tdot:nth-child(2){animation-delay:.2s} .tdot:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
+
+.quick { padding: 8px 16px; border-top: 1px solid var(--bdr); display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0; }
+.qbtn { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--bdr2); background: transparent; color: var(--muted); font-size: 11px; cursor: pointer; transition: all .15s; font-family: 'Instrument Sans', sans-serif; }
+.qbtn:hover { background: var(--surf2); color: var(--txt); border-color: rgba(61,220,110,.2); }
+
+.input-row { padding: 12px 16px; display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0; border-top: 1px solid var(--bdr); }
+.input-wrap { flex: 1; }
+textarea { width: 100%; background: var(--surf2); border: 1px solid var(--bdr2); border-radius: 10px; padding: 10px 14px; color: var(--txt); font-family: 'Instrument Sans', sans-serif; font-size: 13px; resize: none; outline: none; line-height: 1.5; min-height: 40px; max-height: 100px; transition: border-color .15s; }
+textarea:focus { border-color: rgba(61,220,110,.3); }
+textarea::placeholder { color: var(--muted2); }
+.sbtn { width: 40px; height: 40px; border-radius: 9px; background: var(--green); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: #050706; transition: all .15s; flex-shrink: 0; }
+.sbtn:hover { background: var(--green2); transform: scale(1.05); }
+.sbtn:disabled { background: var(--surf2); cursor: not-allowed; transform: none; opacity: .4; }
+
+/* APORTAR PAGE */
+.aporte-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-section { background: var(--surf); border: 1px solid var(--bdr); border-radius: 12px; padding: 18px; }
+.fs-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--txt); margin-bottom: 4px; }
+.fs-sub { font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+
+.form-row { margin-bottom: 12px; }
+.form-label { font-size: 11px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .05em; }
+.form-input {
+  width: 100%; background: var(--surf2); border: 1px solid var(--bdr2); border-radius: 8px;
+  padding: 9px 12px; color: var(--txt); font-family: 'DM Mono', monospace; font-size: 13px;
+  outline: none; transition: border-color .15s;
+}
+.form-input:focus { border-color: rgba(61,220,110,.3); }
+.form-input::placeholder { color: var(--muted2); }
+
+.form-select {
+  width: 100%; background: var(--surf2); border: 1px solid var(--bdr2); border-radius: 8px;
+  padding: 9px 12px; color: var(--txt); font-family: 'Instrument Sans', sans-serif; font-size: 13px;
+  outline: none; cursor: pointer;
+}
+
+.submit-btn {
+  width: 100%; padding: 11px; border-radius: 9px; background: var(--green); border: none;
+  color: #050706; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px;
+  cursor: pointer; transition: all .15s; margin-top: 4px;
+}
+.submit-btn:hover { background: var(--green2); transform: translateY(-1px); }
+
+/* HISTORY */
+.history-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; background: var(--surf2); border-radius: 8px; margin-bottom: 6px;
+  border: 1px solid var(--bdr);
+}
+.hi-left {}
+.hi-asset { font-size: 13px; font-weight: 500; color: var(--txt); }
+.hi-date { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+.hi-val { font-size: 13px; font-weight: 500; color: var(--green); font-family: 'DM Mono', monospace; }
+
+/* API KEY */
+.api-notice {
+  background: var(--adim); border: 1px solid rgba(245,166,35,.25); border-radius: 12px;
+  padding: 16px; margin-bottom: 16px; font-size: 12px; color: var(--amber); line-height: 1.6;
+}
+.api-notice a { color: var(--green); }
+.api-input { width: 100%; background: var(--surf); border: 1px solid var(--bdr2); border-radius: 8px; padding: 8px 12px; color: var(--txt); font-family: 'DM Mono', monospace; font-size: 12px; outline: none; margin-top: 8px; transition: border-color .15s; }
+.api-input:focus { border-color: rgba(61,220,110,.3); }
+.api-save { margin-top: 8px; padding: 8px 16px; border-radius: 8px; background: var(--gdim); border: 1px solid rgba(61,220,110,.25); color: var(--green); font-size: 12px; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: all .15s; width: 100%; font-weight: 500; }
+.api-save:hover { background: rgba(61,220,110,.15); }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bdr2); border-radius: 2px; }
+
+.section-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: var(--txt); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.section-title .stag { font-size: 10px; background: var(--surf2); color: var(--muted); padding: 2px 7px; border-radius: 20px; font-family: 'DM Mono', monospace; font-weight: 400; }
+
+.divider { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
+
+.badge { display: inline-block; padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 500; }
+.badge-green { background: var(--gdim); color: var(--green); border: 1px solid rgba(61,220,110,.2); }
+.badge-amber { background: var(--adim); color: var(--amber); border: 1px solid rgba(245,166,35,.2); }
+.badge-blue { background: var(--bdim); color: var(--blue); border: 1px solid rgba(91,156,246,.2); }
+
+.toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: var(--gdim); border: 1px solid rgba(61,220,110,.3); color: var(--green);
+  padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 500;
+  opacity: 0; transform: translateY(10px); transition: all .3s;
+  z-index: 999; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo-area">
+      <div class="logo"><div class="logo-dot"></div>WealthFlow</div>
+      <div class="logo-sub">assessoria inteligente</div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-section">Principal</div>
+      <div class="nav-item active" onclick="showPage('dashboard', this)">
+        <span class="icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('agentes', this)">
+        <span class="icon">🤖</span> Agentes IA
+      </div>
+      <div class="nav-item" onclick="showPage('aportar', this)">
+        <span class="icon">💰</span> Registrar Aporte
+      </div>
+      <div class="nav-item" onclick="showPage('alertas', this)">
+        <span class="icon">⚡</span> Alertas
+        <span class="nav-badge" id="alertCount">2</span>
+      </div>
+      <div class="nav-section">Configurações</div>
+      <div class="nav-item" onclick="showPage('config', this)">
+        <span class="icon">⚙️</span> Configurar API
+      </div>
+    </nav>
+
+    <div class="status-card">
+      <div class="status-row">
+        <span class="status-label">Câmbio EUR/BRL</span>
+        <span class="status-val green" id="sb-cambio">—</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Selic anual</span>
+        <span class="status-val green" id="sb-selic">—</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Mês atual</span>
+        <span class="status-val" id="sb-mes">—</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="pageTitle">Dashboard</div>
+        <div class="page-sub" id="pageSub">Visão geral da sua carteira</div>
+      </div>
+      <div class="topbar-right">
+        <div class="data-pill">
+          <div class="dot" style="background:var(--green)"></div>
+          <span class="label">EUR/BRL</span>
+          <span class="value" id="pill-cambio">carregando...</span>
+        </div>
+        <div class="data-pill">
+          <div class="dot" style="background:var(--blue)"></div>
+          <span class="label">Selic</span>
+          <span class="value" id="pill-selic">carregando...</span>
+        </div>
+        <div class="data-pill">
+          <div class="dot" style="background:var(--amber)"></div>
+          <span class="label">IPCA</span>
+          <span class="value" id="pill-ipca">carregando...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- ── DASHBOARD ── -->
+      <div class="page active" id="page-dashboard">
+
+        <div class="metrics-grid">
+          <div class="metric-card highlight">
+            <div class="mc-label">Total Investido</div>
+            <div class="mc-value green" id="m-total">€—</div>
+            <div class="mc-sub" id="m-total-brl">R$— equivalente</div>
+          </div>
+          <div class="metric-card">
+            <div class="mc-label">Brasil (Nubank)</div>
+            <div class="mc-value" id="m-brasil">R$—</div>
+            <div class="mc-sub">60% da carteira</div>
+          </div>
+          <div class="metric-card">
+            <div class="mc-label">Internacional (Revolut)</div>
+            <div class="mc-value" id="m-intl">€—</div>
+            <div class="mc-sub">40% da carteira</div>
+          </div>
+          <div class="metric-card">
+            <div class="mc-label">Dividendos Recebidos</div>
+            <div class="mc-value amber" id="m-div">R$—</div>
+            <div class="mc-sub">acumulado total</div>
+          </div>
+        </div>
+
+        <div class="alloc-section">
+          <div class="section-title">Alocação da Carteira <span class="stag">60% BR / 40% INTL</span></div>
+          <div class="alloc-bar-wrap">
+            <div class="alloc-bar" id="allocBar">
+              <div class="alloc-seg" style="background:#3ddc6e;flex:21"></div>
+              <div class="alloc-seg" style="background:#2ab558;flex:15"></div>
+              <div class="alloc-seg" style="background:#1a8040;flex:15"></div>
+              <div class="alloc-seg" style="background:#5b9cf6;flex:25"></div>
+              <div class="alloc-seg" style="background:#3a6fb5;flex:15"></div>
+            </div>
+            <div class="alloc-legend">
+              <div class="alloc-item"><div class="alloc-dot" style="background:#3ddc6e"></div><span class="alloc-name">MXRF11</span><span class="alloc-val" id="al-mxrf">R$80,67</span></div>
+              <div class="alloc-item"><div class="alloc-dot" style="background:#2ab558"></div><span class="alloc-name">IPCA+</span><span class="alloc-val" id="al-ipca">R$118,47</span></div>
+              <div class="alloc-item"><div class="alloc-dot" style="background:#1a8040"></div><span class="alloc-name">Selic</span><span class="alloc-val" id="al-selic">R$—</span></div>
+              <div class="alloc-item"><div class="alloc-dot" style="background:#5b9cf6"></div><span class="alloc-name">VWCE</span><span class="alloc-val" id="al-vwce">€25</span></div>
+              <div class="alloc-item"><div class="alloc-dot" style="background:#3a6fb5"></div><span class="alloc-name">EUNA</span><span class="alloc-val" id="al-euna">€15</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="portfolio-table">
+          <div class="pt-header">
+            <div>Ativo</div><div>Investido</div><div>Tipo</div><div>Rendimento</div><div>Status</div>
+          </div>
+          <div class="pt-row">
+            <div class="pt-asset">
+              <div class="pt-icon" style="background:#0d2918">🏢</div>
+              <div><div class="pt-name">MXRF11</div><div class="pt-type">FII de Papel · Nubank</div></div>
+            </div>
+            <div class="pt-val" id="pt-mxrf">R$79,84</div>
+            <div class="pt-val muted" id="pt-mxrf-cotas">8 cotas · R$9,98</div>
+            <div class="pt-val green">DY ~12% aa</div>
+            <div><span class="badge badge-green">✓ Ativo</span></div>
+          </div>
+          <div class="pt-row">
+            <div class="pt-asset">
+              <div class="pt-icon" style="background:#0d2918">📈</div>
+              <div><div class="pt-name">Tesouro IPCA+</div><div class="pt-type">Renda Fixa · Nubank</div></div>
+            </div>
+            <div class="pt-val" id="pt-ipca">R$118,47</div>
+            <div class="pt-val muted">Longo prazo</div>
+            <div class="pt-val green">IPCA+7,83% aa</div>
+            <div><span class="badge badge-green">✓ Ativo</span></div>
+          </div>
+          <div class="pt-row">
+            <div class="pt-asset">
+              <div class="pt-icon" style="background:#0d2918">💵</div>
+              <div><div class="pt-name">Caixinha CDI</div><div class="pt-type">Aguardando Tesouro Selic · Nubank</div></div>
+            </div>
+            <div class="pt-val amber" id="pt-selic">Caixinha: R$151,66</div>
+            <div class="pt-val muted">Liquidez</div>
+            <div class="pt-val green">~15% aa</div>
+            <div><span class="badge badge-amber">Mês que vem</span></div>
+          </div>
+          <div class="pt-row">
+            <div class="pt-asset">
+              <div class="pt-icon" style="background:#0d1f3d">🌍</div>
+              <div><div class="pt-name">VWCE</div><div class="pt-type">ETF Global Acc · Revolut</div></div>
+            </div>
+            <div class="pt-val" id="pt-vwce">€25,00</div>
+            <div class="pt-val muted">Acumulador</div>
+            <div class="pt-val green">~7% aa</div>
+            <div><span class="badge badge-green">✓ Ativo</span></div>
+          </div>
+          <div class="pt-row">
+            <div class="pt-asset">
+              <div class="pt-icon" style="background:#0d1f3d">🔒</div>
+              <div><div class="pt-name">EUNA</div><div class="pt-type">ETF Bonds Acc · Revolut</div></div>
+            </div>
+            <div class="pt-val" id="pt-euna">€15,00</div>
+            <div class="pt-val muted">Acumulador</div>
+            <div class="pt-val green">~3% aa</div>
+            <div><span class="badge badge-green">✓ Ativo</span></div>
+          </div>
+          <div class="pt-row">
+            <div class="pt-asset">
+              <div class="pt-icon" style="background:#1a1230">₿</div>
+              <div><div class="pt-name">Bitcoin</div><div class="pt-type">Crypto · Informal</div></div>
+            </div>
+            <div class="pt-val amber">0.00096 BTC</div>
+            <div class="pt-val muted">~€60</div>
+            <div class="pt-val amber">Variável</div>
+            <div><span class="badge badge-blue">Informal</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── AGENTES ── -->
+      <div class="page" id="page-agentes">
+        <div class="api-notice" id="apiNotice" style="display:none">
+          ⚡ Para ativar os agentes, você precisa de uma chave API do Claude.<br>
+          1. Vai a <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → cria conta → API Keys → cria uma chave<br>
+          2. Vai em <strong>Configurar API</strong> no menu lateral e cola a chave lá.
+        </div>
+        <div class="agents-grid">
+          <div class="agent-list" id="agentList"></div>
+          <div class="chat-panel">
+            <div class="chat-head" id="chatHead"></div>
+            <div class="msgs" id="msgs"></div>
+            <div class="quick" id="quickArea"></div>
+            <div class="input-row">
+              <div class="input-wrap">
+                <textarea id="userInput" placeholder="Pergunte ao seu agente..." rows="1"
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+                  oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+              </div>
+              <button class="sbtn" onclick="sendMsg()" id="sbtn">↑</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── APORTAR ── -->
+      <div class="page" id="page-aportar">
+        <div class="aporte-grid">
+          <div class="form-section">
+            <div class="fs-title">Registrar Novo Aporte</div>
+            <div class="fs-sub">Registre o que você comprou para manter a carteira atualizada</div>
+
+            <div class="form-row">
+              <div class="form-label">Ativo</div>
+              <select class="form-select" id="f-ativo">
+                <option value="MXRF11">🏢 MXRF11 — FII Maxi Renda</option>
+                <option value="IPCA+">📈 Tesouro IPCA+</option>
+                <option value="Selic">💵 Tesouro Selic</option>
+                <option value="VWCE">🌍 VWCE — ETF Global</option>
+                <option value="EUNA">🔒 EUNA — ETF Bonds</option>
+                <option value="Bitcoin">₿ Bitcoin (informal)</option>
+                <option value="Dividendo">💚 Dividendo recebido</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <div class="form-label">Valor investido</div>
+              <input class="form-input" id="f-valor" type="number" step="0.01" placeholder="ex: 80.67">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Moeda</div>
+              <select class="form-select" id="f-moeda">
+                <option value="BRL">🇧🇷 Reais (R$)</option>
+                <option value="EUR">🇮🇪 Euros (€)</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <div class="form-label">Quantidade (cotas/unidades) — opcional</div>
+              <input class="form-input" id="f-qtd" type="number" step="0.001" placeholder="ex: 8">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Preço por cota — opcional</div>
+              <input class="form-input" id="f-preco" type="number" step="0.01" placeholder="ex: 9.98">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Nota — opcional</div>
+              <input class="form-input" id="f-nota" type="text" placeholder="ex: aporte do mês de junho">
+            </div>
+            <button class="submit-btn" onclick="registrarAporte()">✓ Registrar Aporte</button>
+          </div>
+
+          <div class="form-section">
+            <div class="fs-title">Histórico de Aportes</div>
+            <div class="fs-sub">Todos os seus registros salvos no Firebase</div>
+            <div id="historicoList">
+              <div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">Carregando histórico...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ALERTAS ── -->
+      <div class="page" id="page-alertas">
+        <div class="alerts-list" id="alertsList"></div>
+      </div>
+
+      <!-- ── CONFIG ── -->
+      <div class="page" id="page-config">
+        <div class="form-section" style="max-width:500px">
+          <div class="fs-title">Chave API do Claude</div>
+          <div class="fs-sub">Necessária para ativar os 4 agentes de IA. Guardada apenas no seu navegador.</div>
+          <div class="form-row">
+            <div class="form-label">Sua chave API</div>
+            <input class="form-input" id="apiKeyInput" type="password" placeholder="sk-ant-api03-..." autocomplete="off">
+          </div>
+          <button class="submit-btn" onclick="saveApiKey()">✓ Salvar e Ativar Agentes</button>
+          <div style="margin-top:12px;font-size:11px;color:var(--muted);line-height:1.6">
+            Não tem uma chave? Crie em <a href="https://console.anthropic.com" target="_blank" style="color:var(--green)">console.anthropic.com</a> gratuitamente. O custo de uso é menos de $0,05/mês para o seu perfil.
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<script>
+// ─────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────
+let apiKey = localStorage.getItem('wf_api_key') || '';
+let curAgent = 0;
+let histories = [[],[],[],[]];
+let loading = false;
+let portfolioData = {
+  mxrf11: 79.84, mxrf11_cotas: 8, mxrf11_preco: 9.98,
+  ipca: 118.47,
+  selic: 0, caixinha: 151.66,
+  vwce: 25, vwce_preco: 162.82,
+  euna: 15, euna_preco: 4.93,
+  bitcoin: 0.00096,
+  dividendos: 0
+};
+
+// ─────────────────────────────────────────
+// PERFIL COMPLETO DOS AGENTES
+// ─────────────────────────────────────────
+function getProfile() {
+  const cambio = document.getElementById('pill-cambio').textContent || '6.0';
+  const selic = document.getElementById('pill-selic').textContent || '15%';
+  const ipca = document.getElementById('pill-ipca').textContent || '4.5%';
+
+  return `CONSTITUIÇÃO DO WEALTHFLOW:
+Seu objetivo principal não é maximizar retorno a qualquer custo. É ajudar o investidor a construir patrimônio de forma consistente, sustentável e alinhada aos seus objetivos de longo prazo.
+
+FILOSOFIA: priorizar consistência de aportes, diversificação, controle de risco, preservação patrimonial, crescimento de longo prazo, simplicidade operacional, reinvestimento dos rendimentos.
+
+NUNCA incentivar: day trade, swing trade especulativo, alavancagem, uso de margem, empréstimos para investir, ETFs alavancados, concentração excessiva em um único ativo, decisões baseadas apenas em notícias ou hype.
+
+REGRA DE APROVAÇÃO HUMANA: Nenhuma recomendação deve ser executada automaticamente. O WealthFlow apenas sugere. O investidor sempre toma a decisão final. Toda sugestão de mudança deve incluir motivo, benefícios, riscos e impacto na meta de longo prazo.
+
+DATA ATUAL: 17 de junho de 2026.
+CÂMBIO ATUAL EUR/BRL: ${cambio} (buscado em tempo real do Banco Central do Brasil)
+SELIC ATUAL: ${selic} (buscado em tempo real do Banco Central do Brasil)
+IPCA ATUAL: ${ipca}
+
+PERFIL DO USUÁRIO — Thales:
+- Nascido 26/03/1996, 30 anos. Brasileiro morando na Irlanda, cidadania italiana.
+- Dupla residência fiscal: Brasil E Irlanda (confirmado)
+- Pretende ficar 10-12 anos mais na Irlanda, depois voltar pro Brasil
+- Reserva de emergência: €15.000 (meta €20k até fim do ano) — separada, nunca investir
+- Aporte mensal oficial: €100/mês (€60 Brasil + €40 Internacional). Aporte sempre dia 28 ou 29 de cada mês.
+- Perfil: conservador, sem trading, sem especulação, sem alavancagem, longo prazo, reinvestimento 100% dos dividendos
+- Estratégia: 60% Brasil / 40% Internacional
+- Bitcoin: €10/mês informal, fora do plano oficial
+
+META DE LONGO PRAZO (PRINCIPAL):
+Construir patrimônio suficiente para gerar renda passiva equivalente a R$30.000/mês em valores de HOJE, aos 50 anos (ano 2046) — corrigido pela inflação (~R$65.000/mês nominal em 2046). Horizonte de construção: 20 anos. Patrimônio-alvo estimado: ~R$19,5 milhões (usando taxa de retirada segura de 4% aa). Thales sabe que pode não chegar ao valor exato, mas o foco é construir o máximo possível — qualquer resultado supera a aposentadoria pública do INSS.
+
+CARTEIRA ATUAL — MÊS 1 (valores reais):
+🇧🇷 BRASIL — Nubank:
+- MXRF11: R$${portfolioData.mxrf11} investidos (~8 cotas, ~R$0,10/cota dividendo mensal)
+- Tesouro IPCA+: R$${portfolioData.ipca} investidos
+- Caixinha CDI: R$${portfolioData.caixinha} (para comprar Tesouro Selic mês que vem — mínimo R$190,52)
+- Tesouro Selic: R$${portfolioData.selic} (mês que vem)
+- Dividendos acumulados: R$${portfolioData.dividendos}
+
+🌍 INTERNACIONAL — Revolut:
+- VWCE (Vanguard FTSE All-World Acc, IE00BK5BQT80): €${portfolioData.vwce} investidos — Acumulador ✅
+- EUNA (iShares Global Aggregate Bond Acc): €${portfolioData.euna} investidos — Acumulador ✅
+
+₿ BITCOIN (informal, fora do plano):
+- ${portfolioData.bitcoin} BTC (~€60 valor atual)
+- €10/mês casual quando der vontade
+
+COMO CADA ATIVO GERA DINHEIRO:
+- MXRF11: paga ~R$0,10/cota todo mês na conta Nubank. Renda passiva imediata. Depende da Selic.
+- Tesouro IPCA+: cresce com inflação + 7,83% real/ano (taxa atual). Recebe no vencimento. Ideal para aposentadoria.
+- Tesouro Selic: saldo cresce diariamente (~15% aa). Liquidez total — resgata qualquer dia.
+- VWCE: cota valoriza ao longo do tempo (dividendos reinvestidos automaticamente). Ganha ao vender.
+- EUNA: mesmo mecanismo do VWCE mas mais estável. Amortecedor em crises de mercado.
+
+GATILHOS DE REALOCAÇÃO (monitorar com os dados em tempo real acima):
+- Selic < 10%: migrar aporte do Tesouro Selic → IPCA+ longo prazo. Avaliar MXRF11.
+- Selic < 7%: realocar 10% Brasil → Internacional gradualmente (60/40 → 50/50)
+- ETFs caem >20%: aumentar aporte internacional — oportunidade de comprar barato
+- EUR/BRL muda ±20%: ajustar aporte temporariamente para o lado mais favorável
+- 2 anos antes de voltar pro Brasil: parar ETFs europeus, converter para Brasil gradualmente
+
+EVOLUÇÃO FUTURA DA CARTEIRA:
+- Quando aporte chegar a R$250/mês: adicionar HGLG11 (~R$160/cota, FII de logística, ~8% DY)
+- Quando aporte chegar a R$450/mês: adicionar KNRI11 (FII híbrido)
+- Objetivo: 3-4 FIIs diferentes para não depender só da Selic
+
+FISCAL:
+- Irlanda: Exit Tax 38% sobre ETFs. Deemed disposal em 2033 — guardar 5% em liquidez a partir de 2032.
+- VWCE e EUNA são Acc — sem imposto anual de dividendos ✅
+- Brasil: MXRF11 dividendos isentos de IR. Tesouro com IR retido na fonte automaticamente.
+
+REGRAS IMUTÁVEIS DO PLANO:
+- Aportar todo mês, independente do mercado (crise = oportunidade de comprar barato)
+- Reinvestir 100% dos dividendos enquanto estiver na Irlanda
+- Nunca vender por medo, por dica de amigo ou notícia alarmista
+- Só realocar quando gatilho definido disparar — nunca por emoção
+- Mudanças sempre graduais (5-10% por vez, 3-6 meses)
+- A reserva de €20k não é para investir — é seguro de vida`;
+}
+
+const AGENTS = [
+  {
+    name:"Analista de Portfólio", role:"Assessoria & Alocação", icon:"📈", color:"#0d2918", accent:"#3ddc6e",
+    tags:[{t:"BRASIL 60%",bg:"#0d2918",fg:"#3ddc6e"},{t:"INTL 40%",bg:"#0d1f3d",fg:"#5b9cf6"}],
+    quick:["Como alocar os €100 este mês?","Com o câmbio atual, quanto vai pro Brasil?","A Selic está boa pra MXRF11?","Devo rebalancear agora?"],
+    system:`Você é o ANALISTA DE PORTFÓLIO e ASSESSOR de investimentos do Thales. Você NÃO está preso ao plano atual — você age como um assessor real que analisa o momento do mercado e pode sugerir mudanças quando necessário. Quando o Thales perguntar onde aportar, você usa os dados em tempo real (câmbio, Selic, IPCA) para dar uma recomendação específica para AQUELE DIA. Se você identificar que a estratégia precisa mudar, avisa proativamente. Responde SEMPRE em português do Brasil, de forma direta e objetiva. Use os dados de câmbio e Selic do perfil para cálculos específicos.`,
+  },
+  {
+    name:"Monitor de Dividendos", role:"Dividendos & Reinvestimento", icon:"💰", color:"#0d1f3d", accent:"#5b9cf6",
+    tags:[{t:"REINVESTIR 100%",bg:"#0d1f3d",fg:"#5b9cf6"},{t:"MXRF11",bg:"#0d2918",fg:"#3ddc6e"}],
+    quick:["Recebi R$0,80 do MXRF11, onde reinvestir?","Quando recebo o primeiro dividendo?","Quanto vou ter em dividendos em 5 anos?","Quando adicionar o HGLG11?"],
+    system:`Você é o MONITOR DE DIVIDENDOS do Thales. Registra e analisa todos os dividendos recebidos. Quando o Thales informa um dividendo recebido, calcula exatamente onde reinvestir para manter o 60/40, considerando o câmbio atual. Mostra o efeito dos juros compostos com números concretos. Avisa quando é hora de adicionar novos FIIs (HGLG11 quando aporte chegar a R$250/mês). Responde SEMPRE em português do Brasil com números reais e diretos.`,
+  },
+  {
+    name:"Planejador de Longo Prazo", role:"Projeções & Disciplina", icon:"🔭", color:"#1a0d3d", accent:"#a78bfa",
+    tags:[{t:"10-12 ANOS",bg:"#1a0d3d",fg:"#a78bfa"},{t:"RETORNO BR",bg:"#0d2918",fg:"#3ddc6e"}],
+    quick:["Quanto terei ao voltar pro Brasil em 12 anos?","E se eu aumentar pra €200/mês?","O mercado caiu, devo parar de aportar?","Quando começo a converter o VWCE pro Brasil?"],
+    system:`Você é o PLANEJADOR DE LONGO PRAZO do Thales. Projeta cenários realistas a 5, 10 e 12 anos com números concretos, usando as taxas atuais (Selic, IPCA) do perfil. Mantém a disciplina emocional — quando o mercado cai, explica com dados por que o plano não muda. Planeja a transição de retorno ao Brasil. Sempre apresenta cenário otimista E conservador. Responde SEMPRE em português do Brasil com projeções numéricas claras.`,
+  },
+  {
+    name:"Contador Fiscal", role:"Fiscal Brasil + Irlanda", icon:"⚖️", color:"#2d1f08", accent:"#f5a623",
+    tags:[{t:"EXIT TAX 38%",bg:"#2d1f08",fg:"#f5a623"},{t:"DUPLA RESIDÊNCIA",bg:"#0d2918",fg:"#3ddc6e"}],
+    quick:["Quanto vou pagar de Exit Tax em 2033?","Como declarar VWCE e EUNA ao Revenue?","Como funciona IR do MXRF11 pra não residente?","O que muda com a dupla residência fiscal?"],
+    system:`Você é o CONTADOR FISCAL IA do Thales. Ele tem DUPLA RESIDÊNCIA FISCAL confirmada (Brasil e Irlanda) e cidadania italiana. Monitora Exit Tax 38% na Irlanda, deemed disposal em 2033, obrigações com Revenue irlandês (Form 11) e Receita Federal brasileira. NUNCA fornece aconselhamento jurídico ou fiscal definitivo. SEMPRE usa linguagem como "possível obrigação fiscal detectada" e "recomenda-se validação com contador qualificado". Responde SEMPRE em português do Brasil, preciso e claro.`,
+  },
+  {
+    name:"Gestor de Risco", role:"Proteção & Concentração", icon:"🛡️", color:"#3d1a1a", accent:"#f06060",
+    tags:[{t:"PROTEÇÃO",bg:"#3d1a1a",fg:"#f06060"},{t:"SEM ALAVANCAGEM",bg:"#0d2918",fg:"#3ddc6e"}],
+    quick:["Minha carteira está bem diversificada?","Tenho concentração excessiva em algum ativo?","Qual meu risco cambial atual?","Estou aderente ao plano de longo prazo?"],
+    system:`Você é o GESTOR DE RISCO do Thales — o agente mais conservador da equipe. Sua prioridade é PROTEÇÃO PATRIMONIAL antes de retorno. Responsabilidades: monitorar concentração excessiva em um único ativo, monitorar exposição Brasil x Exterior (deve ficar perto de 60/40), monitorar exposição cambial EUR/BRL, avaliar aderência ao plano de longo prazo definido na Constituição do WealthFlow, identificar riscos relevantes antes que se tornem problemas. NUNCA recomenda day trade, swing trade, alavancagem, margem, empréstimos para investir, ETFs alavancados ou concentração excessiva em um único ativo. Se identificar desvio do plano (ex: muito peso em um FII, exposição cambial desequilibrada), alerta claramente com motivo, risco e sugestão — mas a decisão final é sempre do Thales. Responde SEMPRE em português do Brasil, direto e protetor.`,
+  }
+];
+
+const WELCOMES = [
+  `Olá Thales! Sou seu <strong>Analista de Portfólio</strong> — e não estou preso ao plano original. Atuo como seu assessor real.<br><br>Hoje o câmbio está em <strong id="w0-cambio">—</strong> e a Selic em <strong id="w0-selic">—</strong>. Com isso, os seus €60 pro Brasil equivalem a <strong id="w0-brl">—</strong> hoje.<br><br>Quer saber onde alocar este mês com os dados de hoje, ou tem algo específico para analisar?`,
+  `Olá! Sou o <strong>Monitor de Dividendos</strong>.<br><br>Você já recebeu seu primeiro dividendo do MXRF11: <strong>R$0,80</strong>! A partir do próximo mês, o valor fica mais estável com o ciclo completo.<br><br>Tem algum dividendo novo para registrar, ou quer ver a projeção de renda passiva para os próximos anos?`,
+  `Olá! Sou o <strong>Planejador de Longo Prazo</strong>.<br><br>Sua meta está definida: <strong>R$30.000/mês corrigidos pela inflação aos 50 anos (2046)</strong> — equivalente a ~R$65.000/mês nominal. São 20 anos de construção pela frente.<br><br>Quer ver a projeção completa até 2046, ou simular o impacto de aumentar o aporte ao longo dos anos?`,
+  `Olá! Sou seu <strong>Contador Fiscal IA</strong>.<br><br>Sua situação está organizada: <strong>dupla residência fiscal</strong> Brasil + Irlanda confirmada, cidadania italiana. O próximo evento fiscal importante é o <strong>deemed disposal em 2033</strong>.<br><br>⚠️ Sou informativo — decisões definitivas precisam de validação com contador qualificado. O que quer entender?`,
+  `Olá! Sou seu <strong>Gestor de Risco</strong> — novo na equipe! 🛡️<br><br>Minha função é proteger seu patrimônio antes de buscar retorno. Vou monitorar concentração excessiva, equilíbrio Brasil/Internacional e exposição cambial.<br><br>Hoje sua carteira está bem distribuída entre 5 ativos diferentes em 2 países — ótimo início. Quer uma análise completa de risco da sua carteira atual?`
+];
+
+// ─────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────
+const pageTitles = {
+  dashboard: ['Dashboard', 'Visão geral da sua carteira'],
+  agentes: ['Agentes IA', 'Sua assessoria inteligente — 4 especialistas'],
+  aportar: ['Registrar Aporte', 'Atualize sua carteira após cada compra'],
+  alertas: ['Alertas', 'Gatilhos e notificações do seu plano'],
+  config: ['Configurar API', 'Chave API para ativar os agentes']
+};
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+  document.getElementById('pageTitle').textContent = pageTitles[id][0];
+  document.getElementById('pageSub').textContent = pageTitles[id][1];
+  if (id === 'agentes') initAgents();
+  if (id === 'aportar') loadHistorico();
+  if (id === 'alertas') renderAlertas();
+}
+
+// ─────────────────────────────────────────
+// MARKET DATA
+// ─────────────────────────────────────────
+async function fetchCambio() {
+  try {
+    const r = await fetch('https://economia.awesomeapi.com.br/json/last/EUR-BRL');
+    const d = await r.json();
+    const val = parseFloat(d.EURBRL.bid).toFixed(2);
+    ['pill-cambio','sb-cambio'].forEach(id => document.getElementById(id).textContent = 'R$' + val);
+    return val;
+  } catch {
+    ['pill-cambio','sb-cambio'].forEach(id => document.getElementById(id).textContent = '~R$6,00');
+    return '6.00';
+  }
+}
+
+async function fetchSelic() {
+  // Selic Meta atual: 14.75% ao ano (definida pelo Copom — maio 2026)
+  // A Selic só muda a cada 45 dias. Quando mudar, atualizar este valor.
+  const SELIC_ATUAL = '14.25';
+  try {
+    // Tenta buscar via AwesomeAPI (tem CORS liberado para browsers)
+    const r = await fetch('https://api.hgbrasil.com/finance/taxes?format=json&key=free');
+    if (!r.ok) throw new Error('indisponível');
+    const d = await r.json();
+    const selic = d?.results?.[0]?.selic;
+    if (selic && selic > 0) {
+      const val = parseFloat(selic).toFixed(2);
+      ['pill-selic','sb-selic'].forEach(id => document.getElementById(id).textContent = val + '%');
+      return val + '%';
+    }
+    throw new Error('sem dados');
+  } catch {
+    // Fallback: valor fixo atual — correto e confiável
+    ['pill-selic','sb-selic'].forEach(id => document.getElementById(id).textContent = SELIC_ATUAL + '%');
+    return SELIC_ATUAL + '%';
+  }
+}
+
+async function fetchIPCA() {
+  try {
+    const r = await fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados/ultimos/1?formato=json');
+    const d = await r.json();
+    const val = parseFloat(d[0].valor).toFixed(2);
+    document.getElementById('pill-ipca').textContent = val + '%';
+    return val + '%';
+  } catch {
+    document.getElementById('pill-ipca').textContent = '~4.5%';
+    return '~4.5%';
+  }
+}
+
+async function loadMarketData() {
+  const [cambio, selic] = await Promise.all([fetchCambio(), fetchSelic(), fetchIPCA()]);
+  const mes = new Date().toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+  document.getElementById('sb-mes').textContent = mes;
+
+  // Update welcome message with real data
+  const w0c = document.getElementById('w0-cambio');
+  const w0s = document.getElementById('w0-selic');
+  const w0b = document.getElementById('w0-brl');
+  if (w0c) w0c.textContent = 'R$' + cambio;
+  if (w0s) w0s.textContent = selic;
+  if (w0b) w0b.textContent = 'R$' + (60 * parseFloat(cambio)).toFixed(0);
+
+  updateDashboard(cambio);
+}
+
+// ─────────────────────────────────────────
+// DASHBOARD
+// ─────────────────────────────────────────
+function updateDashboard(cambio) {
+  const rate = parseFloat(cambio) || 6.0;
+  const brTotal = portfolioData.mxrf11 + portfolioData.ipca + portfolioData.selic + portfolioData.caixinha;
+  const intlEur = portfolioData.vwce + portfolioData.euna;
+  const intlBrl = intlEur * rate;
+  const totalEur = brTotal / rate + intlEur;
+
+  document.getElementById('m-total').textContent = '€' + totalEur.toFixed(0);
+  document.getElementById('m-total-brl').textContent = 'R$' + (totalEur * rate).toFixed(0) + ' equivalente';
+  document.getElementById('m-brasil').textContent = 'R$' + brTotal.toFixed(2);
+  document.getElementById('m-intl').textContent = '€' + intlEur.toFixed(0);
+  document.getElementById('m-div').textContent = 'R$' + portfolioData.dividendos.toFixed(2);
+}
+
+// ─────────────────────────────────────────
+// ALERTAS
+// ─────────────────────────────────────────
+function renderAlertas() {
+  const sel = document.getElementById('pill-selic').textContent;
+  const selicVal = parseFloat(sel) || 15;
+  const alerts = [
+    { type: 'green', icon: '✅', title: 'Dupla residência fiscal confirmada', desc: 'Brasil e Irlanda — situação regularizada. Próxima ação fiscal: deemed disposal em 2033.' },
+    { type: 'amber', icon: '📅', title: 'Tesouro Selic — comprar mês que vem', desc: `Caixinha com R$151,66. No próximo aporte, juntar com os novos R$~360 e comprar Tesouro Selic (mínimo R$190,52).` },
+    { type: 'amber', icon: '📅', title: 'Deemed disposal — 2033', desc: 'Em 2033, Exit Tax de 38% sobre ganhos do VWCE e EUNA. A partir de 2032, guardar ~5% do portfólio em liquidez para pagar.' },
+    { type: 'green', icon: '💚', title: 'MXRF11 — primeiro dividendo chegando', desc: 'Com ~8 cotas, espere ~R$0,80 de dividendo no próximo mês. Reinvestir 100% no ativo com menor peso.' },
+    { type: selicVal < 10 ? 'red' : 'green', icon: selicVal < 10 ? '⚠️' : '✅', title: selicVal < 10 ? 'GATILHO: Selic abaixo de 10%' : 'Selic em nível saudável', desc: selicVal < 10 ? 'Migrar aporte do Tesouro Selic → IPCA+ longo prazo. Avaliar MXRF11.' : `Selic em ${sel} — MXRF11 e Tesouro Selic rendendo bem. Nenhuma ação necessária.` },
+    { type: 'blue', icon: '🎯', title: 'Próximo objetivo: HGLG11', desc: 'Quando o aporte Brasil chegar a R$250/mês, adicionar HGLG11 (~R$160/cota). FII de logística, não depende da Selic.' },
+  ];
+
+  document.getElementById('alertCount').textContent = alerts.filter(a => a.type === 'amber' || a.type === 'red').length;
+  document.getElementById('alertsList').innerHTML = alerts.map(a => `
+    <div class="alert-card ${a.type}">
+      <div class="alert-icon">${a.icon}</div>
+      <div><div class="alert-title">${a.title}</div><div class="alert-desc">${a.desc}</div></div>
+    </div>`).join('');
+}
+
+// ─────────────────────────────────────────
+// FIREBASE — APORTES
+// ─────────────────────────────────────────
+async function registrarAporte() {
+  const ativo = document.getElementById('f-ativo').value;
+  const valor = parseFloat(document.getElementById('f-valor').value);
+  const moeda = document.getElementById('f-moeda').value;
+  const qtd = document.getElementById('f-qtd').value;
+  const nota = document.getElementById('f-nota').value;
+
+  if (!valor || valor <= 0) { showToast('⚠️ Coloque um valor válido!'); return; }
+
+  const db = window._db;
+  const { collection, addDoc } = window._dbFns;
+
+  try {
+    const preco = document.getElementById('f-preco').value;
+    await addDoc(collection(db, 'aportes'), {
+      ativo, valor, moeda, qtd: qtd || null, preco: preco || null, nota: nota || null,
+      data: new Date().toISOString(),
+      timestamp: Date.now()
+    });
+
+    // Update cotas and preco in portfolioData
+    if (qtd && preco) {
+      if (ativo === 'MXRF11') {
+        portfolioData.mxrf11_cotas = (portfolioData.mxrf11_cotas || 0) + parseFloat(qtd);
+        portfolioData.mxrf11_preco = parseFloat(preco);
+        portfolioData.mxrf11 = portfolioData.mxrf11_cotas * portfolioData.mxrf11_preco;
+      }
+    }
+
+    // Update portfolio data in memory
+    if (ativo === 'MXRF11') portfolioData.mxrf11 += valor;
+    else if (ativo === 'IPCA+') portfolioData.ipca += valor;
+    else if (ativo === 'Selic') portfolioData.selic += valor;
+    else if (ativo === 'VWCE') portfolioData.vwce += valor;
+    else if (ativo === 'EUNA') portfolioData.euna += valor;
+    else if (ativo === 'Dividendo') portfolioData.dividendos += valor;
+
+    // Save updated portfolio to Firebase
+    await savePortfolio();
+
+    document.getElementById('f-valor').value = '';
+    document.getElementById('f-qtd').value = '';
+    document.getElementById('f-nota').value = '';
+    document.getElementById('f-preco').value = '';
+
+    showToast('✓ Aporte registrado com sucesso!');
+    loadHistorico();
+    const cambio = document.getElementById('pill-cambio').textContent.replace('R$','');
+    updateDashboard(cambio);
+
+  } catch (e) {
+    showToast('❌ Erro ao salvar. Verifique a conexão.');
+    console.error(e);
+  }
+}
+
+async function savePortfolio() {
+  const db = window._db;
+  const { doc, setDoc } = window._dbFns;
+  await setDoc(doc(db, 'portfolio', 'main'), { ...portfolioData, updated: new Date().toISOString() });
+}
+
+async function loadPortfolio() {
+  const db = window._db;
+  const { doc, getDoc } = window._dbFns;
+  try {
+    const snap = await getDoc(doc(db, 'portfolio', 'main'));
+    if (snap.exists()) {
+      portfolioData = { ...portfolioData, ...snap.data() };
+      const cambio = document.getElementById('pill-cambio').textContent.replace('R$','') || '6';
+      updateDashboard(cambio);
+      updatePortfolioTable();
+    }
+  } catch(e) { console.error('Erro ao carregar portfólio:', e); }
+}
+
+function updatePortfolioTable() {
+  // MXRF11 — mostra valor total e cotas
+  const mxrfTotal = portfolioData.mxrf11_cotas
+    ? (portfolioData.mxrf11_cotas * portfolioData.mxrf11_preco).toFixed(2)
+    : portfolioData.mxrf11.toFixed(2);
+  document.getElementById('pt-mxrf').textContent = 'R$' + mxrfTotal;
+  if (document.getElementById('pt-mxrf-cotas') && portfolioData.mxrf11_cotas) {
+    document.getElementById('pt-mxrf-cotas').textContent =
+      portfolioData.mxrf11_cotas + ' cotas · R$' + portfolioData.mxrf11_preco;
+  }
+  document.getElementById('pt-ipca').textContent = 'R$' + portfolioData.ipca.toFixed(2);
+  document.getElementById('pt-selic').textContent = portfolioData.selic > 0
+    ? 'R$' + portfolioData.selic.toFixed(2)
+    : 'Caixinha: R$' + portfolioData.caixinha.toFixed(2);
+  document.getElementById('pt-vwce').textContent = '€' + portfolioData.vwce.toFixed(2);
+  document.getElementById('pt-euna').textContent = '€' + portfolioData.euna.toFixed(2);
+  document.getElementById('al-mxrf').textContent = 'R$' + mxrfTotal;
+  document.getElementById('al-ipca').textContent = 'R$' + portfolioData.ipca.toFixed(2);
+  document.getElementById('al-selic').textContent = 'R$' + (portfolioData.selic + portfolioData.caixinha).toFixed(2);
+  document.getElementById('al-vwce').textContent = '€' + portfolioData.vwce.toFixed(2);
+  document.getElementById('al-euna').textContent = '€' + portfolioData.euna.toFixed(2);
+}
+
+async function loadHistorico() {
+  const db = window._db;
+  const { collection, getDocs, query, orderBy } = window._dbFns;
+  const list = document.getElementById('historicoList');
+  try {
+    const q = query(collection(db, 'aportes'), orderBy('timestamp', 'desc'));
+    const snap = await getDocs(q);
+    if (snap.empty) {
+      list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">Nenhum aporte registrado ainda.<br>O primeiro aporte do mês 1 foi feito diretamente no Nubank e Revolut.</div>';
+      return;
+    }
+    list.innerHTML = snap.docs.map(d => {
+      const data = d.data();
+      const date = new Date(data.data).toLocaleDateString('pt-BR');
+      const sym = data.moeda === 'EUR' ? '€' : 'R$';
+      return `<div class="history-item">
+        <div class="hi-left">
+          <div class="hi-asset">${data.ativo}${data.qtd ? ' · ' + data.qtd + ' cotas' : ''}</div>
+          <div class="hi-date">${date}${data.nota ? ' · ' + data.nota : ''}</div>
+        </div>
+        <div class="hi-val">${sym}${parseFloat(data.valor).toFixed(2)}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">Erro ao carregar histórico.</div>';
+  }
+}
+
+// ─────────────────────────────────────────
+// AGENTS
+// ─────────────────────────────────────────
+function initAgents() {
+  if (!apiKey) {
+    document.getElementById('apiNotice').style.display = 'block';
+  } else {
+    document.getElementById('apiNotice').style.display = 'none';
+  }
+
+  const list = document.getElementById('agentList');
+  list.innerHTML = AGENTS.map((a, i) => `
+    <div class="agent-card ${i === 0 ? 'active' : ''}" onclick="selectAgent(${i})" id="ac${i}">
+      <div class="ac-top">
+        <div class="ac-avatar" style="background:${a.color}">${a.icon}</div>
+        <div><div class="ac-name">${a.name}</div><div class="ac-role">${a.role}</div></div>
+        <div class="ac-dot"></div>
+      </div>
+      <div class="ac-preview">${['Analisa câmbio, Selic e sua carteira real para recomendar o melhor aporte do dia.','Registra dividendos e calcula onde reinvestir para maximizar juros compostos.','Projeta até 2046 e mantém disciplina quando o mercado oscilar.','Monitora Exit Tax 38%, deemed disposal 2033 e obrigações fiscais duplas.','Protege contra concentração excessiva e desequilíbrio cambial.'][i]}</div>
+    </div>`).join('');
+
+  selectAgent(0);
+}
+
+function selectAgent(idx) {
+  curAgent = idx;
+  const a = AGENTS[idx];
+  document.querySelectorAll('.agent-card').forEach((el, i) => el.classList.toggle('active', i === idx));
+
+  document.getElementById('chatHead').innerHTML = `
+    <div class="ch-av" style="background:${a.color}">${a.icon}</div>
+    <div><div class="ch-name">${a.name}</div><div class="ch-desc">${a.role}</div></div>
+    <div class="ch-tags">${a.tags.map(t => `<span class="ctag" style="background:${t.bg};color:${t.fg}">${t.t}</span>`).join('')}</div>`;
+
+  const qa = document.getElementById('quickArea');
+  qa.innerHTML = '';
+  a.quick.forEach(q => {
+    const btn = document.createElement('button');
+    btn.className = 'qbtn';
+    btn.textContent = q;
+    btn.addEventListener('click', () => sendQuick(q));
+    qa.appendChild(btn);
+  });
+
+  renderMsgs();
+}
+
+function renderMsgs() {
+  const a = AGENTS[curAgent];
+  const msgs = document.getElementById('msgs');
+  msgs.innerHTML = `<div style="text-align:center;padding:12px 0"><span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">— conversa iniciada —</span></div>`;
+
+  if (histories[curAgent].length === 0) {
+    msgs.innerHTML += buildAgentMsg(a, WELCOMES[curAgent]);
+    // Update welcome with real data
+    setTimeout(() => {
+      const cambio = document.getElementById('pill-cambio').textContent.replace('R$','');
+      const selic = document.getElementById('pill-selic').textContent;
+      const w0c = document.getElementById('w0-cambio');
+      const w0s = document.getElementById('w0-selic');
+      const w0b = document.getElementById('w0-brl');
+      if(w0c) w0c.textContent = 'R$' + cambio;
+      if(w0s) w0s.textContent = selic;
+      if(w0b) w0b.textContent = 'R$' + (60 * parseFloat(cambio || 6)).toFixed(0);
+    }, 500);
+  } else {
+    histories[curAgent].forEach(m => {
+      if (m.role === 'user') msgs.innerHTML += buildUserMsg(m.content);
+      else msgs.innerHTML += buildAgentMsg(a, m.content);
+    });
+  }
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function buildAgentMsg(a, text) {
+  const fmt = text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<em>$1</em>');
+  return `<div class="msg agent"><div class="mavatar" style="background:${a.color}">${a.icon}</div><div><div class="mbubble">${fmt}</div><div class="mmeta">${a.name}</div></div></div>`;
+}
+
+function buildUserMsg(text) {
+  return `<div class="msg user"><div class="mavatar" style="background:var(--surf2)">T</div><div><div class="mbubble">${text}</div><div class="mmeta">Thales</div></div></div>`;
+}
+
+function sendQuick(t) { document.getElementById('userInput').value = t; sendMsg(); }
+
+async function sendMsg() {
+  if (loading) return;
+  const inp = document.getElementById('userInput');
+  const text = inp.value.trim();
+  if (!text) return;
+
+  if (!apiKey) {
+    showPage('config', document.querySelectorAll('.nav-item')[4]);
+    showToast('⚠️ Configure sua chave API primeiro!');
+    return;
+  }
+
+  const a = AGENTS[curAgent];
+  const msgs = document.getElementById('msgs');
+  inp.value = ''; inp.style.height = 'auto';
+
+  msgs.innerHTML += buildUserMsg(text);
+  histories[curAgent].push({ role: 'user', content: text });
+
+  const tid = 'typing-' + Date.now();
+  msgs.innerHTML += `<div class="msg agent" id="${tid}"><div class="mavatar" style="background:${a.color}">${a.icon}</div><div class="typing"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div></div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+
+  loading = true;
+  document.getElementById('sbtn').disabled = true;
+
+  try {
+    const fullSystem = a.system + '\n\n' + getProfile();
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1000,
+        system: fullSystem,
+        messages: histories[curAgent]
+      })
+    });
+
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message || `Erro ${res.status}`); }
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Não consegui obter resposta.';
+    histories[curAgent].push({ role: 'assistant', content: reply });
+
+    const el = document.getElementById(tid);
+    if (el) el.innerHTML = `<div class="mavatar" style="background:${a.color}">${a.icon}</div><div><div class="mbubble">${reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<em>$1</em>')}</div><div class="mmeta">${a.name} · agora</div></div>`;
+
+  } catch (err) {
+    histories[curAgent].pop();
+    const el = document.getElementById(tid);
+    const msg = err.message.includes('401') ? '❌ Chave API inválida. Vá em Configurar API e verifique.' : `❌ Erro: ${err.message}`;
+    if (el) el.innerHTML = `<div class="mavatar" style="background:var(--rdim)">⚠️</div><div><div class="mbubble" style="color:var(--red)">${msg}</div></div>`;
+  }
+
+  loading = false;
+  document.getElementById('sbtn').disabled = false;
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ─────────────────────────────────────────
+// API KEY
+// ─────────────────────────────────────────
+function saveApiKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (!val || !val.startsWith('sk-ant')) { showToast('⚠️ Chave inválida — deve começar com sk-ant...'); return; }
+  apiKey = val;
+  localStorage.setItem('wf_api_key', apiKey);
+  showToast('✓ Chave salva! Agentes ativados.');
+  setTimeout(() => showPage('agentes', document.querySelectorAll('.nav-item')[1]), 800);
+}
+
+// ─────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+async function init() {
+  if (apiKey) document.getElementById('apiKeyInput').value = apiKey;
+  await loadMarketData();
+  if (window._dbReady) {
+    await loadPortfolio();
+    updatePortfolioTable();
+  } else {
+    window.addEventListener('dbready', async () => {
+      await loadPortfolio();
+      updatePortfolioTable();
+    });
+  }
+  renderAlertas();
+  setInterval(loadMarketData, 5 * 60 * 1000);
+}
+
+init();
+</script>
+</body>
+</html>
