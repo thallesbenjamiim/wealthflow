@@ -91,6 +91,19 @@ body::before {
   flex-direction: column;
   flex-shrink: 0;
   overflow: hidden;
+  transition: transform .25s ease;
+  z-index: 200;
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 150;
+}
+
+.mobile-topbar {
+  display: none;
 }
 
 .logo-area {
@@ -489,6 +502,90 @@ textarea::placeholder { color: var(--muted2); }
 .pin-key:active { transform: scale(.92); background: var(--gdim); }
 .pin-key.empty { visibility: hidden; }
 .pin-error-msg { font-size: 12px; color: var(--red); height: 16px; }
+
+/* ═══════════════════════════════════════
+   MOBILE RESPONSIVE (iPhone / Android)
+   ═══════════════════════════════════════ */
+@media (max-width: 820px) {
+  body { overflow: auto; }
+  .shell { flex-direction: column; height: 100vh; }
+
+  /* Sidebar vira menu deslizante */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 260px;
+    transform: translateX(-100%);
+    box-shadow: 20px 0 40px rgba(0,0,0,.5);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay.open { display: block; }
+
+  /* Topbar mobile com botão hambúrguer */
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--surf);
+    border-bottom: 1px solid var(--bdr);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .hamburger-btn {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: var(--surf2);
+    border: 1px solid var(--bdr2);
+    color: var(--txt);
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .mobile-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 15px; color: var(--green); }
+
+  .main { width: 100%; }
+
+  /* Topbar desktop esconde data-pills extras, simplifica */
+  .topbar { display: none; }
+
+  .content { padding: 14px 14px 80px; }
+
+  /* Grids viram coluna única */
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .aporte-grid { grid-template-columns: 1fr; }
+  .agents-grid { grid-template-columns: 1fr; height: auto; }
+  .agent-list { flex-direction: row; overflow-x: auto; gap: 8px; padding-bottom: 4px; }
+  .agent-card { min-width: 200px; flex-shrink: 0; }
+  .chat-panel { height: 65vh; min-height: 420px; }
+
+  /* Tabela de portfólio vira cards empilhados */
+  .pt-header { display: none; }
+  .pt-row {
+    display: flex !important;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+  }
+  .pt-row > div:not(.pt-asset) {
+    display: inline-flex;
+    margin-right: 10px;
+  }
+  .pt-val { font-size: 12px; }
+
+  .alloc-legend { gap: 8px; }
+  .alloc-item { font-size: 11px; }
+
+  .data-pill { font-size: 10px; padding: 4px 8px; }
+
+  /* Mobile pin keypad scaling */
+  .pin-keypad { grid-template-columns: repeat(3, 58px); gap: 10px; }
+  .pin-key { width: 58px !important; height: 58px !important; font-size: 18px; }
+}
+
+@media (max-width: 480px) {
+  .metrics-grid { grid-template-columns: 1fr; }
+  .mc-value { font-size: 18px; }
+}
 </style>
 </head>
 <body>
@@ -522,8 +619,10 @@ textarea::placeholder { color: var(--muted2); }
 
 <div class="shell" id="appShell" style="display:none">
 
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
   <!-- SIDEBAR -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="logo-area">
       <div class="logo"><div class="logo-dot"></div>WealthFlow</div>
       <div class="logo-sub">assessoria inteligente</div>
@@ -568,6 +667,12 @@ textarea::placeholder { color: var(--muted2); }
 
   <!-- MAIN -->
   <div class="main">
+
+    <!-- MOBILE TOPBAR (hambúrguer) -->
+    <div class="mobile-topbar">
+      <button class="hamburger-btn" onclick="openSidebar()">☰</button>
+      <span class="mobile-logo" id="mobilePageTitle">Dashboard</span>
+    </div>
 
     <!-- TOPBAR -->
     <div class="topbar">
@@ -988,9 +1093,22 @@ function showPage(id, el) {
   if (el) el.classList.add('active');
   document.getElementById('pageTitle').textContent = pageTitles[id][0];
   document.getElementById('pageSub').textContent = pageTitles[id][1];
+  const mobileTitle = document.getElementById('mobilePageTitle');
+  if (mobileTitle) mobileTitle.textContent = pageTitles[id][0];
   if (id === 'agentes') initAgents();
   if (id === 'aportar') loadHistorico();
   if (id === 'alertas') renderAlertas();
+  closeSidebar();
+}
+
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('open');
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
 }
 
 // ─────────────────────────────────────────
