@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -586,6 +587,16 @@ textarea::placeholder { color: var(--muted2); }
             <div class="pt-val green">DY ~12% aa</div>
             <div><span class="badge badge-green">✓ Ativo</span></div>
           </div>
+          <div class="pt-row" id="pt-row-hglg" style="display:none">
+            <div class="pt-asset">
+              <div class="pt-icon" style="background:#0d2918">🏭</div>
+              <div><div class="pt-name">HGLG11</div><div class="pt-type">FII de Logística · Nubank</div></div>
+            </div>
+            <div class="pt-val" id="pt-hglg">R$0,00</div>
+            <div class="pt-val muted" id="pt-hglg-cotas">0 cotas</div>
+            <div class="pt-val green">DY ~8% aa</div>
+            <div><span class="badge badge-green">✓ Ativo</span></div>
+          </div>
           <div class="pt-row">
             <div class="pt-asset">
               <div class="pt-icon" style="background:#0d2918">📈</div>
@@ -599,9 +610,9 @@ textarea::placeholder { color: var(--muted2); }
           <div class="pt-row">
             <div class="pt-asset">
               <div class="pt-icon" style="background:#0d2918">💵</div>
-              <div><div class="pt-name">Caixinha CDI</div><div class="pt-type">Aguardando Tesouro Selic · Nubank</div></div>
+              <div><div class="pt-name">Caixinha CDI</div><div class="pt-type">Liquidez · Nubank</div></div>
             </div>
-            <div class="pt-val amber" id="pt-selic">Caixinha: R$151,66</div>
+            <div class="pt-val amber" id="pt-selic">R$152,63</div>
             <div class="pt-val muted">Liquidez</div>
             <div class="pt-val green">~15% aa</div>
             <div><span class="badge badge-amber">Mês que vem</span></div>
@@ -675,6 +686,7 @@ textarea::placeholder { color: var(--muted2); }
               <div class="form-label">Ativo</div>
               <select class="form-select" id="f-ativo">
                 <option value="MXRF11">🏢 MXRF11 — FII Maxi Renda</option>
+                <option value="HGLG11">🏭 HGLG11 — FII Logística</option>
                 <option value="IPCA+">📈 Tesouro IPCA+</option>
                 <option value="Selic">💵 Tesouro Selic</option>
                 <option value="VWCE">🌍 VWCE — ETF Global</option>
@@ -754,12 +766,13 @@ let histories = [[],[],[],[]];
 let loading = false;
 let portfolioData = {
   mxrf11: 79.84, mxrf11_cotas: 8, mxrf11_preco: 9.98,
+  hglg11: 0, hglg11_cotas: 0, hglg11_preco: 0,
   ipca: 118.47,
-  selic: 0, caixinha: 151.66,
+  selic: 0, caixinha: 152.63,
   vwce: 25, vwce_preco: 162.82,
   euna: 15, euna_preco: 4.93,
   bitcoin: 0.00096,
-  dividendos: 0
+  dividendos: 0.80
 };
 
 // ─────────────────────────────────────────
@@ -827,9 +840,9 @@ GATILHOS DE REALOCAÇÃO (monitorar com os dados em tempo real acima):
 - EUR/BRL muda ±20%: ajustar aporte temporariamente para o lado mais favorável
 - 2 anos antes de voltar pro Brasil: parar ETFs europeus, converter para Brasil gradualmente
 
-EVOLUÇÃO FUTURA DA CARTEIRA:
-- Quando aporte chegar a R$250/mês: adicionar HGLG11 (~R$160/cota, FII de logística, ~8% DY)
-- Quando aporte chegar a R$450/mês: adicionar KNRI11 (FII híbrido)
+EVOLUÇÃO DA CARTEIRA DE FIIs:
+- HGLG11 (FII de logística, ~R$160/cota, ~8% DY, não depende da Selic) — programado para compra no aporte de 28/29 de junho de 2026. Complementa o MXRF11 que depende da Selic.
+- Quando aporte chegar a R$450/mês: avaliar adicionar KNRI11 (FII híbrido)
 - Objetivo: 3-4 FIIs diferentes para não depender só da Selic
 
 FISCAL:
@@ -950,15 +963,23 @@ async function fetchSelic() {
 }
 
 async function fetchIPCA() {
+  // IPCA acumulado em 12 meses (taxa anual de inflação oficial)
+  // BCB bloqueia CORS direto do browser — usar valor fixo atualizado
+  const IPCA_ACUMULADO_12M = '4.72';
   try {
-    const r = await fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados/ultimos/1?formato=json');
+    const r = await fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json');
+    if (!r.ok) throw new Error('indisponível');
     const d = await r.json();
-    const val = parseFloat(d[0].valor).toFixed(2);
-    document.getElementById('pill-ipca').textContent = val + '%';
-    return val + '%';
+    const val = parseFloat(d[0].valor);
+    // Sanity check: IPCA acumulado 12m deve estar entre 0% e 15% normalmente
+    if (val > 0 && val < 15) {
+      document.getElementById('pill-ipca').textContent = val.toFixed(2) + '%';
+      return val.toFixed(2) + '%';
+    }
+    throw new Error('valor suspeito');
   } catch {
-    document.getElementById('pill-ipca').textContent = '~4.5%';
-    return '~4.5%';
+    document.getElementById('pill-ipca').textContent = IPCA_ACUMULADO_12M + '%';
+    return IPCA_ACUMULADO_12M + '%';
   }
 }
 
@@ -1000,22 +1021,59 @@ function updateDashboard(cambio) {
 // ─────────────────────────────────────────
 function renderAlertas() {
   const sel = document.getElementById('pill-selic').textContent;
-  const selicVal = parseFloat(sel) || 15;
-  const alerts = [
-    { type: 'green', icon: '✅', title: 'Dupla residência fiscal confirmada', desc: 'Brasil e Irlanda — situação regularizada. Próxima ação fiscal: deemed disposal em 2033.' },
-    { type: 'amber', icon: '📅', title: 'Tesouro Selic — comprar mês que vem', desc: `Caixinha com R$151,66. No próximo aporte, juntar com os novos R$~360 e comprar Tesouro Selic (mínimo R$190,52).` },
-    { type: 'amber', icon: '📅', title: 'Deemed disposal — 2033', desc: 'Em 2033, Exit Tax de 38% sobre ganhos do VWCE e EUNA. A partir de 2032, guardar ~5% do portfólio em liquidez para pagar.' },
-    { type: 'green', icon: '💚', title: 'MXRF11 — primeiro dividendo chegando', desc: 'Com ~8 cotas, espere ~R$0,80 de dividendo no próximo mês. Reinvestir 100% no ativo com menor peso.' },
-    { type: selicVal < 10 ? 'red' : 'green', icon: selicVal < 10 ? '⚠️' : '✅', title: selicVal < 10 ? 'GATILHO: Selic abaixo de 10%' : 'Selic em nível saudável', desc: selicVal < 10 ? 'Migrar aporte do Tesouro Selic → IPCA+ longo prazo. Avaliar MXRF11.' : `Selic em ${sel} — MXRF11 e Tesouro Selic rendendo bem. Nenhuma ação necessária.` },
-    { type: 'blue', icon: '🎯', title: 'Próximo objetivo: HGLG11', desc: 'Quando o aporte Brasil chegar a R$250/mês, adicionar HGLG11 (~R$160/cota). FII de logística, não depende da Selic.' },
-  ];
+  const selicVal = parseFloat(sel) || 14.25;
+  const alerts = [];
+  let actionableCount = 0; // só conta alertas que exigem ação REAL do investidor
 
-  document.getElementById('alertCount').textContent = alerts.filter(a => a.type === 'amber' || a.type === 'red').length;
-  document.getElementById('alertsList').innerHTML = alerts.map(a => `
-    <div class="alert-card ${a.type}">
+  // ─── GATILHOS ACIONÁVEIS (definidos na Constituição do WealthFlow) ───
+
+  // Gatilho Selic — o único gatilho automático real que temos hoje
+  if (selicVal < 7) {
+    alerts.push({ type: 'red', icon: '🚨', title: 'AÇÃO SUGERIDA: Selic abaixo de 7%', desc: 'Realocar 10% do Brasil para Internacional (60/40 → 50/50 gradual). Consulte o Gestor de Risco antes de agir.', action: true });
+    actionableCount++;
+  } else if (selicVal < 10) {
+    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Selic abaixo de 10%', desc: 'Migrar aporte do Tesouro Selic → IPCA+ longo prazo. Consulte o Analista antes de agir.', action: true });
+    actionableCount++;
+  }
+
+  // Caixinha parada há muito tempo sem destino definido
+  if (portfolioData.caixinha > 150) {
+    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Caixinha com saldo a decidir', desc: `R$${portfolioData.caixinha.toFixed(2)} aguardando destino. Decida no próximo aporte (28/29): HGLG11, mais MXRF11 ou IPCA+.`, action: true });
+    actionableCount++;
+  }
+
+  document.getElementById('alertCount').textContent = actionableCount;
+
+  // ─── SEPARADOR ───
+  if (actionableCount > 0) {
+    alerts.push({ type: 'divider', title: '— Informativos abaixo, sem ação necessária —' });
+  } else {
+    alerts.unshift({ type: 'green', icon: '✅', title: 'Nenhuma ação necessária agora', desc: 'Carteira dentro do plano. Os gatilhos só disparam quando Selic, câmbio ou mercado saírem da faixa definida na Constituição do WealthFlow.' });
+  }
+
+  // ─── INFORMATIVOS (situação, sem exigir ação) ───
+  alerts.push({ type: 'green', icon: '✅', title: 'Dupla residência fiscal confirmada', desc: 'Brasil e Irlanda — situação regularizada.' });
+  alerts.push({ type: 'blue', icon: '📅', title: 'Deemed disposal — 2033', desc: 'Exit Tax 38% sobre VWCE e EUNA. A partir de 2032, planejar liquidez para pagar.' });
+
+  if (portfolioData.dividendos > 0) {
+    alerts.push({ type: 'green', icon: '💚', title: 'Dividendos ativos', desc: `Total recebido: R$${portfolioData.dividendos.toFixed(2)}. MXRF11 gerando renda passiva mensal.` });
+  }
+
+  if (portfolioData.hglg11_cotas && portfolioData.hglg11_cotas > 0) {
+    alerts.push({ type: 'green', icon: '🏭', title: 'HGLG11 ativo na carteira', desc: `${portfolioData.hglg11_cotas} cotas. Diversificação de FIIs completa.` });
+  } else {
+    alerts.push({ type: 'blue', icon: '🎯', title: 'Próximo objetivo: HGLG11', desc: 'Programado para o aporte de 28/29 de junho.' });
+  }
+
+  document.getElementById('alertsList').innerHTML = alerts.map(a => {
+    if (a.type === 'divider') {
+      return `<div style="text-align:center;padding:10px 0;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">${a.title}</div>`;
+    }
+    return `<div class="alert-card ${a.type}">
       <div class="alert-icon">${a.icon}</div>
       <div><div class="alert-title">${a.title}</div><div class="alert-desc">${a.desc}</div></div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ─────────────────────────────────────────
@@ -1048,6 +1106,15 @@ async function registrarAporte() {
         portfolioData.mxrf11_preco = parseFloat(preco);
         portfolioData.mxrf11 = portfolioData.mxrf11_cotas * portfolioData.mxrf11_preco;
       }
+      if (ativo === 'HGLG11') {
+        portfolioData.hglg11_cotas = (portfolioData.hglg11_cotas || 0) + parseFloat(qtd);
+        portfolioData.hglg11_preco = parseFloat(preco);
+        portfolioData.hglg11 = portfolioData.hglg11_cotas * portfolioData.hglg11_preco;
+      }
+    }
+    // Subtract from caixinha when buying with it
+    if (ativo === 'HGLG11' || ativo === 'Selic') {
+      portfolioData.caixinha = Math.max(0, portfolioData.caixinha - valor);
     }
 
     // Update portfolio data in memory
@@ -1107,10 +1174,19 @@ function updatePortfolioTable() {
     document.getElementById('pt-mxrf-cotas').textContent =
       portfolioData.mxrf11_cotas + ' cotas · R$' + portfolioData.mxrf11_preco;
   }
+
+  // HGLG11 — mostra linha só se já tiver cotas
+  if (portfolioData.hglg11_cotas && portfolioData.hglg11_cotas > 0) {
+    document.getElementById('pt-row-hglg').style.display = '';
+    const hglgTotal = (portfolioData.hglg11_cotas * portfolioData.hglg11_preco).toFixed(2);
+    document.getElementById('pt-hglg').textContent = 'R$' + hglgTotal;
+    document.getElementById('pt-hglg-cotas').textContent =
+      portfolioData.hglg11_cotas + ' cotas · R$' + portfolioData.hglg11_preco;
+  }
   document.getElementById('pt-ipca').textContent = 'R$' + portfolioData.ipca.toFixed(2);
   document.getElementById('pt-selic').textContent = portfolioData.selic > 0
     ? 'R$' + portfolioData.selic.toFixed(2)
-    : 'Caixinha: R$' + portfolioData.caixinha.toFixed(2);
+    : 'R$' + portfolioData.caixinha.toFixed(2);
   document.getElementById('pt-vwce').textContent = '€' + portfolioData.vwce.toFixed(2);
   document.getElementById('pt-euna').textContent = '€' + portfolioData.euna.toFixed(2);
   document.getElementById('al-mxrf').textContent = 'R$' + mxrfTotal;
