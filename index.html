@@ -928,38 +928,16 @@ textarea::placeholder { color: var(--muted2); }
 
         <!-- 3. O QUE FAZER AGORA -->
         <div class="action-card">
-          <div class="section-title">O que fazer agora <span class="stag">próximo aporte</span></div>
-          <div class="action-amount" id="action-amount">€— disponível</div>
-
-          <div class="action-list">
-            <div class="action-row">
-              <div class="action-row-top">
-                <span class="action-asset">VWCE</span>
-                <span class="action-pct">60%</span>
-              </div>
-              <div class="action-bar-track"><div class="action-bar-fill" style="width:60%;background:var(--green)"></div></div>
-              <div class="action-row-amount" id="action-vwce">€—</div>
-            </div>
-            <div class="action-row">
-              <div class="action-row-top">
-                <span class="action-asset">EUNA</span>
-                <span class="action-pct">25%</span>
-              </div>
-              <div class="action-bar-track"><div class="action-bar-fill" style="width:25%;background:var(--blue)"></div></div>
-              <div class="action-row-amount" id="action-euna">€—</div>
-            </div>
-            <div class="action-row">
-              <div class="action-row-top">
-                <span class="action-asset">Bonds / Brasil</span>
-                <span class="action-pct">15%</span>
-              </div>
-              <div class="action-bar-track"><div class="action-bar-fill" style="width:15%;background:var(--gold)"></div></div>
-              <div class="action-row-amount" id="action-bonds">€—</div>
-            </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="section-title" style="margin:0">O que fazer agora <span class="stag">próximo aporte</span></div>
+            <button id="action-refresh-btn" onclick="refreshAporteSuggestion()" title="Regenerar sugestão" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:2px 8px;border-radius:8px;line-height:1;transition:opacity .2s">↻</button>
           </div>
 
-          <div class="action-reason">Manter equilíbrio da alocação global e disciplina de longo prazo</div>
-          <button class="submit-btn action-confirm" onclick="confirmarAporte()">✓ Confirmar aporte</button>
+          <div id="action-ai-suggestion" style="font-size:13px;line-height:1.75;color:var(--txt-dim);min-height:90px;margin-bottom:16px">
+            <span style="color:var(--muted)">Analisando sua carteira...</span>
+          </div>
+
+          <button class="submit-btn action-confirm" onclick="showPage('aportar', document.querySelectorAll('.nav-item')[3])">✓ Registrar aporte</button>
         </div>
 
         <!-- 4. ALOCAÇÃO SIMPLIFICADA + 6. SCORE -->
@@ -1495,6 +1473,82 @@ const GOAL_TARGET_EUR = 9000000;
 const GOAL_START_YEAR = 2026;
 const MONTHLY_APORTE_EUR = 100; // aporte oficial mensal (€60 BR + €40 INTL)
 
+// ─────────────────────────────────────────
+// SUGESTÃO DE APORTE — gerada pelo Analista de Portfólio
+// ─────────────────────────────────────────
+let aporteSuggestion = null;
+
+async function fetchAporteSuggestion() {
+  const el = document.getElementById('action-ai-suggestion');
+  if (!el) return;
+
+  if (!apiKey) {
+    el.innerHTML = '<span style="color:var(--muted)">Configure sua chave API para ativar sugestões inteligentes de aporte.</span>';
+    return;
+  }
+
+  el.innerHTML = '<span style="color:var(--muted)">Analisando sua carteira...</span>';
+
+  const cambio = document.getElementById('pill-cambio').textContent.replace('R$','') || '6';
+  const selic  = document.getElementById('pill-selic').textContent  || '14.75%';
+  const ipca   = document.getElementById('pill-ipca').textContent   || '4.72%';
+
+  const hglgLine = portfolioData.hglg11_cotas > 0
+    ? `- HGLG11: R$${portfolioData.hglg11.toFixed(2)} (${portfolioData.hglg11_cotas} cotas @ R$${portfolioData.hglg11_preco}/cota)`
+    : '- HGLG11: ainda não na carteira (próximo objetivo)';
+
+  const prompt = `Analise a carteira atual do Thales e sugira onde aportar no próximo mês.
+
+Carteira atual:
+- MXRF11: R$${portfolioData.mxrf11.toFixed(2)} (${portfolioData.mxrf11_cotas} cotas @ R$${portfolioData.mxrf11_preco}/cota)
+- Tesouro IPCA+: R$${portfolioData.ipca.toFixed(2)}
+- Caixinha CDI: R$${portfolioData.caixinha.toFixed(2)}
+${hglgLine}
+- VWCE: €${portfolioData.vwce.toFixed(2)} (${portfolioData.vwce_cotas} cotas)
+- EUNA: €${portfolioData.euna.toFixed(2)} (${portfolioData.euna_cotas} cotas)
+
+Dados de mercado hoje:
+- Câmbio EUR/BRL: R$${cambio}
+- Selic: ${selic}
+- IPCA 12m: ${ipca}
+
+Sugira onde aportar seguindo a Constituição do WealthFlow. Liste cada ativo com valor sugerido e motivo em 1 linha. Máximo 120 palavras. Não mencione Bitcoin — é aporte informal e separado do plano.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        system: AGENTS[0].system + '\n\n' + getProfile(),
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    if (!res.ok) throw new Error('API ' + res.status);
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Não foi possível gerar sugestão.';
+    aporteSuggestion = reply;
+    el.innerHTML = reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  } catch(e) {
+    el.innerHTML = '<span style="color:var(--muted)">Não foi possível gerar sugestão. Verifique sua chave API.</span>';
+    console.error('fetchAporteSuggestion:', e);
+  }
+}
+
+async function refreshAporteSuggestion() {
+  aporteSuggestion = null;
+  const btn = document.getElementById('action-refresh-btn');
+  if (btn) btn.style.opacity = '0.4';
+  await fetchAporteSuggestion();
+  if (btn) btn.style.opacity = '1';
+}
+
 async function updateDashboard(cambio) {
   const rate = parseFloat(cambio) || 6.0;
   const brInvested = portfolioData.mxrf11 + portfolioData.ipca + portfolioData.selic;
@@ -1539,11 +1593,8 @@ async function updateDashboard(cambio) {
   const projYear = GOAL_START_YEAR + Math.ceil(months / 12);
   document.getElementById('goal-year').textContent = months >= 12 * 60 ? '50+ anos' : projYear;
 
-  // ── 3. O QUE FAZER AGORA ──
-  document.getElementById('action-amount').textContent = '€' + MONTHLY_APORTE_EUR + ' disponível';
-  document.getElementById('action-vwce').textContent = '€' + (MONTHLY_APORTE_EUR * 0.60).toFixed(0);
-  document.getElementById('action-euna').textContent = '€' + (MONTHLY_APORTE_EUR * 0.25).toFixed(0);
-  document.getElementById('action-bonds').textContent = '€' + (MONTHLY_APORTE_EUR * 0.15).toFixed(0);
+  // ── 3. O QUE FAZER AGORA — gerado pelo Analista de Portfólio ──
+  if (!aporteSuggestion) fetchAporteSuggestion();
 
   // ── 4. ALOCAÇÃO SIMPLIFICADA ──
   const intlPct = totalEur > 0 ? (intlEur / totalEur) * 100 : 0;
@@ -1725,13 +1776,6 @@ function renderEvolution(currentTotal) {
   }
 }
 
-function confirmarAporte() {
-  document.getElementById('f-ativo').value = 'VWCE';
-  document.getElementById('f-valor').value = (MONTHLY_APORTE_EUR * 0.60).toFixed(2);
-  document.getElementById('f-moeda').value = 'EUR';
-  showPage('aportar', document.querySelectorAll('.nav-item')[3]);
-  showToast('✓ Sugestão aplicada — confira e registre cada ativo do aporte');
-}
 
 function askRiskAgentAboutScore() {
   const overall = document.getElementById('score-value').textContent;
