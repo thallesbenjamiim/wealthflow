@@ -1064,11 +1064,12 @@ textarea::placeholder { color: var(--muted2); }
 
             <div class="form-row">
               <div class="form-label">Ativo</div>
-              <select class="form-select" id="f-ativo">
+              <select class="form-select" id="f-ativo" onchange="onAtivoChange()">
                 <option value="MXRF11">🏢 MXRF11 — FII Maxi Renda</option>
                 <option value="HGLG11">🏭 HGLG11 — FII Logística</option>
                 <option value="IPCA+">📈 Tesouro IPCA+</option>
                 <option value="Selic">💵 Tesouro Selic</option>
+                <option value="Caixinha">💰 Caixinha — reserva p/ próximo aporte</option>
                 <option value="VWCE">🌍 VWCE — ETF Global</option>
                 <option value="EUNA">🔒 EUNA — ETF Bonds</option>
                 <option value="Bitcoin">₿ Bitcoin (informal)</option>
@@ -1086,8 +1087,14 @@ textarea::placeholder { color: var(--muted2); }
                 <option value="EUR">🇮🇪 Euros (€)</option>
               </select>
             </div>
+            <div class="form-row" id="row-usar-caixinha" style="display:none">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                <input type="checkbox" id="f-usar-caixinha" style="accent-color:var(--green);width:16px;height:16px">
+                <span>💰 Pagar com a Caixinha (saldo: R$<span id="f-caixinha-saldo">0,00</span>)</span>
+              </label>
+            </div>
             <div class="form-row">
-              <div class="form-label">Quantidade (cotas/unidades) — opcional</div>
+              <div class="form-label">Quantidade (cotas/unidades) — <span id="f-qtd-req">obrigatório</span></div>
               <input class="form-input" id="f-qtd" type="number" step="0.001" placeholder="ex: 8">
             </div>
             <div class="form-row">
@@ -1757,6 +1764,9 @@ async function updateDashboard(cambio) {
 
   // ── CARTEIRA DETALHADA ──
   renderWallet(rate);
+
+  // Formulário de aporte: atualiza saldo/visibilidade da opção "pagar com a Caixinha"
+  onAtivoChange();
 }
 
 async function renderWallet(rate) {
@@ -2075,6 +2085,26 @@ async function seedMayAportes() {
 // ─────────────────────────────────────────
 // FIREBASE — APORTES
 // ─────────────────────────────────────────
+// Ativos negociados em cotas: a carteira calcula o valor deles como cotas × preço,
+// então um aporte sem quantidade seria apagado na próxima atualização de mercado.
+const COTA_ASSETS = ['MXRF11', 'HGLG11', 'VWCE', 'EUNA'];
+// A Caixinha é a reserva para o lado Brasil do próximo aporte — qualquer um destes pode ser pago com ela
+const BR_ASSETS = ['MXRF11', 'HGLG11', 'IPCA+', 'Selic'];
+
+function onAtivoChange() {
+  const ativo = document.getElementById('f-ativo').value;
+  const el = document.getElementById('f-qtd-req');
+  if (el) el.textContent = COTA_ASSETS.includes(ativo) ? 'obrigatório' : 'opcional';
+
+  const row = document.getElementById('row-usar-caixinha');
+  if (row) {
+    const show = BR_ASSETS.includes(ativo) && portfolioData.caixinha > 0;
+    row.style.display = show ? '' : 'none';
+    if (show) document.getElementById('f-caixinha-saldo').textContent = portfolioData.caixinha.toFixed(2);
+    else document.getElementById('f-usar-caixinha').checked = false;
+  }
+}
+
 async function registrarAporte() {
   const ativo = document.getElementById('f-ativo').value;
   const valor = parseFloat(document.getElementById('f-valor').value);
@@ -2083,6 +2113,10 @@ async function registrarAporte() {
   const nota = document.getElementById('f-nota').value;
 
   if (!valor || valor <= 0) { showToast('⚠️ Coloque um valor válido!'); return; }
+  if (COTA_ASSETS.includes(ativo) && !(parseFloat(qtd) > 0)) {
+    showToast('⚠️ Informe a quantidade de cotas — obrigatória para ' + ativo + '!');
+    return;
+  }
 
   const db = window._db;
   const { collection, addDoc } = window._dbFns;
@@ -2128,9 +2162,11 @@ async function registrarAporte() {
         portfolioData.euna = portfolioData.euna_cotas * portfolioData.euna_preco;
       }
     }
-    // Subtract from caixinha when buying with it
-    if (ativo === 'HGLG11' || ativo === 'Selic') {
-      portfolioData.caixinha = Math.max(0, portfolioData.caixinha - valor);
+    // Pagar com a Caixinha — só quando o checkbox do formulário estiver marcado
+    if (document.getElementById('f-usar-caixinha')?.checked && BR_ASSETS.includes(ativo)) {
+      const cambioCx = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
+      const valorBrl = moeda === 'EUR' ? valor * cambioCx : valor;
+      portfolioData.caixinha = Math.max(0, portfolioData.caixinha - valorBrl);
     }
 
     // Bitcoin — usa quantidade informada no campo ou busca cotação ao vivo (CoinGecko)
@@ -2158,6 +2194,11 @@ async function registrarAporte() {
     else if (ativo === 'Selic') portfolioData.selic += valor;
     else if (ativo === 'VWCE' && !temQtd) portfolioData.vwce += valor;
     else if (ativo === 'EUNA' && !temQtd) portfolioData.euna += valor;
+    else if (ativo === 'Caixinha') {
+      // Caixinha (Nubank) é guardada em BRL — converte se o valor foi informado em EUR
+      const cambioCx = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
+      portfolioData.caixinha += moeda === 'EUR' ? valor * cambioCx : valor;
+    }
     else if (ativo === 'Dividendo') portfolioData.dividendos += valor;
 
     // Save updated portfolio to Firebase
@@ -2167,6 +2208,7 @@ async function registrarAporte() {
     document.getElementById('f-qtd').value = '';
     document.getElementById('f-nota').value = '';
     document.getElementById('f-preco').value = '';
+    document.getElementById('f-usar-caixinha').checked = false;
 
     showToast(TEST_MODE ? '🧪 Aporte de TESTE registrado — não foi salvo' : '✓ Aporte registrado com sucesso!');
     loadHistorico();
