@@ -3,7 +3,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
 <title>WealthFlow — Assessoria Inteligente</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
@@ -601,6 +601,14 @@ textarea::placeholder { color: var(--muted2); }
 
   .pin-keypad { grid-template-columns: repeat(3, 60px); gap: 12px; }
   .pin-key { width: 60px !important; height: 60px !important; font-size: 19px; }
+
+  /* iOS: fonte ≥16px nos campos evita o zoom automático ao focar */
+  .form-input, .form-select, .api-input, textarea, .evo-select { font-size: 16px; }
+
+  /* Toast acima da bottom nav, sempre visível */
+  .toast { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; text-align: center; }
+  /* Em modo teste o selo ocupa essa faixa — toast sobe pra não colidir */
+  body:has(.test-mode-badge) .toast { bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ═══════════════════════════════════════
