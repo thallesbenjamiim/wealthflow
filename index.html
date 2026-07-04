@@ -790,6 +790,7 @@ textarea::placeholder { color: var(--muted2); }
 .wallet-icon-cash { background: rgba(232,199,122,.14); box-shadow: inset 0 0 0 1px rgba(232,199,122,.25); }
 .wallet-icon-btc { background: var(--adim); box-shadow: inset 0 0 0 1px rgba(240,176,87,.25); }
 .wallet-icon-div { background: rgba(74,222,138,.12); box-shadow: inset 0 0 0 1px rgba(74,222,138,.22); }
+.wallet-icon-reserva { background: rgba(122,176,255,.14); box-shadow: inset 0 0 0 1px rgba(122,176,255,.28); }
 .wallet-name { font-size: 13px; font-weight: 600; color: var(--txt); }
 .wallet-type { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
 .wallet-right { text-align: right; flex-shrink: 0; }
@@ -887,6 +888,9 @@ textarea::placeholder { color: var(--muted2); }
       <div class="nav-section">Configurações</div>
       <div class="nav-item" onclick="showPage('config', this)">
         <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></span> Configurar API
+      </div>
+      <div class="nav-item" onclick="showPage('perfil', this)">
+        <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Perfil
       </div>
     </nav>
 
@@ -993,6 +997,27 @@ textarea::placeholder { color: var(--muted2); }
           <div class="goal-foot">
             <span class="goal-foot-item"><span class="mc-label">Hoje você tem</span> <strong class="mval" id="goal-current">€—</strong></span>
             <span class="goal-foot-item"><span class="mc-label">Previsão de chegada</span> <strong class="goal-year" id="goal-year">—</strong></span>
+          </div>
+        </div>
+
+        <!-- 2b. RESERVA DE EMERGÊNCIA -->
+        <div class="goal-card">
+          <div class="goal-head">
+            <div>
+              <div class="mc-label">🛟 Reserva de emergência</div>
+              <div class="goal-target mval" id="reserva-target">€15.000 – €20.000</div>
+            </div>
+            <div class="goal-head-right">
+              <div class="mc-label">Concluído</div>
+              <div class="goal-pct" id="reserva-pct">0%</div>
+            </div>
+          </div>
+          <div class="goal-bar-track">
+            <div class="goal-bar-fill" id="reserva-bar-fill" style="width:0%"></div>
+          </div>
+          <div class="goal-foot">
+            <span class="goal-foot-item"><span class="mc-label">Hoje você tem</span> <strong class="mval" id="reserva-current">€—</strong></span>
+            <span class="goal-foot-item"><span class="mc-label">Intocável</span> <strong class="goal-year">reserva</strong></span>
           </div>
         </div>
 
@@ -1155,6 +1180,14 @@ textarea::placeholder { color: var(--muted2); }
                 <option value="EUNA">🔒 EUNA — ETF Bonds</option>
                 <option value="Bitcoin">₿ Bitcoin (informal)</option>
                 <option value="Dividendo">💚 Dividendo recebido</option>
+                <option value="Reserva">🛟 Reserva de Emergência</option>
+              </select>
+            </div>
+            <div class="form-row" id="row-tipo-reserva" style="display:none">
+              <div class="form-label">Tipo de movimento</div>
+              <select class="form-select" id="f-tipo-reserva">
+                <option value="deposito">➕ Depósito na reserva</option>
+                <option value="retirada">➖ Retirada da reserva</option>
               </select>
             </div>
             <div class="form-row">
@@ -1234,6 +1267,95 @@ textarea::placeholder { color: var(--muted2); }
             </div>
             <button class="submit-btn" style="background:var(--surf2);border:1px solid var(--bdr2)" onclick="saveApiKey()">✓ Usar Anthropic</button>
           </div>
+        </div>
+      </div>
+
+      <!-- ── PERFIL ── -->
+      <div class="page" id="page-perfil">
+        <div style="max-width:560px;display:flex;flex-direction:column;gap:20px">
+
+          <div class="form-section">
+            <div class="fs-title">Quem sou</div>
+            <div class="form-row">
+              <div class="form-label">Nome</div>
+              <input class="form-input" id="pf-nome" type="text">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Idade</div>
+              <input class="form-input" id="pf-idade" type="number">
+            </div>
+            <div class="form-row">
+              <div class="form-label">País onde mora</div>
+              <input class="form-input" id="pf-pais" type="text">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Cidadania / situação fiscal</div>
+              <input class="form-input" id="pf-cidadania" type="text">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Horizonte até voltar ao Brasil</div>
+              <input class="form-input" id="pf-horizonte" type="text" placeholder="ex: 10-12 anos">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Perfil de risco</div>
+              <input class="form-input" id="pf-risco" type="text">
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="fs-title">Minhas metas</div>
+            <div class="form-row">
+              <div class="form-label">Renda passiva alvo (R$/mês, valores de hoje)</div>
+              <input class="form-input" id="pf-renda" type="number" step="100">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Ano-alvo</div>
+              <input class="form-input" id="pf-ano" type="number">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Meta intermediária do app (R$)</div>
+              <input class="form-input" id="pf-meta-app" type="number" step="1000">
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="fs-title">Meu plano de aportes</div>
+            <div class="form-row">
+              <div class="form-label">Aporte mensal total (€)</div>
+              <input class="form-input" id="pf-aporte-total" type="number" step="1">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Parte Brasil (€)</div>
+              <input class="form-input" id="pf-aporte-br" type="number" step="1">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Parte Internacional (€)</div>
+              <input class="form-input" id="pf-aporte-intl" type="number" step="1">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Dia do aporte</div>
+              <input class="form-input" id="pf-dia" type="text" placeholder="ex: 28/29">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Bitcoin informal mensal (€)</div>
+              <input class="form-input" id="pf-btc" type="number" step="1">
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="fs-title">🛟 Reserva de emergência</div>
+            <div class="fs-sub">Isto define só a META — para adicionar ou retirar dinheiro da reserva, use Registrar Aporte.</div>
+            <div class="form-row">
+              <div class="form-label">Meta mínima (€)</div>
+              <input class="form-input" id="pf-reserva-min" type="number" step="500">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Meta máxima (€)</div>
+              <input class="form-input" id="pf-reserva-max" type="number" step="500">
+            </div>
+          </div>
+
+          <button class="submit-btn" onclick="salvarPerfil()">✓ Salvar Perfil</button>
         </div>
       </div>
 
@@ -1340,8 +1462,103 @@ let portfolioData = {
   euna: 14.97, euna_cotas: 3.04346061, euna_preco: 4.92,
   bitcoin: 0.00118117,
   bitcoin_invested_eur: 6,
-  dividendos: 0.80
+  dividendos: 0.80,
+  reserva: 0
 };
+
+// ─────────────────────────────────────────
+// PERFIL DO USUÁRIO — editável na página Perfil, persistido no Firebase
+// ─────────────────────────────────────────
+let profileData = {
+  nome: 'Thales',
+  idade: 30,
+  pais: 'Irlanda',
+  cidadania: 'brasileiro, cidadania italiana',
+  horizonteRetorno: '10-12 anos',
+  perfilRisco: 'Conservador, longo prazo, sem trading',
+  rendaPassivaAlvo: 30000,
+  anoAlvo: 2046,
+  metaIntermediariaBRL: 1000000,
+  aporteMensalEur: 100,
+  aporteBrEur: 60,
+  aporteIntlEur: 40,
+  diaAporte: '28/29',
+  bitcoinMensalEur: 10,
+  reservaMetaMinEur: 15000,
+  reservaMetaMaxEur: 20000
+};
+
+async function loadProfile() {
+  if (TEST_MODE) return;
+  const db = window._db;
+  const { doc, getDoc } = window._dbFns;
+  try {
+    const snap = await getDoc(doc(db, 'profile', 'main'));
+    if (snap.exists()) profileData = { ...profileData, ...snap.data() };
+  } catch (e) { console.error(e); }
+}
+
+async function saveProfile() {
+  if (TEST_MODE) return;
+  const db = window._db;
+  const { doc, setDoc } = window._dbFns;
+  await setDoc(doc(db, 'profile', 'main'), { ...profileData, updated: new Date().toISOString() });
+}
+
+function preencherPerfil() {
+  document.getElementById('pf-nome').value = profileData.nome;
+  document.getElementById('pf-idade').value = profileData.idade;
+  document.getElementById('pf-pais').value = profileData.pais;
+  document.getElementById('pf-cidadania').value = profileData.cidadania;
+  document.getElementById('pf-horizonte').value = profileData.horizonteRetorno;
+  document.getElementById('pf-risco').value = profileData.perfilRisco;
+  document.getElementById('pf-renda').value = profileData.rendaPassivaAlvo;
+  document.getElementById('pf-ano').value = profileData.anoAlvo;
+  document.getElementById('pf-meta-app').value = profileData.metaIntermediariaBRL;
+  document.getElementById('pf-aporte-total').value = profileData.aporteMensalEur;
+  document.getElementById('pf-aporte-br').value = profileData.aporteBrEur;
+  document.getElementById('pf-aporte-intl').value = profileData.aporteIntlEur;
+  document.getElementById('pf-dia').value = profileData.diaAporte;
+  document.getElementById('pf-btc').value = profileData.bitcoinMensalEur;
+  document.getElementById('pf-reserva-min').value = profileData.reservaMetaMinEur;
+  document.getElementById('pf-reserva-max').value = profileData.reservaMetaMaxEur;
+}
+
+async function salvarPerfil() {
+  const num = (id, fallback) => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? fallback : v; };
+  const txt = (id, fallback) => { const v = document.getElementById(id).value.trim(); return v || fallback; };
+
+  profileData = {
+    ...profileData,
+    nome: txt('pf-nome', profileData.nome),
+    idade: num('pf-idade', profileData.idade),
+    pais: txt('pf-pais', profileData.pais),
+    cidadania: txt('pf-cidadania', profileData.cidadania),
+    horizonteRetorno: txt('pf-horizonte', profileData.horizonteRetorno),
+    perfilRisco: txt('pf-risco', profileData.perfilRisco),
+    rendaPassivaAlvo: num('pf-renda', profileData.rendaPassivaAlvo),
+    anoAlvo: num('pf-ano', profileData.anoAlvo),
+    metaIntermediariaBRL: num('pf-meta-app', profileData.metaIntermediariaBRL),
+    aporteMensalEur: num('pf-aporte-total', profileData.aporteMensalEur),
+    aporteBrEur: num('pf-aporte-br', profileData.aporteBrEur),
+    aporteIntlEur: num('pf-aporte-intl', profileData.aporteIntlEur),
+    diaAporte: txt('pf-dia', profileData.diaAporte),
+    bitcoinMensalEur: num('pf-btc', profileData.bitcoinMensalEur),
+    reservaMetaMinEur: num('pf-reserva-min', profileData.reservaMetaMinEur),
+    reservaMetaMaxEur: num('pf-reserva-max', profileData.reservaMetaMaxEur)
+  };
+
+  try {
+    await saveProfile();
+    refreshDerivedFromProfile();
+    const cambio = document.getElementById('pill-cambio').textContent.replace('R$','') || '6';
+    updateDashboard(cambio);
+    showToast('✓ Perfil salvo!');
+  } catch (e) {
+    showToast('❌ Erro ao salvar perfil. Verifique a conexão.');
+    console.error(e);
+  }
+}
 
 // ─────────────────────────────────────────
 // PERFIL COMPACTO — enviado ao assistente em toda pergunta
@@ -1353,15 +1570,17 @@ function getProfile() {
   const ipca = document.getElementById('pill-ipca').textContent || '4.72%';
   const fx = v => (v || 0).toFixed(2);
   const btcEur = btcPriceEur ? (portfolioData.bitcoin * btcPriceEur).toFixed(0) : (portfolioData.bitcoin_invested_eur || 0);
+  const patrimonioAlvo = (profileData.rendaPassivaAlvo * 650 / 1000000).toFixed(1);
 
-  return `PERFIL — Thales, 30 anos, brasileiro morando na Irlanda (cidadania italiana, dupla residência fiscal BR+IE confirmada), volta ao Brasil em ~10-12 anos. Conservador, longo prazo, sem trading.
+  return `PERFIL — ${profileData.nome}, ${profileData.idade} anos, morando em ${profileData.pais} (${profileData.cidadania}), volta ao Brasil em ~${profileData.horizonteRetorno}. ${profileData.perfilRisco}.
 HOJE (${new Date().toLocaleDateString('pt-BR')}): EUR/BRL ${cambio} · Selic ${selic} · IPCA 12m ${ipca}.
 CARTEIRA ATUAL:
 - Brasil (Nubank): MXRF11 R$${fx(portfolioData.mxrf11)} (${portfolioData.mxrf11_cotas || 0} cotas, ~R$0,10/cota/mês) · HGLG11 R$${fx(portfolioData.hglg11)} (${portfolioData.hglg11_cotas || 0} cotas, FII logística) · Tesouro IPCA+ R$${fx(portfolioData.ipca)} · Caixinha CDI R$${fx(portfolioData.caixinha)} (liquidez temporária entre aportes) · Dividendos recebidos R$${fx(portfolioData.dividendos)}
 - Internacional (Revolut): VWCE €${fx(portfolioData.vwce)} · EUNA €${fx(portfolioData.euna)} (ambos Acc — sem imposto anual de dividendos)
 - Bitcoin informal (fora do plano): ${portfolioData.bitcoin || 0} BTC (~€${btcEur})
-META: renda passiva de R$30.000/mês em valores de hoje aos 50 anos (2046) — patrimônio-alvo ~R$19,5 mi. Meta intermediária do app: R$1.000.000.
-APORTE: €100/mês todo dia 28/29 (€60 Brasil + €40 Internacional). Referência 60/40 Brasil/Internacional — é referência, não regra rígida; EUNA sempre considerado no lado internacional. Bitcoin €10/mês informal. Reserva de emergência €15-20k separada e INTOCÁVEL.
+- Reserva de emergência (fora do plano de investimento, intocável): €${fx(portfolioData.reserva)} de uma meta de €${profileData.reservaMetaMinEur}-${profileData.reservaMetaMaxEur}
+META: renda passiva de R$${fmtNum(profileData.rendaPassivaAlvo, 0)}/mês em valores de hoje aos ${profileData.anoAlvo} — patrimônio-alvo ~R$${patrimonioAlvo} mi. Meta intermediária do app: R$${fmtNum(profileData.metaIntermediariaBRL, 0)}.
+APORTE: €${profileData.aporteMensalEur}/mês todo dia ${profileData.diaAporte} (€${profileData.aporteBrEur} Brasil + €${profileData.aporteIntlEur} Internacional). Referência 60/40 Brasil/Internacional — é referência, não regra rígida; EUNA sempre considerado no lado internacional. Bitcoin €${profileData.bitcoinMensalEur}/mês informal. Reserva de emergência €${profileData.reservaMetaMinEur}-${profileData.reservaMetaMaxEur} separada e INTOCÁVEL.
 REGRAS DO PLANO: NUNCA Tesouro Selic (Caixinha é liquidez temporária — sempre direcionar ao ativo mais adequado); nunca day trade/alavancagem/margem/especulação; reinvestir 100% dos dividendos; aportar todo mês independente do mercado; só realocar em desvio ESTRUTURAL (oscilação cambial de semanas é ruído); mudanças graduais (5-10% por vez); quando aporte Brasil chegar a R$450/mês, avaliar KNRI11.
 FISCAL: Irlanda — Exit Tax 38% sobre ETFs, deemed disposal em 2033 (planejar liquidez a partir de 2032). Brasil — dividendos de FII isentos de IR; Tesouro com IR retido na fonte.
 GATILHOS: Selic <10% → migrar aporte renda fixa p/ FIIs e internacional; Selic <7% → realocar gradual BR→Intl; ETFs -20% → comprar mais; 2 anos antes de voltar ao Brasil → parar ETFs europeus e converter gradualmente.`;
@@ -1372,15 +1591,15 @@ GATILHOS: Selic <10% → migrar aporte renda fixa p/ FIIs e internacional; Selic
 // ─────────────────────────────────────────
 const ASSISTANT = { name: 'Assistente WealthFlow', icon: '✦', color: 'var(--gdim)' };
 
-const ASSISTANT_SYSTEM = `Você é o ASSISTENTE do WealthFlow, a carteira digital inteligente do Thales. Você cobre todos os assuntos num só lugar: alocação e rebalanceamento, dividendos e reinvestimento, projeções de longo prazo, questões fiscais (Brasil + Irlanda) e gestão de risco — além de dúvidas conceituais sobre investimentos.
+const getAssistantSystem = () => `Você é o ASSISTENTE do WealthFlow, a carteira digital inteligente do ${profileData.nome}. Você cobre todos os assuntos num só lugar: alocação e rebalanceamento, dividendos e reinvestimento, projeções de longo prazo, questões fiscais (Brasil + Irlanda) e gestão de risco — além de dúvidas conceituais sobre investimentos.
 
 COMO RESPONDER:
-- Pergunta CONCEITUAL/educativa (ex: "o que é um FII?", "Acc vs Dist?"): responda como um bom professor, claro e neutro, SEM citar os dados pessoais do Thales.
+- Pergunta CONCEITUAL/educativa (ex: "o que é um FII?", "Acc vs Dist?"): responda como um bom professor, claro e neutro, SEM citar os dados pessoais do ${profileData.nome}.
 - Pergunta sobre A CARTEIRA ou a situação dele: use os números reais do perfil abaixo.
 - Dividendo informado: sugerir reinvestir no ativo Brasil com menor peso relativo (FIIs ou IPCA+ — nunca Selic), mostrando o efeito composto.
 - Projeções: sempre cenário conservador E otimista, com números.
 - Assunto fiscal: nunca aconselhamento definitivo — diga "possível obrigação fiscal" e recomende validação com contador qualificado.
-- Risco/desvio estrutural detectado: alerte com motivo, risco e sugestão — a decisão final é sempre do Thales. Nada é executado automaticamente.
+- Risco/desvio estrutural detectado: alerte com motivo, risco e sugestão — a decisão final é sempre do ${profileData.nome}. Nada é executado automaticamente.
 - NUNCA incentivar: day trade, alavancagem, margem, ETFs alavancados, especulação, Tesouro Selic.
 - SEMPRE em português do Brasil.`;
 
@@ -1398,7 +1617,7 @@ const QUICK_QUESTIONS = [
   'O que é deemed disposal?'
 ];
 
-const WELCOME = `Olá Thales! Sou o <strong>assistente do WealthFlow</strong> — pergunte qualquer coisa: carteira, dividendos, projeções, impostos ou conceitos de investimento.<br><br>Hoje o câmbio está em <strong id="w0-cambio">—</strong> e a Selic em <strong id="w0-selic">—</strong> — os €60 do lado Brasil valem <strong id="w0-brl">—</strong>.<br><br>Dica: os botões acima do campo de texto dão um tom específico à resposta (risco, fiscal ou longo prazo).`;
+const getWelcome = () => `Olá ${profileData.nome}! Sou o <strong>assistente do WealthFlow</strong> — pergunte qualquer coisa: carteira, dividendos, projeções, impostos ou conceitos de investimento.<br><br>Hoje o câmbio está em <strong id="w0-cambio">—</strong> e a Selic em <strong id="w0-selic">—</strong> — os €${profileData.aporteBrEur} do lado Brasil valem <strong id="w0-brl">—</strong>.<br><br>Dica: os botões acima do campo de texto dão um tom específico à resposta (risco, fiscal ou longo prazo).`;
 
 // ─────────────────────────────────────────
 // NAVIGATION
@@ -1409,7 +1628,8 @@ const pageTitles = {
   agentes: ['Assistente', 'Seu copiloto financeiro — pergunte qualquer coisa'],
   aportar: ['Registrar Aporte', 'Atualize sua carteira após cada compra'],
   alertas: ['Alertas', 'Gatilhos e notificações do seu plano'],
-  config: ['Configurar API', 'Chave API para ativar os agentes']
+  config: ['Configurar API', 'Chave API para ativar os agentes'],
+  perfil: ['Perfil', 'Seus dados, metas e plano de aportes']
 };
 
 function showPage(id, el) {
@@ -1426,6 +1646,7 @@ function showPage(id, el) {
   if (id === 'aportar') { loadHistorico(); renderAporteGuide(); }
   if (id === 'alertas') renderAlertas();
   if (id === 'config')  updateKeyStatus();
+  if (id === 'perfil')  preencherPerfil();
   if (id === 'carteira') {
     const cambio = document.getElementById('pill-cambio').textContent.replace('R$','') || '6';
     renderWallet(parseFloat(cambio) || 6);
@@ -1561,9 +1782,15 @@ async function loadMarketData() {
 // ─────────────────────────────────────────
 // DASHBOARD — copiloto financeiro
 // ─────────────────────────────────────────
-const GOAL_TARGET_BRL = 1000000;
+// Derivados do profileData — recalculados por refreshDerivedFromProfile() após editar o Perfil
+let GOAL_TARGET_BRL = profileData.metaIntermediariaBRL;
 const GOAL_START_YEAR = 2026;
-const MONTHLY_APORTE_EUR = 100; // aporte oficial mensal (€60 BR + €40 INTL)
+let MONTHLY_APORTE_EUR = profileData.aporteMensalEur; // aporte oficial mensal (BR + INTL)
+
+function refreshDerivedFromProfile() {
+  GOAL_TARGET_BRL = profileData.metaIntermediariaBRL;
+  MONTHLY_APORTE_EUR = profileData.aporteMensalEur;
+}
 
 // ─────────────────────────────────────────
 // SUGESTÃO DE APORTE — gerada pelo Analista de Portfólio
@@ -1623,7 +1850,7 @@ function fmtNum(value, decimals = 2) {
 // ─────────────────────────────────────────
 // RENTABILIDADE REAL — custo de aquisição a partir dos aportes registrados
 // ─────────────────────────────────────────
-const ASSET_CURRENCY = { 'MXRF11':'BRL', 'HGLG11':'BRL', 'IPCA+':'BRL', 'Selic':'BRL', 'Caixinha':'BRL', 'Dividendo':'BRL', 'VWCE':'EUR', 'EUNA':'EUR', 'Bitcoin':'EUR' };
+const ASSET_CURRENCY = { 'MXRF11':'BRL', 'HGLG11':'BRL', 'IPCA+':'BRL', 'Selic':'BRL', 'Caixinha':'BRL', 'Dividendo':'BRL', 'VWCE':'EUR', 'EUNA':'EUR', 'Bitcoin':'EUR', 'Reserva':'EUR' };
 
 // Soma o valor aportado por ativo, na moeda nativa de cada um
 function computeInvested(docs, rate) {
@@ -1646,7 +1873,7 @@ function computeInvested(docs, rate) {
 function totalInvestedEur(inv, rate) {
   let total = 0;
   Object.entries(inv).forEach(([ativo, v]) => {
-    if (ativo === 'Caixinha') return;
+    if (ativo === 'Caixinha' || ativo === 'Reserva') return;
     total += ASSET_CURRENCY[ativo] === 'BRL' ? v / rate : v;
   });
   return total + (portfolioData.caixinha || 0) / rate;
@@ -1711,6 +1938,15 @@ async function updateDashboard(cambio) {
   }
   const projYear = GOAL_START_YEAR + Math.ceil(months / 12);
   document.getElementById('goal-year').textContent = months >= 12 * 60 ? '60+ anos' : projYear;
+
+  // ── 3b. RESERVA DE EMERGÊNCIA (independente da meta de R$1.000.000) ──
+  const reservaEur = portfolioData.reserva || 0;
+  const reservaPct = Math.min(100, (reservaEur / profileData.reservaMetaMinEur) * 100);
+  document.getElementById('reserva-target').textContent =
+    '€' + fmtNum(profileData.reservaMetaMinEur, 0) + ' – €' + fmtNum(profileData.reservaMetaMaxEur, 0);
+  document.getElementById('reserva-pct').textContent = reservaPct.toFixed(0) + '%';
+  document.getElementById('reserva-bar-fill').style.width = Math.max(reservaPct, reservaEur > 0 ? 0.3 : 0) + '%';
+  document.getElementById('reserva-current').textContent = '€' + fmtNum(reservaEur);
 
   // ── 4. ALOCAÇÃO SIMPLIFICADA ──
   const intlPct = totalEur > 0 ? (intlEur / totalEur) * 100 : 0;
@@ -1896,6 +2132,9 @@ async function renderWallet(rate) {
   if (portfolioData.dividendos > 0) {
     items.push({ icon: '💚', name: 'Dividendos recebidos', type: 'Acumulado total', cat: 'div', val: showVal(portfolioData.dividendos, 'BRL'), meta: '' });
   }
+  if (portfolioData.reserva > 0) {
+    items.push({ icon: '🛟', name: 'Reserva de Emergência', type: 'Intocável · Revolut', cat: 'reserva', val: showVal(portfolioData.reserva, 'EUR'), meta: 'Meta: €' + fmtNum(profileData.reservaMetaMinEur, 0) + ' – €' + fmtNum(profileData.reservaMetaMaxEur, 0) });
+  }
 
   list.innerHTML = items.map(it => `
     <div class="wallet-item">
@@ -2053,7 +2292,7 @@ async function loadDailyInsight() {
 
   try {
     const prompt = 'Gere UM insight útil de HOJE para o investidor, com base no perfil e nos indicadores atuais. Máximo 35 palavras, texto corrido, direto, sem saudação e sem repetir números óbvios da carteira. Temas possíveis: câmbio da semana, dividendo esperado, proximidade do dia de aporte (28/29), equilíbrio da carteira.';
-    const insight = await callAI(ASSISTANT_SYSTEM + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 120);
+    const insight = await callAI(getAssistantSystem() + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 120);
     localStorage.setItem(KEY, JSON.stringify({ date: today, text: insight }));
     txt.textContent = insight;
     card.style.display = 'flex';
@@ -2090,7 +2329,7 @@ async function loadMonthlySummary() {
   const linhas = monthDocs.map(d => `${d.ativo} ${d.moeda === 'EUR' ? '€' : 'R$'}${d.valor}${d.qtd ? ' (' + d.qtd + ' cotas)' : ''}`).join('; ');
   try {
     const prompt = `Resuma o mês de ${monthLabel} do investidor em UM parágrafo de no máximo 70 palavras, tom de extrato inteligente: o que foi aportado (${linhas}), dividendos se houve, e se ficou aderente ao plano de €100/mês na referência 60/40. Texto corrido, sem listas, sem saudação.`;
-    const text = await callAI(ASSISTANT_SYSTEM + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 200);
+    const text = await callAI(getAssistantSystem() + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 200);
     localStorage.setItem(KEY, JSON.stringify({ month: prevKey, text }));
     show(text);
   } catch (e) {}
@@ -2110,7 +2349,7 @@ async function analyzePortfolio() {
   btn.textContent = '⏳ Analisando sua carteira…';
   try {
     const prompt = 'Faça uma ANÁLISE COMPLETA da carteira: proporção Brasil/Internacional vs referência 60/40, concentração por ativo, rentabilidade vs aportado, riscos relevantes, aderência ao plano e sugestão concreta para o próximo aporte. Aqui você PODE se aprofundar: até ~250 palavras, em parágrafos curtos, sem títulos e sem listas com asteriscos.';
-    const text = await callAI(ASSISTANT_SYSTEM + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 900);
+    const text = await callAI(getAssistantSystem() + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 900);
     txtEl.innerHTML = text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     document.getElementById('analysis-date').textContent = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     card.style.display = '';
@@ -2385,6 +2624,9 @@ function onAtivoChange() {
     if (show) document.getElementById('f-caixinha-saldo').textContent = fmtNum(portfolioData.caixinha);
     else document.getElementById('f-usar-caixinha').checked = false;
   }
+
+  const rowReserva = document.getElementById('row-tipo-reserva');
+  if (rowReserva) rowReserva.style.display = ativo === 'Reserva' ? '' : 'none';
 }
 
 async function registrarAporte() {
@@ -2393,11 +2635,20 @@ async function registrarAporte() {
   const moeda = document.getElementById('f-moeda').value;
   const qtd = document.getElementById('f-qtd').value;
   const nota = document.getElementById('f-nota').value;
+  const tipoReserva = ativo === 'Reserva' ? document.getElementById('f-tipo-reserva').value : null;
 
   if (!valor || valor <= 0) { showToast('⚠️ Coloque um valor válido!'); return; }
   if (COTA_ASSETS.includes(ativo) && !(parseFloat(qtd) > 0)) {
     showToast('⚠️ Informe a quantidade de cotas — obrigatória para ' + ativo + '!');
     return;
+  }
+  if (ativo === 'Reserva' && tipoReserva === 'retirada') {
+    const cambioAtual = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
+    const valorEmEur = moeda === 'BRL' ? valor / cambioAtual : valor;
+    if (valorEmEur > (portfolioData.reserva || 0) + 0.01) {
+      showToast('⚠️ Valor maior que o saldo atual da Reserva (€' + fmtNum(portfolioData.reserva || 0) + ')!');
+      return;
+    }
   }
 
   const btn = document.getElementById('aporteSubmitBtn');
@@ -2409,6 +2660,7 @@ async function registrarAporte() {
     const preco = document.getElementById('f-preco').value;
     const aporteDoc = {
       ativo, valor, moeda, qtd: qtd || null, preco: preco || null, nota: nota || null,
+      tipo: tipoReserva,
       data: new Date().toISOString(),
       timestamp: Date.now()
     };
@@ -2488,6 +2740,9 @@ async function registrarAporte() {
     else if (ativo === 'EUNA' && !temQtd) portfolioData.euna += valorNativo;
     else if (ativo === 'Caixinha') portfolioData.caixinha += valorNativo;
     else if (ativo === 'Dividendo') portfolioData.dividendos += valorNativo;
+    else if (ativo === 'Reserva') {
+      portfolioData.reserva = Math.max(0, (portfolioData.reserva || 0) + (tipoReserva === 'retirada' ? -valorNativo : valorNativo));
+    }
 
     // Save updated portfolio to Firebase
     await savePortfolio();
@@ -2836,7 +3091,7 @@ function renderMsgs() {
   msgs.innerHTML = `<div style="text-align:center;padding:12px 0"><span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">— conversa iniciada —</span></div>`;
 
   if (chatHistory.length === 0) {
-    msgs.innerHTML += buildAgentMsg(WELCOME);
+    msgs.innerHTML += buildAgentMsg(getWelcome());
     // Update welcome with real data
     setTimeout(() => {
       const cambio = document.getElementById('pill-cambio').textContent.replace('R$','');
@@ -2866,7 +3121,8 @@ function buildAgentMsg(text) {
 }
 
 function buildUserMsg(text) {
-  return `<div class="msg user"><div class="mavatar" style="background:var(--surf2)">T</div><div><div class="mbubble">${text}</div><div class="mmeta">Thales</div></div></div>`;
+  const inicial = (profileData.nome || 'T').charAt(0).toUpperCase();
+  return `<div class="msg user"><div class="mavatar" style="background:var(--surf2)">${inicial}</div><div><div class="mbubble">${text}</div><div class="mmeta">${profileData.nome}</div></div></div>`;
 }
 
 function sendQuick(t) { document.getElementById('userInput').value = t; sendMsg(); }
@@ -2902,7 +3158,7 @@ async function sendMsg() {
   try {
     const modeCtx = chatMode ? '\n\n' + MODES[chatMode].system : '';
     const styleReminder = '\n\nLEMBRETE FINAL (PRIORIDADE MÁXIMA, sobrepõe qualquer instrução anterior de formato): responda em NO MÁXIMO 120 palavras, em texto corrido, SEM títulos, SEM seções e SEM listas com asteriscos. Mesmo que mensagens anteriores desta conversa tenham sido longas e estruturadas, a partir de agora responda curto. Se precisar aprofundar, resuma e pergunte se o Thales quer os detalhes.';
-    const fullSystem = ASSISTANT_SYSTEM + '\n\n' + getProfile() + modeCtx + styleReminder;
+    const fullSystem = getAssistantSystem() + '\n\n' + getProfile() + modeCtx + styleReminder;
     const reply = await callAI(fullSystem, chatHistory, 450);
     chatHistory.push({ role: 'assistant', content: reply });
     saveHistories();
@@ -3115,10 +3371,14 @@ async function init() {
   await checkProxy();
   await loadMarketData();
   if (window._dbReady) {
+    await loadProfile();
+    refreshDerivedFromProfile();
     await loadPortfolio();
     updatePortfolioTable();
   } else {
     window.addEventListener('dbready', async () => {
+      await loadProfile();
+      refreshDerivedFromProfile();
       await loadPortfolio();
       updatePortfolioTable();
     });
