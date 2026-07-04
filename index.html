@@ -1159,9 +1159,8 @@ textarea::placeholder { color: var(--muted2); }
       <!-- ── APORTAR ── -->
       <div class="page" id="page-aportar">
         <div class="form-section" style="margin-bottom:16px">
-          <div class="fs-title">Sugestão do mês <span class="stag" id="guide-tag">€100 · dia 28/29</span></div>
-          <div class="fs-sub" id="guide-text">Carregando sugestão…</div>
-          <div id="guide-btns" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+          <div class="fs-title">Este mês</div>
+          <div class="fs-sub" id="guide-text">Carregando resumo…</div>
         </div>
         <div class="aporte-grid">
           <div class="form-section">
@@ -1600,7 +1599,7 @@ const getAssistantSystem = () => `Você é o ASSISTENTE do WealthFlow, a carteir
 COMO RESPONDER:
 - Pergunta CONCEITUAL/educativa (ex: "o que é um FII?", "Acc vs Dist?"): responda como um bom professor, claro e neutro, SEM citar os dados pessoais do ${profileData.nome}.
 - Pergunta sobre A CARTEIRA ou a situação dele: use os números reais do perfil abaixo.
-- Dividendo informado: sugerir reinvestir no ativo Brasil com menor peso relativo (FIIs ou IPCA+ — nunca Selic), mostrando o efeito composto.
+- Dividendo informado: mostrar o efeito composto de reinvestir em cada ativo Brasil elegível (FIIs ou IPCA+ — nunca Selic), sem indicar uma preferida — a escolha é do ${profileData.nome}.
 - Projeções: sempre cenário conservador E otimista, com números.
 - Assunto fiscal: nunca aconselhamento definitivo — diga "possível obrigação fiscal" e recomende validação com contador qualificado.
 - Risco/desvio estrutural detectado: alerte com motivo, risco e sugestão — a decisão final é sempre do ${profileData.nome}. Nada é executado automaticamente.
@@ -1615,9 +1614,9 @@ const MODES = {
 let chatMode = null;
 
 const QUICK_QUESTIONS = [
-  'Como alocar os €100 deste mês?',
   'Minha carteira está equilibrada?',
-  'Onde reinvestir os dividendos?',
+  'Qual a concentração de risco atual?',
+  'Como está minha rentabilidade real?',
   'O que é deemed disposal?'
 ];
 
@@ -2476,7 +2475,7 @@ async function renderAlertas() {
   // Lembrete do aporte mensal (dia 28/29) — só se ainda não aportou este mês
   const aportouEsteMes = (docs || []).some(d => (d.data || '').startsWith(mesKey) && d.ativo !== 'Dividendo');
   if (diaHoje >= 26 && !aportouEsteMes) {
-    alerts.push({ type: 'amber', icon: '📅', title: 'AÇÃO SUGERIDA: Aporte do mês chegando', desc: `O aporte de €100 é sempre dia 28/29 e ainda não há registro em ${hoje.toLocaleDateString('pt-BR', { month: 'long' })}. Veja a "Sugestão do mês" em Registrar Aporte.`, action: true });
+    alerts.push({ type: 'amber', icon: '📅', title: 'AÇÃO SUGERIDA: Aporte do mês chegando', desc: `O aporte de €${profileData.aporteMensalEur} é sempre dia ${profileData.diaAporte} e ainda não há registro em ${hoje.toLocaleDateString('pt-BR', { month: 'long' })}.`, action: true });
     actionableCount++;
   }
 
@@ -2579,53 +2578,38 @@ const COTA_ASSETS = ['MXRF11', 'HGLG11', 'VWCE', 'EUNA'];
 // A Caixinha é a reserva para o lado Brasil do próximo aporte — qualquer um destes pode ser pago com ela
 const BR_ASSETS = ['MXRF11', 'HGLG11', 'IPCA+', 'Selic'];
 
-// ─────────────────────────────────────────
-// APORTE GUIADO — sugestão do mês (60/40) com preenchimento em 1 toque
-// ─────────────────────────────────────────
-function fillAporte(ativo, valor, moeda) {
-  document.getElementById('f-ativo').value = ativo;
-  onAtivoChange();
-  document.getElementById('f-valor').value = valor;
-  document.getElementById('f-moeda').value = moeda;
-  document.getElementById('f-qtd').value = '';
-  document.getElementById('f-preco').value = '';
-  const campo = COTA_ASSETS.includes(ativo) ? 'f-qtd' : 'f-nota';
-  document.getElementById(campo).focus();
-  showToast('✏️ Formulário preenchido — ' + (COTA_ASSETS.includes(ativo) ? 'informe as cotas e confirme' : 'confira e confirme'));
-}
 
-function renderAporteGuide() {
-  const btnsEl = document.getElementById('guide-btns');
+// Resumo neutro do mês: quanto já foi aportado e como ficou dividido Brasil/Internacional —
+// sem indicar o que comprar a seguir (a decisão de alocação é do usuário).
+async function renderAporteGuide() {
   const textEl = document.getElementById('guide-text');
-  if (!btnsEl || !textEl) return;
+  if (!textEl) return;
   const rate = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
-  const brlBudget = 60 * rate;
 
-  // Lado Brasil: sugere o ativo com MENOR peso (MXRF11, HGLG11 ou IPCA+) p/ manter o equilíbrio interno
-  const brAssets = [
-    { ativo: 'MXRF11', val: portfolioData.mxrf11 || 0 },
-    { ativo: 'HGLG11', val: portfolioData.hglg11 || 0 },
-    { ativo: 'IPCA+',  val: portfolioData.ipca || 0 }
-  ];
-  const menor = brAssets.reduce((m, a) => a.val < m.val ? a : m, brAssets[0]);
-
-  const cx = portfolioData.caixinha || 0;
-  textEl.innerHTML = `Referência 60/40: <strong>€60 Brasil</strong> (≈ R$${fmtNum(brlBudget, 0)} — sugerido em <strong>${menor.ativo}</strong>, o de menor peso hoje) + <strong>€40 Internacional</strong> (VWCE €25 · EUNA €15).`
-    + (cx > 0 ? ` Há <strong>R$${fmtNum(cx)}</strong> na Caixinha aguardando destino — marque "pagar com a Caixinha" ao registrar.` : '');
-
-  const sugestoes = [
-    { label: `🇧🇷 ${menor.ativo} · R$${fmtNum(brlBudget, 0)}`, ativo: menor.ativo, valor: brlBudget.toFixed(2), moeda: 'BRL' },
-    { label: '🌍 VWCE · €25', ativo: 'VWCE', valor: '25', moeda: 'EUR' },
-    { label: '🔒 EUNA · €15', ativo: 'EUNA', valor: '15', moeda: 'EUR' }
-  ];
-  btnsEl.innerHTML = '';
-  sugestoes.forEach(s => {
-    const b = document.createElement('button');
-    b.className = 'qbtn';
-    b.textContent = s.label;
-    b.addEventListener('click', () => fillAporte(s.ativo, s.valor, s.moeda));
-    btnsEl.appendChild(b);
+  const docs = await loadAportesForEvo().catch(() => []);
+  const now = new Date();
+  const BR_NATIVE = ['MXRF11', 'HGLG11', 'IPCA+', 'Selic', 'Caixinha'];
+  let brEur = 0, intlEur = 0;
+  (docs || []).forEach(d => {
+    if (d.ativo === 'Dividendo' || d.ativo === 'Reserva') return; // renda e reserva não são "aporte de investimento"
+    const dt = new Date(d.data);
+    if (dt.getFullYear() !== now.getFullYear() || dt.getMonth() !== now.getMonth()) return;
+    const v = parseFloat(d.valor) || 0;
+    const nativoBRL = BR_NATIVE.includes(d.ativo);
+    const valorEur = nativoBRL
+      ? (d.moeda === 'EUR' ? v : v / rate)
+      : (d.moeda === 'BRL' ? v / rate : v);
+    if (nativoBRL) brEur += valorEur; else intlEur += valorEur;
   });
+
+  const totalEur = brEur + intlEur;
+  if (totalEur <= 0) {
+    textEl.innerHTML = 'Nenhum aporte registrado este mês ainda.';
+    return;
+  }
+  const brPct = (brEur / totalEur) * 100;
+  const intlPct = (intlEur / totalEur) * 100;
+  textEl.innerHTML = `Você aportou <strong>€${fmtNum(totalEur)}</strong> este mês — <strong>${brPct.toFixed(0)}% Brasil</strong> / <strong>${intlPct.toFixed(0)}% Internacional</strong> (referência 60/40).`;
 }
 
 function onAtivoChange() {
