@@ -1232,6 +1232,7 @@ function toggleValuesVisibility() {
 }
 let curAgent = 0;
 let proxyAvailable = false;
+let proxyBase = 'http://localhost:3001'; // definido em checkProxy: /api no Vercel, localhost no PC
 const CHAT_STORE_KEY = TEST_MODE ? 'wf_chat_histories_test' : 'wf_chat_histories';
 let histories = (() => {
   try {
@@ -1524,7 +1525,7 @@ async function loadMarketData() {
   if (proxyAvailable) {
     // Proxy ativo: busca tudo server-side, sem CORS
     try {
-      const md = await fetch('http://localhost:3001/market-data').then(r => r.json());
+      const md = await fetch(proxyBase + '/market-data').then(r => r.json());
       if (md.eurbrl) {
         ['pill-cambio','sb-cambio'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = 'R$' + parseFloat(md.eurbrl).toFixed(2); });
       }
@@ -2259,7 +2260,7 @@ async function loadPortfolio() {
       const cambio = document.getElementById('pill-cambio').textContent.replace('R$','') || '6';
       if (proxyAvailable) {
         try {
-          const md = await fetch('http://localhost:3001/market-data').then(r => r.json());
+          const md = await fetch(proxyBase + '/market-data').then(r => r.json());
           applyLivePrices(md);
         } catch(e) {}
       }
@@ -2785,12 +2786,18 @@ if (document.readyState === 'loading') {
 // INIT
 // ─────────────────────────────────────────
 async function checkProxy() {
-  try {
-    const r = await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(1500) });
-    const d = await r.json();
-    proxyAvailable = d.ok === true;
-  } catch(e) {
-    proxyAvailable = false;
+  // Ordem de busca: /api na mesma origem (deploy Vercel — funciona no celular),
+  // depois o server.js local (index.html aberto direto no PC).
+  const candidates = [];
+  if (location.protocol === 'http:' || location.protocol === 'https:') candidates.push(location.origin + '/api');
+  candidates.push('http://localhost:3001');
+  proxyAvailable = false;
+  for (const base of candidates) {
+    try {
+      const r = await fetch(base + '/health', { signal: AbortSignal.timeout(2500) });
+      const d = await r.json();
+      if (d.ok === true) { proxyAvailable = true; proxyBase = base; break; }
+    } catch(e) {}
   }
   const ind = document.getElementById('proxy-indicator');
   if (ind) {
