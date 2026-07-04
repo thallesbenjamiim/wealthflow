@@ -984,7 +984,7 @@ textarea::placeholder { color: var(--muted2); }
           <div class="goal-head">
             <div>
               <div class="mc-label">Meta de longo prazo</div>
-              <div class="goal-target mval">R$1.000.000</div>
+              <div class="goal-target mval" id="goal-target">R$1.000.000</div>
             </div>
             <div class="goal-head-right">
               <div class="mc-label">Concluído</div>
@@ -1191,7 +1191,7 @@ textarea::placeholder { color: var(--muted2); }
             </div>
             <div class="form-row">
               <div class="form-label">Valor investido</div>
-              <input class="form-input" id="f-valor" type="number" step="0.01" placeholder="ex: 80.67">
+              <input class="form-input" id="f-valor" type="text" inputmode="decimal" placeholder="ex: 80,67">
             </div>
             <div class="form-row">
               <div class="form-label">Moeda</div>
@@ -1305,7 +1305,7 @@ textarea::placeholder { color: var(--muted2); }
             <div class="fs-title">Minhas metas</div>
             <div class="form-row">
               <div class="form-label">Renda passiva alvo (R$/mês, valores de hoje)</div>
-              <input class="form-input" id="pf-renda" type="number" step="100">
+              <input class="form-input" id="pf-renda" type="text" inputmode="decimal">
             </div>
             <div class="form-row">
               <div class="form-label">Ano-alvo</div>
@@ -1313,7 +1313,7 @@ textarea::placeholder { color: var(--muted2); }
             </div>
             <div class="form-row">
               <div class="form-label">Meta intermediária do app (R$)</div>
-              <input class="form-input" id="pf-meta-app" type="number" step="1000">
+              <input class="form-input" id="pf-meta-app" type="text" inputmode="decimal">
             </div>
           </div>
 
@@ -1515,9 +1515,9 @@ function preencherPerfil() {
   document.getElementById('pf-cidadania').value = profileData.cidadania;
   document.getElementById('pf-horizonte').value = profileData.horizonteRetorno;
   document.getElementById('pf-risco').value = profileData.perfilRisco;
-  document.getElementById('pf-renda').value = profileData.rendaPassivaAlvo;
+  setMaskedValue(document.getElementById('pf-renda'), profileData.rendaPassivaAlvo, 0);
   document.getElementById('pf-ano').value = profileData.anoAlvo;
-  document.getElementById('pf-meta-app').value = profileData.metaIntermediariaBRL;
+  setMaskedValue(document.getElementById('pf-meta-app'), profileData.metaIntermediariaBRL, 0);
   document.getElementById('pf-aporte-total').value = profileData.aporteMensalEur;
   document.getElementById('pf-aporte-br').value = profileData.aporteBrEur;
   document.getElementById('pf-aporte-intl').value = profileData.aporteIntlEur;
@@ -1529,6 +1529,7 @@ function preencherPerfil() {
 
 async function salvarPerfil() {
   const num = (id, fallback) => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? fallback : v; };
+  const numMasked = (id, fallback) => { const v = parsePtBrNumber(document.getElementById(id).value); return isNaN(v) ? fallback : v; };
   const txt = (id, fallback) => { const v = document.getElementById(id).value.trim(); return v || fallback; };
 
   profileData = {
@@ -1539,9 +1540,9 @@ async function salvarPerfil() {
     cidadania: txt('pf-cidadania', profileData.cidadania),
     horizonteRetorno: txt('pf-horizonte', profileData.horizonteRetorno),
     perfilRisco: txt('pf-risco', profileData.perfilRisco),
-    rendaPassivaAlvo: num('pf-renda', profileData.rendaPassivaAlvo),
+    rendaPassivaAlvo: numMasked('pf-renda', profileData.rendaPassivaAlvo),
     anoAlvo: num('pf-ano', profileData.anoAlvo),
-    metaIntermediariaBRL: num('pf-meta-app', profileData.metaIntermediariaBRL),
+    metaIntermediariaBRL: numMasked('pf-meta-app', profileData.metaIntermediariaBRL),
     aporteMensalEur: num('pf-aporte-total', profileData.aporteMensalEur),
     aporteBrEur: num('pf-aporte-br', profileData.aporteBrEur),
     aporteIntlEur: num('pf-aporte-intl', profileData.aporteIntlEur),
@@ -1780,7 +1781,7 @@ async function loadMarketData() {
   const w0b = document.getElementById('w0-brl');
   if (w0c) w0c.textContent = 'R$' + cambio;
   if (w0s) w0s.textContent = selic;
-  if (w0b) w0b.textContent = 'R$' + (60 * parseFloat(cambio)).toFixed(0);
+  if (w0b) w0b.textContent = 'R$' + fmtNum(profileData.aporteBrEur * parseFloat(cambio), 0);
 
   updateDashboard(cambio);
 }
@@ -1851,6 +1852,34 @@ function openAssessorChat() {
 // ─────────────────────────────────────────
 function fmtNum(value, decimals = 2) {
   return (value || 0).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+// Converte texto digitado no padrão pt-BR ("1.234,56") de volta para número puro.
+function parsePtBrNumber(str) {
+  if (!str) return NaN;
+  return parseFloat(String(str).replace(/\./g, '').replace(',', '.'));
+}
+
+// Preenche um campo de texto já formatado com ponto de milhar (usado ao carregar a tela).
+function setMaskedValue(el, num, decimals = 0) {
+  el.value = (num || num === 0) ? Number(num).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '';
+}
+
+// Formata um campo de texto com ponto de milhar EM TEMPO REAL, enquanto o usuário digita —
+// evita a confusão de ler "1000000" sem separador. Decimais só quando decimals > 0.
+function maskThousandsInput(el, decimals = 0) {
+  el.addEventListener('input', () => {
+    const cursorFromEnd = el.value.length - el.selectionStart;
+    let digits = el.value.replace(/[^\d,]/g, '');
+    if (decimals === 0) digits = digits.replace(/,/g, '');
+    const commaIdx = digits.indexOf(',');
+    let intPart = (commaIdx >= 0 ? digits.slice(0, commaIdx) : digits).replace(/^0+(?=\d)/, '');
+    let decPart = commaIdx >= 0 ? digits.slice(commaIdx + 1).replace(/,/g, '').slice(0, decimals) : null;
+    const formattedInt = intPart ? Number(intPart).toLocaleString('pt-BR') : '';
+    el.value = formattedInt + (decPart !== null ? ',' + decPart : (commaIdx >= 0 && decimals > 0 ? ',' : ''));
+    const newPos = Math.max(0, el.value.length - cursorFromEnd);
+    el.setSelectionRange(newPos, newPos);
+  });
 }
 
 // ─────────────────────────────────────────
@@ -1927,9 +1956,10 @@ async function updateDashboard(cambio) {
     growthEl.textContent = totalEur > 0 ? '+ R$' + fmtNum(portfolioData.dividendos) + ' em dividendos' : 'iniciando';
   }
 
-  // ── 2. META (R$1.000.000 — meta é em reais, convertida dinamicamente pela cotação do dia) ──
+  // ── 2. META (meta editável no Perfil, em reais, convertida dinamicamente pela cotação do dia) ──
   const goalTargetEur = GOAL_TARGET_BRL / rate;
   const pct = (totalEur / goalTargetEur) * 100;
+  document.getElementById('goal-target').textContent = 'R$' + fmtNum(GOAL_TARGET_BRL, 0);
   document.getElementById('goal-pct').textContent = pct.toFixed(pct < 1 ? 3 : 1).replace('.', ',') + '%';
   document.getElementById('goal-bar-fill').style.width = Math.max(pct, 0.3) + '%';
   document.getElementById('goal-current').textContent = 'R$' + fmtNum(totalEur * rate, 0);
@@ -2081,7 +2111,7 @@ async function renderWallet(rate) {
   items.push({
     icon: '🏢', name: 'MXRF11', type: 'FII de Papel · Nubank', cat: 'br',
     val: showVal(mxrfVal, 'BRL'),
-    meta: portfolioData.mxrf11_cotas ? portfolioData.mxrf11_cotas + ' cotas · R$' + fmtNum(portfolioData.mxrf11_preco) + (mxrfPm ? ' · PM R$' + fmtNum(mxrfPm) : '') : '',
+    meta: portfolioData.mxrf11_cotas ? fmtNum(portfolioData.mxrf11_cotas, 0) + ' cotas · R$' + fmtNum(portfolioData.mxrf11_preco) + (mxrfPm ? ' · PM R$' + fmtNum(mxrfPm) : '') : '',
     pl: plLine(inv['MXRF11'], mxrfVal, 'R$')
   });
 
@@ -2093,7 +2123,7 @@ async function renderWallet(rate) {
     items.push({
       icon: '🏭', name: 'HGLG11', type: 'FII de Logística · Nubank', cat: 'br',
       val: showVal(hglgVal, 'BRL'),
-      meta: portfolioData.hglg11_cotas ? portfolioData.hglg11_cotas + ' cotas · R$' + fmtNum(portfolioData.hglg11_preco) + (hglgPm ? ' · PM R$' + fmtNum(hglgPm) : '') : '',
+      meta: portfolioData.hglg11_cotas ? fmtNum(portfolioData.hglg11_cotas, 0) + ' cotas · R$' + fmtNum(portfolioData.hglg11_preco) + (hglgPm ? ' · PM R$' + fmtNum(hglgPm) : '') : '',
       pl: plLine(inv['HGLG11'], hglgVal, 'R$')
     });
   }
@@ -2111,14 +2141,14 @@ async function renderWallet(rate) {
   items.push({
     icon: '🌍', name: 'VWCE', type: 'ETF Global Acc · Revolut', cat: 'intl',
     val: showVal(portfolioData.vwce, 'EUR'),
-    meta: portfolioData.vwce_cotas ? portfolioData.vwce_cotas.toFixed(4) + ' cotas · €' + fmtNum(portfolioData.vwce_preco || 0) + (vwcePm ? ' · PM €' + fmtNum(vwcePm) : '') : '',
+    meta: portfolioData.vwce_cotas ? fmtNum(portfolioData.vwce_cotas, 4) + ' cotas · €' + fmtNum(portfolioData.vwce_preco || 0) + (vwcePm ? ' · PM €' + fmtNum(vwcePm) : '') : '',
     pl: plLine(inv['VWCE'], portfolioData.vwce, '€')
   });
   const eunaPm = pm(inv['EUNA'], portfolioData.euna_cotas);
   items.push({
     icon: '🔒', name: 'EUNA', type: 'ETF Bonds Acc · Revolut', cat: 'intl',
     val: showVal(portfolioData.euna, 'EUR'),
-    meta: portfolioData.euna_cotas ? portfolioData.euna_cotas.toFixed(4) + ' cotas · €' + fmtNum(portfolioData.euna_preco || 0) + (eunaPm ? ' · PM €' + fmtNum(eunaPm) : '') : '',
+    meta: portfolioData.euna_cotas ? fmtNum(portfolioData.euna_cotas, 4) + ' cotas · €' + fmtNum(portfolioData.euna_preco || 0) + (eunaPm ? ' · PM €' + fmtNum(eunaPm) : '') : '',
     pl: plLine(inv['EUNA'], portfolioData.euna, '€')
   });
 
@@ -2199,8 +2229,8 @@ async function renderWallet(rate) {
     const divNote = document.getElementById('div-note');
     if (divNote) {
       const partes = [];
-      if (portfolioData.mxrf11_cotas > 0) partes.push(`MXRF11: R$${fmtNum(mxrfPorCota)}/cota × ${portfolioData.mxrf11_cotas} = R$${fmtNum(estMxrf)}`);
-      if (portfolioData.hglg11_cotas > 0) partes.push(`HGLG11: R$${fmtNum(hglgPorCota)}/cota × ${portfolioData.hglg11_cotas} = R$${fmtNum(estHglg)}`);
+      if (portfolioData.mxrf11_cotas > 0) partes.push(`MXRF11: R$${fmtNum(mxrfPorCota)}/cota × ${fmtNum(portfolioData.mxrf11_cotas, 0)} = R$${fmtNum(estMxrf)}`);
+      if (portfolioData.hglg11_cotas > 0) partes.push(`HGLG11: R$${fmtNum(hglgPorCota)}/cota × ${fmtNum(portfolioData.hglg11_cotas, 0)} = R$${fmtNum(estHglg)}`);
       divNote.textContent = (partes.length ? partes.join(' · ') + '. ' : '') + 'Baseado no último dividendo real pago por cada FII (Yahoo Finance/B3), só Brasil — VWCE e EUNA são Acc e não distribuem. Registre cada dividendo recebido em "Registrar Aporte" → Dividendo para o total real crescer.';
     }
   }
@@ -2502,7 +2532,7 @@ async function renderAlertas() {
   }
 
   if (portfolioData.hglg11_cotas && portfolioData.hglg11_cotas > 0) {
-    alerts.push({ type: 'green', icon: '🏭', title: 'HGLG11 ativo na carteira', desc: `${portfolioData.hglg11_cotas} cotas. Diversificação de FIIs completa.` });
+    alerts.push({ type: 'green', icon: '🏭', title: 'HGLG11 ativo na carteira', desc: `${fmtNum(portfolioData.hglg11_cotas, 0)} cotas. Diversificação de FIIs completa.` });
   } else {
     alerts.push({ type: 'blue', icon: '🎯', title: 'Próximo objetivo: HGLG11', desc: 'Programado para o aporte de 28/29 de junho.' });
   }
@@ -2511,8 +2541,8 @@ async function renderAlertas() {
   if (diaHoje >= 12 && diaHoje <= 18 && (portfolioData.mxrf11_cotas || 0) > 0) {
     const jaRegistrou = (docs || []).some(d => d.ativo === 'Dividendo' && (d.data || '').startsWith(mesKey));
     if (!jaRegistrou) {
-      const est = portfolioData.mxrf11_cotas * 0.10;
-      alerts.push({ type: 'blue', icon: '💰', title: 'Dividendo do MXRF11 esperado', desc: `O MXRF11 costuma pagar nesta janela (~R$${fmtNum(est)} com suas ${portfolioData.mxrf11_cotas} cotas). Quando cair no Nubank, registre em Registrar Aporte → Dividendo.` });
+      const est = portfolioData.mxrf11_cotas * divPerShare.mxrf11;
+      alerts.push({ type: 'blue', icon: '💰', title: 'Dividendo do MXRF11 esperado', desc: `O MXRF11 costuma pagar nesta janela (~R$${fmtNum(est)} com suas ${fmtNum(portfolioData.mxrf11_cotas, 0)} cotas). Quando cair no Nubank, registre em Registrar Aporte → Dividendo.` });
     }
   }
 
@@ -2631,7 +2661,7 @@ function onAtivoChange() {
 
 async function registrarAporte() {
   const ativo = document.getElementById('f-ativo').value;
-  const valor = parseFloat(document.getElementById('f-valor').value);
+  const valor = parsePtBrNumber(document.getElementById('f-valor').value);
   const moeda = document.getElementById('f-moeda').value;
   const qtd = document.getElementById('f-qtd').value;
   const nota = document.getElementById('f-nota').value;
@@ -3101,7 +3131,7 @@ function renderMsgs() {
       const w0b = document.getElementById('w0-brl');
       if(w0c) w0c.textContent = 'R$' + cambio;
       if(w0s) w0s.textContent = selic;
-      if(w0b) w0b.textContent = 'R$' + (60 * parseFloat(cambio || 6)).toFixed(0);
+      if(w0b) w0b.textContent = 'R$' + fmtNum(profileData.aporteBrEur * parseFloat(cambio || 6), 0);
     }, 500);
   } else {
     chatHistory.forEach(m => {
@@ -3322,6 +3352,9 @@ function checkExistingSession() {
 
 async function startApp() {
   setupPinKeypad();
+  maskThousandsInput(document.getElementById('f-valor'), 2);
+  maskThousandsInput(document.getElementById('pf-renda'), 0);
+  maskThousandsInput(document.getElementById('pf-meta-app'), 0);
   if (checkExistingSession()) {
     try {
       if (window._authFns && window._auth) {
