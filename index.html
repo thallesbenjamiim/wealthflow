@@ -1466,6 +1466,10 @@ let portfolioData = {
   reserva: 0
 };
 
+// Último dividendo real por cota (Brasil apenas) — atualizado por applyLivePrices() quando os
+// dados de mercado chegam; os valores abaixo são só o fallback caso a fonte esteja fora do ar.
+let divPerShare = { mxrf11: 0.10, hglg11: 1.10, mxrf11Date: null, hglg11Date: null };
+
 // ─────────────────────────────────────────
 // PERFIL DO USUÁRIO — editável na página Perfil, persistido no Firebase
 // ─────────────────────────────────────────
@@ -1575,7 +1579,7 @@ function getProfile() {
   return `PERFIL — ${profileData.nome}, ${profileData.idade} anos, morando em ${profileData.pais} (${profileData.cidadania}), volta ao Brasil em ~${profileData.horizonteRetorno}. ${profileData.perfilRisco}.
 HOJE (${new Date().toLocaleDateString('pt-BR')}): EUR/BRL ${cambio} · Selic ${selic} · IPCA 12m ${ipca}.
 CARTEIRA ATUAL:
-- Brasil (Nubank): MXRF11 R$${fx(portfolioData.mxrf11)} (${portfolioData.mxrf11_cotas || 0} cotas, ~R$0,10/cota/mês) · HGLG11 R$${fx(portfolioData.hglg11)} (${portfolioData.hglg11_cotas || 0} cotas, FII logística) · Tesouro IPCA+ R$${fx(portfolioData.ipca)} · Caixinha CDI R$${fx(portfolioData.caixinha)} (liquidez temporária entre aportes) · Dividendos recebidos R$${fx(portfolioData.dividendos)}
+- Brasil (Nubank): MXRF11 R$${fx(portfolioData.mxrf11)} (${portfolioData.mxrf11_cotas || 0} cotas, último dividendo R$${divPerShare.mxrf11}/cota/mês) · HGLG11 R$${fx(portfolioData.hglg11)} (${portfolioData.hglg11_cotas || 0} cotas, FII logística, último dividendo R$${divPerShare.hglg11}/cota/mês) · Tesouro IPCA+ R$${fx(portfolioData.ipca)} · Caixinha CDI R$${fx(portfolioData.caixinha)} (liquidez temporária entre aportes) · Dividendos recebidos R$${fx(portfolioData.dividendos)}
 - Internacional (Revolut): VWCE €${fx(portfolioData.vwce)} · EUNA €${fx(portfolioData.euna)} (ambos Acc — sem imposto anual de dividendos)
 - Bitcoin informal (fora do plano): ${portfolioData.bitcoin || 0} BTC (~€${btcEur})
 - Reserva de emergência (fora do plano de investimento, intocável): €${fx(portfolioData.reserva)} de uma meta de €${profileData.reservaMetaMinEur}-${profileData.reservaMetaMaxEur}
@@ -1734,6 +1738,9 @@ function applyLivePrices(md) {
     window._cotasWarned = true;
     showToast('⚠️ ' + desatualizados.join(' e ') + ' com aportes sem quantidade de cotas — registre as cotas que aparecem na corretora para o valor ao vivo ficar completo.');
   }
+  // Último dividendo por cota realmente pago (Brasil apenas — MXRF11/HGLG11)
+  if (md.mxrf11Dividend?.amount) { divPerShare.mxrf11 = md.mxrf11Dividend.amount; divPerShare.mxrf11Date = md.mxrf11Dividend.date; }
+  if (md.hglg11Dividend?.amount) { divPerShare.hglg11 = md.hglg11Dividend.amount; divPerShare.hglg11Date = md.hglg11Dividend.date; }
 }
 
 async function loadMarketData() {
@@ -2176,18 +2183,27 @@ async function renderWallet(rate) {
       return dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth();
     }).reduce((s, d) => s + (d.moeda === 'EUR' ? parseFloat(d.valor) * rate : parseFloat(d.valor)), 0);
 
-    // Estimativas com base nos dividendos típicos por cota (MXRF11 ~R$0,10 · HGLG11 ~R$1,10)
-    const estMensal = (portfolioData.mxrf11_cotas || 0) * 0.10 + (portfolioData.hglg11_cotas || 0) * 1.10;
+    // Estimativa real: último dividendo por cota de fato pago por cada FII (Brasil apenas — MXRF11/HGLG11)
+    const mxrfPorCota = divPerShare.mxrf11;
+    const hglgPorCota = divPerShare.hglg11;
+    const estMxrf = (portfolioData.mxrf11_cotas || 0) * mxrfPorCota;
+    const estHglg = (portfolioData.hglg11_cotas || 0) * hglgPorCota;
+    const estMensal = estMxrf + estHglg;
     const invFiis = (inv['MXRF11'] || 0) + (inv['HGLG11'] || 0);
     const yoc = invFiis > 0 ? (estMensal * 12 / invFiis) * 100 : 0;
 
     divStats.innerHTML = `
       <div class="ws-tile"><div class="ws-label">Total recebido</div><div class="ws-value mval">R$${fmtNum(portfolioData.dividendos)}</div></div>
       <div class="ws-tile"><div class="ws-label">Este mês</div><div class="ws-value mval">R$${fmtNum(esteMes)}</div></div>
-      <div class="ws-tile"><div class="ws-label">Estimativa mensal</div><div class="ws-value mval">R$${fmtNum(estMensal)}</div></div>
+      <div class="ws-tile"><div class="ws-label">Próximo dividendo (estimado)</div><div class="ws-value mval">R$${fmtNum(estMensal)}</div></div>
       <div class="ws-tile"><div class="ws-label">Yield on cost (a.a.)</div><div class="ws-value mval">${yoc.toFixed(1).replace('.', ',')}%</div></div>`;
     const divNote = document.getElementById('div-note');
-    if (divNote) divNote.textContent = 'Estimativa: MXRF11 ~R$0,10/cota e HGLG11 ~R$1,10/cota por mês. Registre cada dividendo recebido em "Registrar Aporte" → Dividendo para o total real crescer.';
+    if (divNote) {
+      const partes = [];
+      if (portfolioData.mxrf11_cotas > 0) partes.push(`MXRF11: R$${fmtNum(mxrfPorCota)}/cota × ${portfolioData.mxrf11_cotas} = R$${fmtNum(estMxrf)}`);
+      if (portfolioData.hglg11_cotas > 0) partes.push(`HGLG11: R$${fmtNum(hglgPorCota)}/cota × ${portfolioData.hglg11_cotas} = R$${fmtNum(estHglg)}`);
+      divNote.textContent = (partes.length ? partes.join(' · ') + '. ' : '') + 'Baseado no último dividendo real pago por cada FII (Yahoo Finance/B3), só Brasil — VWCE e EUNA são Acc e não distribuem. Registre cada dividendo recebido em "Registrar Aporte" → Dividendo para o total real crescer.';
+    }
   }
 }
 
