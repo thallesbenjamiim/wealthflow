@@ -270,7 +270,7 @@ body::before {
 .alert-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
 
 /* AGENTS PAGE */
-.agents-grid { display: grid; grid-template-columns: 276px 1fr; gap: 16px; height: calc(100vh - 146px); }
+.agents-grid { display: grid; grid-template-columns: 1fr; gap: 16px; height: calc(100vh - 146px); }
 
 .agent-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
 
@@ -342,6 +342,8 @@ body::before {
 @keyframes typing{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
 
 .quick { padding: 11px 19px; border-top: 1px solid var(--bdr); display: flex; gap: 7px; flex-wrap: wrap; flex-shrink: 0; }
+.mode-row { padding: 9px 19px 0; display: flex; gap: 7px; flex-wrap: wrap; flex-shrink: 0; border-top: 1px solid var(--bdr); }
+.qbtn.mode.active { background: var(--gdim); color: var(--green); border-color: rgba(74,142,255,.5); }
 .qbtn { padding: 6px 13px; border-radius: 999px; border: 1px solid var(--bdr2); background: transparent; color: var(--muted); font-size: 11px; font-weight: 500; cursor: pointer; transition: all .2s var(--ease); font-family: 'Instrument Sans', sans-serif; }
 .qbtn:hover { background: var(--surf2); color: var(--txt); border-color: rgba(74,222,138,.3); transform: translateY(-1px); }
 
@@ -607,8 +609,9 @@ textarea::placeholder { color: var(--muted2); }
   .ch-tags { display: none; }
   .chat-clear-btn { margin-left: auto; }
 
-  /* Perguntas rápidas em linha única rolável */
-  .quick { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* Perguntas rápidas e chips de tom em linha única rolável */
+  .quick, .mode-row { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .mode-row { padding: 7px 14px 0; }
   .qbtn { white-space: nowrap; flex-shrink: 0; }
 
   .alloc-legend { gap: 10px; }
@@ -835,7 +838,7 @@ textarea::placeholder { color: var(--muted2); }
         <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Carteira
       </div>
       <div class="nav-item" onclick="showPage('agentes', this)">
-        <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg></span> Agentes IA
+        <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg></span> Assistente
       </div>
       <div class="nav-item" onclick="showPage('aportar', this)">
         <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Registrar Aporte
@@ -992,24 +995,12 @@ textarea::placeholder { color: var(--muted2); }
           </div>
         </div>
 
-        <!-- 5. AGENTES — RESUMO -->
-        <div class="section-title">Agentes <span class="stag">resumo rápido</span></div>
+        <!-- 5. ASSISTENTE — ATALHO -->
+        <div class="section-title">Assistente <span class="stag">tire suas dúvidas</span></div>
         <div class="agent-mini-grid">
           <div class="agent-mini" onclick="showPage('agentes', document.querySelectorAll('.nav-item')[2])">
             <span class="agent-mini-dot green"></span>
-            <div><div class="agent-mini-name">Portfolio Analyst</div><div class="agent-mini-status">OK</div></div>
-          </div>
-          <div class="agent-mini" onclick="showPage('agentes', document.querySelectorAll('.nav-item')[2])">
-            <span class="agent-mini-dot green"></span>
-            <div><div class="agent-mini-name">Risk Manager</div><div class="agent-mini-status">Low Risk</div></div>
-          </div>
-          <div class="agent-mini" onclick="showPage('agentes', document.querySelectorAll('.nav-item')[2])">
-            <span class="agent-mini-dot blue"></span>
-            <div><div class="agent-mini-name">Long Term Planner</div><div class="agent-mini-status">On Track</div></div>
-          </div>
-          <div class="agent-mini" onclick="showPage('agentes', document.querySelectorAll('.nav-item')[2])">
-            <span class="agent-mini-dot muted"></span>
-            <div><div class="agent-mini-name">Tax Monitor</div><div class="agent-mini-status">No Alerts</div></div>
+            <div><div class="agent-mini-name">✦ Assistente WealthFlow</div><div class="agent-mini-status">carteira · dividendos · fiscal · risco · conceitos</div></div>
           </div>
         </div>
 
@@ -1053,14 +1044,18 @@ textarea::placeholder { color: var(--muted2); }
           2. Vai em <strong>Configurar API</strong> no menu lateral e cola a chave lá.
         </div>
         <div class="agents-grid">
-          <div class="agent-list" id="agentList"></div>
           <div class="chat-panel">
-            <div class="chat-head" id="chatHead"></div>
+            <div class="chat-head" id="chatHead">
+              <div class="ch-av" style="background:var(--gdim)">✦</div>
+              <div><div class="ch-name">Assistente WealthFlow</div><div class="ch-desc">Carteira, dividendos, fiscal, risco ou qualquer dúvida</div></div>
+              <button class="chat-clear-btn" style="margin-left:auto" onclick="clearChat()" title="Limpar conversa" aria-label="Limpar conversa"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            </div>
             <div class="msgs" id="msgs"></div>
             <div class="quick" id="quickArea"></div>
+            <div class="mode-row" id="modeArea"></div>
             <div class="input-row">
               <div class="input-wrap">
-                <textarea id="userInput" placeholder="Pergunte ao seu agente..." rows="1"
+                <textarea id="userInput" placeholder="Pergunte qualquer coisa..." rows="1"
                   onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
                   oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
               </div>
@@ -1186,7 +1181,7 @@ textarea::placeholder { color: var(--muted2); }
     </button>
     <button class="bnav-item" data-page="agentes" onclick="showPage('agentes', document.querySelectorAll('.nav-item')[2])">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg>
-      Agentes
+      Assistente
     </button>
     <button class="bnav-item" data-page="aportar" onclick="showPage('aportar', document.querySelectorAll('.nav-item')[3])">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
@@ -1245,19 +1240,20 @@ function toggleValuesVisibility() {
   localStorage.setItem('wf_values_hidden', valuesHidden ? '1' : '0');
   applyValuesVisibility();
 }
-let curAgent = 0;
 let proxyAvailable = false;
 let proxyBase = 'http://localhost:3001'; // definido em checkProxy: /api no Vercel, localhost no PC
-const CHAT_STORE_KEY = TEST_MODE ? 'wf_chat_histories_test' : 'wf_chat_histories';
-let histories = (() => {
+// v2: chat único (assistente unificado). As conversas antigas dos 5 agentes ficam
+// nas chaves antigas do localStorage, não são migradas.
+const CHAT_STORE_KEY = TEST_MODE ? 'wf_chat_v2_test' : 'wf_chat_v2';
+let chatHistory = (() => {
   try {
     const saved = JSON.parse(localStorage.getItem(CHAT_STORE_KEY));
-    if (Array.isArray(saved) && saved.length === 5) return saved;
+    if (Array.isArray(saved)) return saved;
   } catch {}
-  return [[],[],[],[],[]];
+  return [];
 })();
 function saveHistories() {
-  try { localStorage.setItem(CHAT_STORE_KEY, JSON.stringify(histories)); } catch {}
+  try { localStorage.setItem(CHAT_STORE_KEY, JSON.stringify(chatHistory)); } catch {}
 }
 let loading = false;
 let portfolioData = {
@@ -1273,160 +1269,61 @@ let portfolioData = {
 };
 
 // ─────────────────────────────────────────
-// PERFIL COMPLETO DOS AGENTES
+// PERFIL COMPACTO — enviado ao assistente em toda pergunta
+// (versão enxuta: só os dados que mudam as respostas; o resto vive no system prompt)
 // ─────────────────────────────────────────
 function getProfile() {
-  const cambio = document.getElementById('pill-cambio').textContent || '6.0';
-  const selic = document.getElementById('pill-selic').textContent || '15%';
-  const ipca = document.getElementById('pill-ipca').textContent || '4.5%';
+  const cambio = document.getElementById('pill-cambio').textContent || 'R$6,00';
+  const selic = document.getElementById('pill-selic').textContent || '14.25%';
+  const ipca = document.getElementById('pill-ipca').textContent || '4.72%';
+  const fx = v => (v || 0).toFixed(2);
+  const btcEur = btcPriceEur ? (portfolioData.bitcoin * btcPriceEur).toFixed(0) : (portfolioData.bitcoin_invested_eur || 0);
 
-  return `CONSTITUIÇÃO DO WEALTHFLOW:
-Seu objetivo principal não é maximizar retorno a qualquer custo. É ajudar o investidor a construir patrimônio de forma consistente, sustentável e alinhada aos seus objetivos de longo prazo.
-
-FILOSOFIA: priorizar consistência de aportes, diversificação, controle de risco, preservação patrimonial, crescimento de longo prazo, simplicidade operacional, reinvestimento dos rendimentos.
-
-NUNCA incentivar: day trade, swing trade especulativo, alavancagem, uso de margem, empréstimos para investir, ETFs alavancados, concentração excessiva em um único ativo, decisões baseadas apenas em notícias ou hype.
-
-REGRA DE APROVAÇÃO HUMANA: Nenhuma recomendação deve ser executada automaticamente. O WealthFlow apenas sugere. O investidor sempre toma a decisão final. Toda sugestão de mudança deve incluir motivo, benefícios, riscos e impacto na meta de longo prazo.
-
-ESTILO DE RESPOSTA (OBRIGATÓRIO — o chat é usado principalmente no celular):
-- Responda CURTO: no máximo ~120 palavras (umas 6-8 linhas). Vá direto ao ponto.
-- Comece pela resposta/recomendação com os números essenciais. Nada de introduções.
-- NÃO repita o contexto do perfil nem explique conceitos básicos sem ser perguntado.
-- NÃO use listas longas nem seções com títulos. No máximo 2-3 bullets quando ajudar.
-- Se o assunto exigir profundidade, dê o resumo e pergunte: "Quer que eu detalhe?"
-- Motivo/benefício/risco de uma sugestão: uma frase para cada, não parágrafos.
-
-DATA ATUAL: ${new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}.
-CÂMBIO ATUAL EUR/BRL: ${cambio} (cotação comercial em tempo real)
-SELIC ATUAL: ${selic} (meta Copom — Banco Central via proxy quando ativo; senão valor de referência recente)
-IPCA ACUMULADO 12M: ${ipca}
-
-PERFIL DO USUÁRIO — Thales:
-- Nascido 26/03/1996, 30 anos. Brasileiro morando na Irlanda, cidadania italiana.
-- Dupla residência fiscal: Brasil E Irlanda (confirmado)
-- Pretende ficar 10-12 anos mais na Irlanda, depois voltar pro Brasil
-- Reserva de emergência: €15.000 (meta €20k até fim do ano) — separada, nunca investir
-- Aporte mensal oficial: €100/mês (€60 Brasil + €40 Internacional). Aporte sempre dia 28 ou 29 de cada mês.
-- Perfil: conservador, sem trading, sem especulação, sem alavancagem, longo prazo, reinvestimento 100% dos dividendos
-- Estratégia: 60% Brasil / 40% Internacional
-- Bitcoin: €10/mês informal, fora do plano oficial
-
-META DE LONGO PRAZO (PRINCIPAL):
-Construir patrimônio suficiente para gerar renda passiva equivalente a R$30.000/mês em valores de HOJE, aos 50 anos (ano 2046) — corrigido pela inflação (~R$65.000/mês nominal em 2046). Horizonte de construção: 20 anos. Patrimônio-alvo estimado: ~R$19,5 milhões (usando taxa de retirada segura de 4% aa). Thales sabe que pode não chegar ao valor exato, mas o foco é construir o máximo possível — qualquer resultado supera a aposentadoria pública do INSS.
-
-CARTEIRA ATUAL (valores reais):
-🇧🇷 BRASIL — Nubank:
-- MXRF11: R$${portfolioData.mxrf11} investidos (~${portfolioData.mxrf11_cotas || 8} cotas, ~R$0,10/cota dividendo mensal)
-- HGLG11: R$${portfolioData.hglg11 || 0} investidos (FII logística, sem dependência da Selic)
-- Tesouro IPCA+: R$${portfolioData.ipca} investidos
-- Caixinha CDI: R$${portfolioData.caixinha} — liquidez temporária entre aportes (a ser direcionada ao ativo mais adequado no momento — NUNCA ao Tesouro Selic)
-- Dividendos acumulados: R$${portfolioData.dividendos}
-
-🌍 INTERNACIONAL — Revolut:
-- VWCE (Vanguard FTSE All-World Acc, IE00BK5BQT80): €${portfolioData.vwce} investidos — Acumulador ✅
-- EUNA (iShares Global Aggregate Bond Acc): €${portfolioData.euna} investidos — Acumulador ✅
-
-₿ BITCOIN (informal, fora do plano):
-- ${portfolioData.bitcoin} BTC (~€${btcPriceEur ? (portfolioData.bitcoin * btcPriceEur).toFixed(0) : (portfolioData.bitcoin_invested_eur || 6)} valor atual)
-- €10/mês casual quando der vontade
-
-COMO CADA ATIVO GERA DINHEIRO:
-- MXRF11: paga ~R$0,10/cota todo mês na conta Nubank. Renda passiva imediata. Depende da Selic.
-- HGLG11: paga dividendo mensal. FII de logística — não depende da Selic. Complementa o MXRF11.
-- Tesouro IPCA+: cresce com inflação + spread real/ano (taxa atual). Recebe no vencimento. Ideal para aposentadoria.
-- VWCE: cota valoriza ao longo do tempo (dividendos reinvestidos automaticamente). Ganha ao vender.
-- EUNA: mesmo mecanismo do VWCE mas mais estável. Amortecedor em crises de mercado.
-
-GATILHOS DE REALOCAÇÃO (monitorar com os dados em tempo real acima):
-- Selic < 10%: renda fixa rende menos — avaliar aumentar exposição a FIIs (MXRF11, HGLG11) e à parte internacional (VWCE).
-- Selic < 7%: avaliar realocar gradualmente parte do Brasil para Internacional.
-- ETFs caem >20%: aumentar aporte internacional — oportunidade de comprar barato
-- EUR/BRL muda ±20%: ajustar aporte temporariamente para o lado mais favorável (oscilação normal = ignorar)
-- 2 anos antes de voltar pro Brasil: parar ETFs europeus, converter para Brasil gradualmente
-
-EVOLUÇÃO DA CARTEIRA DE FIIs:
-- HGLG11 (FII de logística, não depende da Selic) — já foi incorporado à carteira, ver valor e cotas reais na seção CARTEIRA ATUAL acima. Complementa o MXRF11, que depende da Selic.
-- Quando aporte chegar a R$450/mês: avaliar adicionar KNRI11 (FII híbrido)
-- Objetivo: 3-4 FIIs diferentes para não depender só da Selic
-
-IMPORTANTE: todo cálculo de valores, cotas ou percentuais da carteira deve ser feito a partir dos números em CARTEIRA ATUAL (dados reais e atualizados). As seções de contexto abaixo (evolução, gatilhos, regras) explicam o raciocínio e a estratégia — não descrevem o estado atual da carteira.
-
-FISCAL:
-- Irlanda: Exit Tax 38% sobre ETFs. Deemed disposal em 2033 — guardar 5% em liquidez a partir de 2032.
-- VWCE e EUNA são Acc — sem imposto anual de dividendos ✅
-- Brasil: MXRF11 dividendos isentos de IR. Tesouro com IR retido na fonte automaticamente.
-
-REGRAS IMUTÁVEIS DO PLANO:
-- Aportar todo mês, independente do mercado (crise = oportunidade de comprar barato)
-- Reinvestir 100% dos dividendos enquanto estiver na Irlanda
-- Nunca vender por medo, por dica de amigo ou notícia alarmista
-- Só realocar quando gatilho definido disparar — nunca por emoção
-- Mudanças sempre graduais (5-10% por vez, 3-6 meses)
-- A reserva de €20k não é para investir — é seguro de vida
-- NUNCA recomendar Tesouro Selic. Caixinha CDI é liquidez temporária entre aportes — sempre direcionar ao ativo mais adequado no momento.`;
+  return `PERFIL — Thales, 30 anos, brasileiro morando na Irlanda (cidadania italiana, dupla residência fiscal BR+IE confirmada), volta ao Brasil em ~10-12 anos. Conservador, longo prazo, sem trading.
+HOJE (${new Date().toLocaleDateString('pt-BR')}): EUR/BRL ${cambio} · Selic ${selic} · IPCA 12m ${ipca}.
+CARTEIRA ATUAL:
+- Brasil (Nubank): MXRF11 R$${fx(portfolioData.mxrf11)} (${portfolioData.mxrf11_cotas || 0} cotas, ~R$0,10/cota/mês) · HGLG11 R$${fx(portfolioData.hglg11)} (${portfolioData.hglg11_cotas || 0} cotas, FII logística) · Tesouro IPCA+ R$${fx(portfolioData.ipca)} · Caixinha CDI R$${fx(portfolioData.caixinha)} (liquidez temporária entre aportes) · Dividendos recebidos R$${fx(portfolioData.dividendos)}
+- Internacional (Revolut): VWCE €${fx(portfolioData.vwce)} · EUNA €${fx(portfolioData.euna)} (ambos Acc — sem imposto anual de dividendos)
+- Bitcoin informal (fora do plano): ${portfolioData.bitcoin || 0} BTC (~€${btcEur})
+META: renda passiva de R$30.000/mês em valores de hoje aos 50 anos (2046) — patrimônio-alvo ~R$19,5 mi. Meta intermediária do app: R$1.000.000.
+APORTE: €100/mês todo dia 28/29 (€60 Brasil + €40 Internacional). Referência 60/40 Brasil/Internacional — é referência, não regra rígida; EUNA sempre considerado no lado internacional. Bitcoin €10/mês informal. Reserva de emergência €15-20k separada e INTOCÁVEL.
+REGRAS DO PLANO: NUNCA Tesouro Selic (Caixinha é liquidez temporária — sempre direcionar ao ativo mais adequado); nunca day trade/alavancagem/margem/especulação; reinvestir 100% dos dividendos; aportar todo mês independente do mercado; só realocar em desvio ESTRUTURAL (oscilação cambial de semanas é ruído); mudanças graduais (5-10% por vez); quando aporte Brasil chegar a R$450/mês, avaliar KNRI11.
+FISCAL: Irlanda — Exit Tax 38% sobre ETFs, deemed disposal em 2033 (planejar liquidez a partir de 2032). Brasil — dividendos de FII isentos de IR; Tesouro com IR retido na fonte.
+GATILHOS: Selic <10% → migrar aporte renda fixa p/ FIIs e internacional; Selic <7% → realocar gradual BR→Intl; ETFs -20% → comprar mais; 2 anos antes de voltar ao Brasil → parar ETFs europeus e converter gradualmente.`;
 }
 
-const AGENTS = [
-  {
-    name:"Analista de Portfólio", role:"Assessoria & Alocação", icon:"📈", color:"#0E1F3A", accent:"#4F8EFF",
-    tags:[{t:"BRASIL 60%",bg:"#0E1F3A",fg:"#4F8EFF"},{t:"INTL 40%",bg:"#0d1f3d",fg:"#5b9cf6"}],
-    quick:["Como alocar os €100 este mês?","Com o câmbio atual, quanto vai pro Brasil?","Há concentração excessiva na minha carteira agora?","Devo rebalancear agora?"],
-    system:`Você é o ANALISTA DE PORTFÓLIO SÊNIOR do Thales — assessor principal de rebalanceamento. Age como um assessor real: analisa o momento do mercado, identifica desvios, e pode sugerir mudanças quando necessário. Não está preso a regras rígidas, mas ao interesse do investidor.
+// ─────────────────────────────────────────
+// ASSISTENTE ÚNICO (v2) — substitui os 5 agentes
+// ─────────────────────────────────────────
+const ASSISTANT = { name: 'Assistente WealthFlow', icon: '✦', color: 'var(--gdim)' };
 
-REGRAS ABSOLUTAS:
-- NUNCA recomendar Tesouro Selic. A Caixinha CDI é liquidez temporária entre aportes — recomendar sempre onde direcioná-la ao ativo mais adequado no momento (NUNCA Selic).
-- NUNCA recomendar day trade, swing trade, alavancagem, margem, ETFs alavancados ou especulação.
-- Pode sugerir qualquer outra alternativa adequada ao perfil conservador quando identificar risco ou oportunidade — sempre com justificativa.
+const ASSISTANT_SYSTEM = `Você é o ASSISTENTE do WealthFlow, a carteira digital inteligente do Thales. Você cobre todos os assuntos num só lugar: alocação e rebalanceamento, dividendos e reinvestimento, projeções de longo prazo, questões fiscais (Brasil + Irlanda) e gestão de risco — além de dúvidas conceituais sobre investimentos.
 
-REFERÊNCIA DE ALOCAÇÃO:
-- 60% Brasil / 40% Internacional é uma REFERÊNCIA, não regra rígida.
-- Brasil = MXRF11 + HGLG11 + IPCA+ (+ Caixinha temporária)
-- Internacional = VWCE + EUNA. EUNA deve ser SEMPRE considerado ao alocar internacionalmente — nunca ignorar.
+COMO RESPONDER:
+- Pergunta CONCEITUAL/educativa (ex: "o que é um FII?", "Acc vs Dist?"): responda como um bom professor, claro e neutro, SEM citar os dados pessoais do Thales.
+- Pergunta sobre A CARTEIRA ou a situação dele: use os números reais do perfil abaixo.
+- Dividendo informado: sugerir reinvestir no ativo Brasil com menor peso relativo (FIIs ou IPCA+ — nunca Selic), mostrando o efeito composto.
+- Projeções: sempre cenário conservador E otimista, com números.
+- Assunto fiscal: nunca aconselhamento definitivo — diga "possível obrigação fiscal" e recomende validação com contador qualificado.
+- Risco/desvio estrutural detectado: alerte com motivo, risco e sugestão — a decisão final é sempre do Thales. Nada é executado automaticamente.
+- NUNCA incentivar: day trade, alavancagem, margem, ETFs alavancados, especulação, Tesouro Selic.
+- SEMPRE em português do Brasil.`;
 
-A CADA APORTE OU QUANDO SOLICITADO:
-1. Calcular proporção REAL da carteira: somar todos os ativos Brasil (convertendo para € pelo câmbio do dia APENAS para comparação) e todos os ativos Internacional. Câmbio é só para comparação — oscilação cambial de curto prazo é RUÍDO, não é gatilho de rebalanceamento.
-2. Avaliar se há desvio ESTRUTURAL real (>10pp da referência sustentado por múltiplos meses = estrutural; variação cambial de semanas = ruído, ignorar).
-3. Avaliar concentração excessiva num único ativo, risco emergente ou oportunidade clara.
-4. Recomendar onde alocar o novo aporte para corrigir desvios reais, OU sugerir rebalanceamento ativo se necessário.
-5. Pode desviar temporariamente do 60/40 quando justificável (ex: câmbio em extremo histórico, ETFs em queda >20%), sempre explicando motivo, benefício e risco.
+const MODES = {
+  risco:  { label: '🛡️ Risco',       system: 'PARA ESTA RESPOSTA: adote o olhar de um GESTOR DE RISCO conservador — proteção patrimonial antes de retorno; foque concentração, equilíbrio Brasil/Internacional e exposição cambial estrutural.' },
+  fiscal: { label: '⚖️ Fiscal',      system: 'PARA ESTA RESPOSTA: adote o olhar de um CONTADOR FISCAL Brasil+Irlanda — Exit Tax 38%, deemed disposal 2033, Revenue (Form 11) e Receita Federal. Linguagem de "possível obrigação"; recomende validação com contador.' },
+  longo:  { label: '🔭 Longo prazo', system: 'PARA ESTA RESPOSTA: adote o olhar de um PLANEJADOR DE LONGO PRAZO — projeções realistas até 2046 (cenário conservador e otimista) e disciplina emocional: quando o mercado cai, o plano não muda.' }
+};
+let chatMode = null;
 
-FORMATO DE RESPOSTA:
-Um parágrafo curto e direto: proporção atual → sugestão concreta com números → motivo, benefício e risco em UMA frase cada (sem seções, sem títulos, sem listas). Português do Brasil, números reais do perfil.`,
-  },
-  {
-    name:"Monitor de Dividendos", role:"Dividendos & Reinvestimento", icon:"💰", color:"#0d1f3d", accent:"#5b9cf6",
-    tags:[{t:"REINVESTIR 100%",bg:"#0d1f3d",fg:"#5b9cf6"},{t:"MXRF11",bg:"#0E1F3A",fg:"#4F8EFF"}],
-    quick:["Recebi R$0,80 do MXRF11, onde reinvestir?","Quando recebo o primeiro dividendo?","Quanto vou ter em dividendos em 5 anos?","Quando adicionar o HGLG11?"],
-    system:`Você é o MONITOR DE DIVIDENDOS do Thales. Registra e analisa todos os dividendos recebidos dos FIIs (MXRF11, HGLG11) e qualquer outra fonte. Quando o Thales informa um dividendo recebido, calcula exatamente onde reinvestir: sempre em FIIs (MXRF11 ou HGLG11) ou Tesouro IPCA+ — o ativo com menor peso relativo na carteira Brasil no momento, para manter o equilíbrio interno. NUNCA sugerir reinvestir em Tesouro Selic. Mostra o efeito dos juros compostos com números concretos. Avisa quando é hora de adicionar novos FIIs (KNRI11 quando aporte Brasil chegar a R$450/mês). Responde SEMPRE em português do Brasil com números reais e diretos.`,
-  },
-  {
-    name:"Planejador de Longo Prazo", role:"Projeções & Disciplina", icon:"🔭", color:"#1a0d3d", accent:"#a78bfa",
-    tags:[{t:"10-12 ANOS",bg:"#1a0d3d",fg:"#a78bfa"},{t:"RETORNO BR",bg:"#0E1F3A",fg:"#4F8EFF"}],
-    quick:["Quanto terei ao voltar pro Brasil em 12 anos?","E se eu aumentar pra €200/mês?","O mercado caiu, devo parar de aportar?","Quando começo a converter o VWCE pro Brasil?"],
-    system:`Você é o PLANEJADOR DE LONGO PRAZO do Thales. Projeta cenários realistas a 5, 10 e 12 anos com números concretos, usando as taxas atuais (IPCA, retorno histórico de ETFs, DY de FIIs) do perfil. A carteira Brasil é composta por FIIs (MXRF11, HGLG11) e Tesouro IPCA+ — nunca Tesouro Selic. Mantém a disciplina emocional — quando o mercado cai, explica com dados por que o plano não muda. Planeja a transição de retorno ao Brasil (parar ETFs europeus 2 anos antes, converter gradualmente). Sempre apresenta cenário otimista E conservador. Responde SEMPRE em português do Brasil com projeções numéricas claras.`,
-  },
-  {
-    name:"Contador Fiscal", role:"Fiscal Brasil + Irlanda", icon:"⚖️", color:"#2d1f08", accent:"#f5a623",
-    tags:[{t:"EXIT TAX 38%",bg:"#2d1f08",fg:"#f5a623"},{t:"DUPLA RESIDÊNCIA",bg:"#0E1F3A",fg:"#4F8EFF"}],
-    quick:["Quanto vou pagar de Exit Tax em 2033?","Como declarar VWCE e EUNA ao Revenue?","Como funciona IR do MXRF11 pra não residente?","O que muda com a dupla residência fiscal?"],
-    system:`Você é o CONTADOR FISCAL IA do Thales. Ele tem DUPLA RESIDÊNCIA FISCAL confirmada (Brasil e Irlanda) e cidadania italiana. Monitora Exit Tax 38% na Irlanda, deemed disposal em 2033, obrigações com Revenue irlandês (Form 11) e Receita Federal brasileira. NUNCA fornece aconselhamento jurídico ou fiscal definitivo. SEMPRE usa linguagem como "possível obrigação fiscal detectada" e "recomenda-se validação com contador qualificado". Responde SEMPRE em português do Brasil, preciso e claro.`,
-  },
-  {
-    name:"Gestor de Risco", role:"Proteção & Concentração", icon:"🛡️", color:"#3d1a1a", accent:"#f06060",
-    tags:[{t:"PROTEÇÃO",bg:"#3d1a1a",fg:"#f06060"},{t:"SEM ALAVANCAGEM",bg:"#0E1F3A",fg:"#4F8EFF"}],
-    quick:["Minha carteira está bem diversificada?","Tenho concentração excessiva em algum ativo?","Qual meu risco cambial atual?","Estou aderente ao plano de longo prazo?"],
-    system:`Você é o GESTOR DE RISCO do Thales — o agente mais conservador da equipe. Sua prioridade é PROTEÇÃO PATRIMONIAL antes de retorno. Responsabilidades: monitorar concentração excessiva num único ativo (ex: muito peso num só FII), monitorar exposição Brasil x Internacional em relação à referência 60/40 (que é referência, não regra rígida — só agir em desvios ESTRUTURAIS, não em oscilação cambial de curto prazo que é ruído), monitorar exposição cambial EUR/BRL estrutural, avaliar aderência ao plano de longo prazo, identificar riscos relevantes antes que se tornem problemas. A carteira internacional é composta por VWCE E EUNA — ambos devem ser monitorados e considerados. NUNCA recomenda day trade, swing trade, alavancagem, margem, empréstimos para investir, ETFs alavancados, Tesouro Selic ou concentração excessiva. Se identificar desvio estrutural do plano, alerta claramente com motivo, risco e sugestão — mas a decisão final é sempre do Thales. Responde SEMPRE em português do Brasil, direto e protetor.`,
-  }
+const QUICK_QUESTIONS = [
+  'Como alocar os €100 deste mês?',
+  'Minha carteira está equilibrada?',
+  'Onde reinvestir os dividendos?',
+  'O que é deemed disposal?'
 ];
 
-const WELCOMES = [
-  `Olá Thales! Sou seu <strong>Analista de Portfólio</strong> — e não estou preso ao plano original. Atuo como seu assessor real.<br><br>Hoje o câmbio está em <strong id="w0-cambio">—</strong> e a Selic em <strong id="w0-selic">—</strong>. Com isso, os seus €60 pro Brasil equivalem a <strong id="w0-brl">—</strong> hoje.<br><br>Quer saber onde alocar este mês com os dados de hoje, ou tem algo específico para analisar?`,
-  `Olá! Sou o <strong>Monitor de Dividendos</strong>.<br><br>Você já recebeu seu primeiro dividendo do MXRF11: <strong>R$0,80</strong>! A partir do próximo mês, o valor fica mais estável com o ciclo completo.<br><br>Tem algum dividendo novo para registrar, ou quer ver a projeção de renda passiva para os próximos anos?`,
-  `Olá! Sou o <strong>Planejador de Longo Prazo</strong>.<br><br>Sua meta está definida: <strong>R$30.000/mês corrigidos pela inflação aos 50 anos (2046)</strong> — equivalente a ~R$65.000/mês nominal. São 20 anos de construção pela frente.<br><br>Quer ver a projeção completa até 2046, ou simular o impacto de aumentar o aporte ao longo dos anos?`,
-  `Olá! Sou seu <strong>Contador Fiscal IA</strong>.<br><br>Sua situação está organizada: <strong>dupla residência fiscal</strong> Brasil + Irlanda confirmada, cidadania italiana. O próximo evento fiscal importante é o <strong>deemed disposal em 2033</strong>.<br><br>⚠️ Sou informativo — decisões definitivas precisam de validação com contador qualificado. O que quer entender?`,
-  `Olá! Sou seu <strong>Gestor de Risco</strong> — novo na equipe! 🛡️<br><br>Minha função é proteger seu patrimônio antes de buscar retorno. Vou monitorar concentração excessiva, equilíbrio Brasil/Internacional e exposição cambial.<br><br>Hoje sua carteira está bem distribuída entre 5 ativos diferentes em 2 países — ótimo início. Quer uma análise completa de risco da sua carteira atual?`
-];
+const WELCOME = `Olá Thales! Sou o <strong>assistente do WealthFlow</strong> — pergunte qualquer coisa: carteira, dividendos, projeções, impostos ou conceitos de investimento.<br><br>Hoje o câmbio está em <strong id="w0-cambio">—</strong> e a Selic em <strong id="w0-selic">—</strong> — os €60 do lado Brasil valem <strong id="w0-brl">—</strong>.<br><br>Dica: os botões acima do campo de texto dão um tom específico à resposta (risco, fiscal ou longo prazo).`;
 
 // ─────────────────────────────────────────
 // NAVIGATION
@@ -1434,7 +1331,7 @@ const WELCOMES = [
 const pageTitles = {
   dashboard: ['Dashboard', 'Sua situação em 1 olhar'],
   carteira: ['Carteira', 'Detalhe de tudo que você já aportou'],
-  agentes: ['Agentes IA', 'Sua assessoria inteligente — 5 especialistas'],
+  agentes: ['Assistente', 'Seu copiloto financeiro — pergunte qualquer coisa'],
   aportar: ['Registrar Aporte', 'Atualize sua carteira após cada compra'],
   alertas: ['Alertas', 'Gatilhos e notificações do seu plano'],
   config: ['Configurar API', 'Chave API para ativar os agentes']
@@ -1637,7 +1534,6 @@ async function callAI(systemPrompt, messages, maxTokens = 1000) {
 }
 
 function openAssessorChat() {
-  selectAgent(0);
   showPage('agentes', document.querySelectorAll('.nav-item')[2]);
 }
 
@@ -1935,7 +1831,8 @@ function askRiskAgentAboutScore() {
   const question = `Meu WealthFlow Score está em ${overall}/100 (Disciplina ${disciplina}, Diversificação ${diversificacao}, Risco ${risco}, Progresso ${progresso}). Pode analisar o que cada número significa na minha carteira atual e o que eu poderia ajustar para melhorar?`;
 
   showPage('agentes', document.querySelectorAll('.nav-item')[2]);
-  selectAgent(4); // Gestor de Risco
+  chatMode = 'risco'; // pergunta sobre score vai com o olhar de risco
+  document.querySelectorAll('.qbtn.mode').forEach(b => b.classList.toggle('active', b.id === 'mode-risco'));
   document.getElementById('userInput').value = question;
   sendMsg();
 }
@@ -2507,35 +2404,9 @@ async function onEvoChange() {
 function initAgents() {
   document.getElementById('apiNotice').style.display = (apiKey || geminiKey) ? 'none' : 'block';
 
-  const shorts = ['Analista', 'Dividendos', 'Planejador', 'Fiscal', 'Risco'];
-  const list = document.getElementById('agentList');
-  list.innerHTML = AGENTS.map((a, i) => `
-    <div class="agent-card ${i === 0 ? 'active' : ''}" onclick="selectAgent(${i})" id="ac${i}">
-      <div class="ac-top">
-        <div class="ac-avatar" style="background:${a.color}">${a.icon}</div>
-        <div><div class="ac-name"><span class="ac-name-full">${a.name}</span><span class="ac-name-short">${shorts[i]}</span></div><div class="ac-role">${a.role}</div></div>
-        <div class="ac-dot"></div>
-      </div>
-      <div class="ac-preview">${['Analisa câmbio, Selic e sua carteira real para recomendar o melhor aporte do dia.','Registra dividendos e calcula onde reinvestir para maximizar juros compostos.','Projeta até 2046 e mantém disciplina quando o mercado oscilar.','Monitora Exit Tax 38%, deemed disposal 2033 e obrigações fiscais duplas.','Protege contra concentração excessiva e desequilíbrio cambial.'][i]}</div>
-    </div>`).join('');
-
-  selectAgent(0);
-}
-
-function selectAgent(idx) {
-  curAgent = idx;
-  const a = AGENTS[idx];
-  document.querySelectorAll('.agent-card').forEach((el, i) => el.classList.toggle('active', i === idx));
-
-  document.getElementById('chatHead').innerHTML = `
-    <div class="ch-av" style="background:${a.color}">${a.icon}</div>
-    <div><div class="ch-name">${a.name}</div><div class="ch-desc">${a.role}</div></div>
-    <div class="ch-tags">${a.tags.map(t => `<span class="ctag" style="background:${t.bg};color:${t.fg}">${t.t}</span>`).join('')}</div>
-    <button class="chat-clear-btn" onclick="clearChat()" title="Limpar conversa" aria-label="Limpar conversa"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
-
   const qa = document.getElementById('quickArea');
   qa.innerHTML = '';
-  a.quick.forEach(q => {
+  QUICK_QUESTIONS.forEach(q => {
     const btn = document.createElement('button');
     btn.className = 'qbtn';
     btn.textContent = q;
@@ -2543,23 +2414,38 @@ function selectAgent(idx) {
     qa.appendChild(btn);
   });
 
+  const ma = document.getElementById('modeArea');
+  ma.innerHTML = '';
+  Object.entries(MODES).forEach(([key, m]) => {
+    const btn = document.createElement('button');
+    btn.className = 'qbtn mode' + (chatMode === key ? ' active' : '');
+    btn.id = 'mode-' + key;
+    btn.textContent = m.label;
+    btn.addEventListener('click', () => toggleMode(key));
+    ma.appendChild(btn);
+  });
+
   renderMsgs();
 }
 
+function toggleMode(key) {
+  chatMode = chatMode === key ? null : key;
+  document.querySelectorAll('.qbtn.mode').forEach(b => b.classList.toggle('active', b.id === 'mode-' + chatMode));
+}
+
 function clearChat() {
-  if (histories[curAgent].length && !confirm('Limpar a conversa com este agente?')) return;
-  histories[curAgent] = [];
+  if (chatHistory.length && !confirm('Limpar a conversa?')) return;
+  chatHistory = [];
   saveHistories();
   renderMsgs();
 }
 
 function renderMsgs() {
-  const a = AGENTS[curAgent];
   const msgs = document.getElementById('msgs');
   msgs.innerHTML = `<div style="text-align:center;padding:12px 0"><span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">— conversa iniciada —</span></div>`;
 
-  if (histories[curAgent].length === 0) {
-    msgs.innerHTML += buildAgentMsg(a, WELCOMES[curAgent]);
+  if (chatHistory.length === 0) {
+    msgs.innerHTML += buildAgentMsg(WELCOME);
     // Update welcome with real data
     setTimeout(() => {
       const cambio = document.getElementById('pill-cambio').textContent.replace('R$','');
@@ -2572,17 +2458,20 @@ function renderMsgs() {
       if(w0b) w0b.textContent = 'R$' + (60 * parseFloat(cambio || 6)).toFixed(0);
     }, 500);
   } else {
-    histories[curAgent].forEach(m => {
+    chatHistory.forEach(m => {
       if (m.role === 'user') msgs.innerHTML += buildUserMsg(m.content);
-      else msgs.innerHTML += buildAgentMsg(a, m.content);
+      else msgs.innerHTML += buildAgentMsg(m.content);
     });
   }
+  // Sugestões rápidas só aparecem em conversa nova — depois liberam espaço p/ mensagens
+  const qa = document.getElementById('quickArea');
+  if (qa) qa.style.display = chatHistory.length === 0 ? '' : 'none';
   msgs.scrollTop = msgs.scrollHeight;
 }
 
-function buildAgentMsg(a, text) {
+function buildAgentMsg(text) {
   const fmt = text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<em>$1</em>');
-  return `<div class="msg agent"><div class="mavatar" style="background:${a.color}">${a.icon}</div><div><div class="mbubble">${fmt}</div><div class="mmeta">${a.name}</div></div></div>`;
+  return `<div class="msg agent"><div class="mavatar" style="background:${ASSISTANT.color}">${ASSISTANT.icon}</div><div><div class="mbubble">${fmt}</div><div class="mmeta">${ASSISTANT.name}</div></div></div>`;
 }
 
 function buildUserMsg(text) {
@@ -2603,37 +2492,35 @@ async function sendMsg() {
     return;
   }
 
-  const a = AGENTS[curAgent];
   const msgs = document.getElementById('msgs');
   inp.value = ''; inp.style.height = 'auto';
 
   msgs.innerHTML += buildUserMsg(text);
-  histories[curAgent].push({ role: 'user', content: text });
+  chatHistory.push({ role: 'user', content: text });
   saveHistories();
+  const qa = document.getElementById('quickArea');
+  if (qa) qa.style.display = 'none';
 
   const tid = 'typing-' + Date.now();
-  msgs.innerHTML += `<div class="msg agent" id="${tid}"><div class="mavatar" style="background:${a.color}">${a.icon}</div><div class="typing"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div></div>`;
+  msgs.innerHTML += `<div class="msg agent" id="${tid}"><div class="mavatar" style="background:${ASSISTANT.color}">${ASSISTANT.icon}</div><div class="typing"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div></div>`;
   msgs.scrollTop = msgs.scrollHeight;
 
   loading = true;
   document.getElementById('sbtn').disabled = true;
 
   try {
-    const cambio = document.getElementById('pill-cambio')?.textContent || 'R$6.00';
-    const selic  = document.getElementById('pill-selic')?.textContent  || '14.25%';
-    const ipca   = document.getElementById('pill-ipca')?.textContent   || '4.72%';
-    const ecoCtx = `\n\nIndicadores econômicos atuais (${new Date().toLocaleDateString('pt-BR')}): Selic ${selic} | IPCA 12m ${ipca} | EUR/BRL ${cambio}`;
+    const modeCtx = chatMode ? '\n\n' + MODES[chatMode].system : '';
     const styleReminder = '\n\nLEMBRETE FINAL (PRIORIDADE MÁXIMA, sobrepõe qualquer instrução anterior de formato): responda em NO MÁXIMO 120 palavras, em texto corrido, SEM títulos, SEM seções e SEM listas com asteriscos. Mesmo que mensagens anteriores desta conversa tenham sido longas e estruturadas, a partir de agora responda curto. Se precisar aprofundar, resuma e pergunte se o Thales quer os detalhes.';
-    const fullSystem = a.system + '\n\n' + getProfile() + ecoCtx + styleReminder;
-    const reply = await callAI(fullSystem, histories[curAgent], 450);
-    histories[curAgent].push({ role: 'assistant', content: reply });
+    const fullSystem = ASSISTANT_SYSTEM + '\n\n' + getProfile() + modeCtx + styleReminder;
+    const reply = await callAI(fullSystem, chatHistory, 450);
+    chatHistory.push({ role: 'assistant', content: reply });
     saveHistories();
 
     const el = document.getElementById(tid);
-    if (el) el.innerHTML = `<div class="mavatar" style="background:${a.color}">${a.icon}</div><div><div class="mbubble">${reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<em>$1</em>')}</div><div class="mmeta">${a.name} · agora</div></div>`;
+    if (el) el.innerHTML = `<div class="mavatar" style="background:${ASSISTANT.color}">${ASSISTANT.icon}</div><div><div class="mbubble">${reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<em>$1</em>')}</div><div class="mmeta">${ASSISTANT.name} · agora</div></div>`;
 
   } catch (err) {
-    histories[curAgent].pop();
+    chatHistory.pop();
     saveHistories();
     const el = document.getElementById(tid);
     const msg = err.message.includes('401') ? '❌ Chave API inválida. Vá em Configurar API e verifique.' : `❌ Erro: ${err.message}`;
