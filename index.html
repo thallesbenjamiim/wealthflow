@@ -1034,7 +1034,7 @@ textarea::placeholder { color: var(--muted2); }
                 <div class="score-bar-row"><span>Progresso</span><div class="score-bar-track"><div class="score-bar-fill" id="score-bar-progress" style="width:1%"></div></div><b id="score-num-progresso">—</b></div>
               </div>
             </div>
-            <button class="score-ask-btn" onclick="askRiskAgentAboutScore()">🛡️ Pedir análise ao Gestor de Risco</button>
+            <button class="score-ask-btn" onclick="askRiskAgentAboutScore()">🛡️ Pedir análise de risco ao Assistente</button>
           </div>
         </div>
 
@@ -1743,6 +1743,12 @@ async function updateDashboard(cambio) {
   const activeCount = positions.filter(p => p.eur > 0).length;
   const maxWeightPct = Math.max(...positions.map(p => (p.eur / positionsTotal) * 100));
 
+  // Selo do hero fica coerente com os Alertas: concentração >30% também tira o "equilibrada"
+  if (concentrationOk && maxWeightPct > 30) {
+    statusEl.className = 'hero-status amber';
+    statusText.textContent = 'Concentração alta — veja Alertas';
+  }
+
   // Diversificação: quantas categorias diferentes de ativo você já tem (de 7 possíveis)
   const diversificacaoScore = Math.round(Math.min(100, (activeCount / 7) * 100));
 
@@ -2169,8 +2175,8 @@ async function renderAlertas() {
 
   if (totalEur > 0 && (brPct >= 0.75 || brPct <= 0.15)) {
     const desc = brPct >= 0.75
-      ? `${(brPct*100).toFixed(0)}% da carteira está em Brasil/Caixa — considere reforçar Internacional (VWCE/EUNA) no próximo aporte. Consulte o Gestor de Risco antes de agir.`
-      : `Só ${(brPct*100).toFixed(0)}% da carteira está em Brasil/Caixa, abaixo da referência 60/40. Consulte o Gestor de Risco antes de agir.`;
+      ? `${(brPct*100).toFixed(0)}% da carteira está em Brasil/Caixa — considere reforçar Internacional (VWCE/EUNA) no próximo aporte. Pergunte ao Assistente (modo 🛡️ Risco) antes de agir.`
+      : `Só ${(brPct*100).toFixed(0)}% da carteira está em Brasil/Caixa, abaixo da referência 60/40. Pergunte ao Assistente (modo 🛡️ Risco) antes de agir.`;
     alerts.push({ type: 'red', icon: '⚖️', title: 'AÇÃO SUGERIDA: Carteira desequilibrada', desc, action: true });
     actionableCount++;
   }
@@ -2190,16 +2196,16 @@ async function renderAlertas() {
   const maxWeightPct = (maxPosition.eur / positionsTotal) * 100;
 
   if (totalEur > 0 && maxWeightPct > 30) {
-    alerts.push({ type: 'red', icon: '🎯', title: `AÇÃO SUGERIDA: Concentração alta em ${maxPosition.name}`, desc: `${maxPosition.name} representa ${maxWeightPct.toFixed(0)}% da carteira — acima do limite saudável de 30%. Consulte o Gestor de Risco antes do próximo aporte.`, action: true });
+    alerts.push({ type: 'red', icon: '🎯', title: `AÇÃO SUGERIDA: Concentração alta em ${maxPosition.name}`, desc: `${maxPosition.name} representa ${maxWeightPct.toFixed(0)}% da carteira — acima do limite saudável de 30%. Pergunte ao Assistente (modo 🛡️ Risco) antes do próximo aporte.`, action: true });
     actionableCount++;
   }
 
   // Gatilho Selic — o único gatilho automático real que temos hoje
   if (selicVal < 7) {
-    alerts.push({ type: 'red', icon: '🚨', title: 'AÇÃO SUGERIDA: Selic abaixo de 7%', desc: 'Realocar 10% do Brasil para Internacional (60/40 → 50/50 gradual). Consulte o Gestor de Risco antes de agir.', action: true });
+    alerts.push({ type: 'red', icon: '🚨', title: 'AÇÃO SUGERIDA: Selic abaixo de 7%', desc: 'Realocar 10% do Brasil para Internacional (60/40 → 50/50 gradual). Pergunte ao Assistente (modo 🛡️ Risco) antes de agir.', action: true });
     actionableCount++;
   } else if (selicVal < 10) {
-    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Selic abaixo de 10%', desc: 'Migrar aporte do Tesouro Selic → IPCA+ longo prazo. Consulte o Analista antes de agir.', action: true });
+    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Selic abaixo de 10%', desc: 'Migrar aporte de renda fixa para IPCA+ longo prazo. Pergunte ao Assistente antes de agir.', action: true });
     actionableCount++;
   }
 
@@ -2497,7 +2503,7 @@ async function registrarAporte() {
     // Refaz os Alertas na hora (não só quando o usuário navegar até lá) e notifica se este aporte desequilibrou a carteira
     const riskAlertCount = await renderAlertas();
     if (riskAlertCount > 0) {
-      setTimeout(() => showToast('⚠️ Este aporte pode ter desequilibrado sua carteira — veja Alertas ou consulte o Gestor de Risco'), 3200);
+      setTimeout(() => showToast('⚠️ Este aporte pode ter desequilibrado sua carteira — veja Alertas ou pergunte ao Assistente'), 3200);
     }
 
   } catch (e) {
