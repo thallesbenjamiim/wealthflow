@@ -1392,7 +1392,7 @@ A CADA APORTE OU QUANDO SOLICITADO:
 5. Pode desviar temporariamente do 60/40 quando justificável (ex: câmbio em extremo histórico, ETFs em queda >20%), sempre explicando motivo, benefício e risco.
 
 FORMATO DE RESPOSTA:
-Proporção atual calculada → desvio detectado (ou ausência) → sugestão concreta → motivo → benefício → risco. Direto, em português do Brasil, com números reais baseados nos dados do perfil.`,
+Um parágrafo curto e direto: proporção atual → sugestão concreta com números → motivo, benefício e risco em UMA frase cada (sem seções, sem títulos, sem listas). Português do Brasil, números reais do perfil.`,
   },
   {
     name:"Monitor de Dividendos", role:"Dividendos & Reinvestimento", icon:"💰", color:"#0d1f3d", accent:"#5b9cf6",
@@ -2623,8 +2623,9 @@ async function sendMsg() {
     const selic  = document.getElementById('pill-selic')?.textContent  || '14.25%';
     const ipca   = document.getElementById('pill-ipca')?.textContent   || '4.72%';
     const ecoCtx = `\n\nIndicadores econômicos atuais (${new Date().toLocaleDateString('pt-BR')}): Selic ${selic} | IPCA 12m ${ipca} | EUR/BRL ${cambio}`;
-    const fullSystem = a.system + '\n\n' + getProfile() + ecoCtx;
-    const reply = await callAI(fullSystem, histories[curAgent], 700);
+    const styleReminder = '\n\nLEMBRETE FINAL (PRIORIDADE MÁXIMA, sobrepõe qualquer instrução anterior de formato): responda em NO MÁXIMO 120 palavras, em texto corrido, SEM títulos, SEM seções e SEM listas com asteriscos. Mesmo que mensagens anteriores desta conversa tenham sido longas e estruturadas, a partir de agora responda curto. Se precisar aprofundar, resuma e pergunte se o Thales quer os detalhes.';
+    const fullSystem = a.system + '\n\n' + getProfile() + ecoCtx + styleReminder;
+    const reply = await callAI(fullSystem, histories[curAgent], 450);
     histories[curAgent].push({ role: 'assistant', content: reply });
     saveHistories();
 
