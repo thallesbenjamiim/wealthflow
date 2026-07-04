@@ -4,7 +4,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
-<title>WealthFlow — Assessoria Inteligente</title>
+<title>WealthFlow — Carteira Digital Inteligente</title>
+<!-- PWA -->
+<meta name="theme-color" content="#060807">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WealthFlow">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
 <!-- Firebase -->
@@ -799,6 +808,11 @@ textarea::placeholder { color: var(--muted2); }
 /* Painel de dividendos */
 .div-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 4px; }
 
+/* Toggle de moeda da carteira */
+.cur-toggle { display: inline-flex; background: var(--surf2); border: 1px solid var(--bdr); border-radius: 999px; padding: 3px; gap: 2px; }
+.cur-btn { border: none; background: transparent; color: var(--muted); font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 999px; cursor: pointer; font-family: 'DM Mono', monospace; transition: all .15s var(--ease); }
+.cur-btn.active { background: var(--gdim); color: var(--green); }
+
 /* Insight do dia */
 .insight-card {
   display: flex; align-items: flex-start; gap: 12px;
@@ -1066,7 +1080,14 @@ textarea::placeholder { color: var(--muted2); }
       <!-- ── CARTEIRA ── -->
       <div class="page" id="page-carteira">
         <div class="wallet-card">
-          <div class="section-title">Sua carteira <span class="stag" id="wallet-total-tag">aportado vs hoje</span></div>
+          <div class="flex-between stack-mobile" style="margin-bottom:13px">
+            <div class="section-title" style="margin:0">Sua carteira <span class="stag" id="wallet-total-tag">aportado vs hoje</span></div>
+            <div class="cur-toggle" id="curToggle">
+              <button class="cur-btn" data-cur="nativa" onclick="setWalletCurrency('nativa')">Original</button>
+              <button class="cur-btn" data-cur="EUR" onclick="setWalletCurrency('EUR')">€</button>
+              <button class="cur-btn" data-cur="BRL" onclick="setWalletCurrency('BRL')">R$</button>
+            </div>
+          </div>
           <div class="wallet-summary" id="wallet-summary"></div>
           <div class="wallet-list" id="wallet-list"></div>
           <button class="score-ask-btn" id="analyzeBtn" onclick="analyzePortfolio()" style="margin-top:16px">🔍 Analisar carteira com IA</button>
@@ -1765,10 +1786,29 @@ async function updateDashboard(cambio) {
   onAtivoChange();
 }
 
+// Toggle de moeda: 'nativa' (cada ativo na sua moeda), 'EUR' ou 'BRL' (tudo convertido)
+let walletCurrency = localStorage.getItem('wf_wallet_currency') || 'nativa';
+
+function setWalletCurrency(cur) {
+  walletCurrency = cur;
+  localStorage.setItem('wf_wallet_currency', cur);
+  const rate = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
+  renderWallet(rate);
+}
+
 async function renderWallet(rate) {
   const list = document.getElementById('wallet-list');
   if (!list) return;
   const items = [];
+
+  document.querySelectorAll('.cur-btn').forEach(b => b.classList.toggle('active', b.dataset.cur === walletCurrency));
+
+  // Exibe um valor na moeda escolhida no toggle (convertendo pelo câmbio do dia)
+  const showVal = (num, cur) => {
+    if (walletCurrency === 'EUR') return '€' + fmtNum(cur === 'BRL' ? num / rate : num);
+    if (walletCurrency === 'BRL') return 'R$' + fmtNum(cur === 'EUR' ? num * rate : num);
+    return (cur === 'BRL' ? 'R$' : '€') + fmtNum(num);
+  };
 
   // Custo de aquisição real por ativo (a partir dos aportes registrados)
   const invDocs = await loadAportesForEvo();
@@ -1789,7 +1829,7 @@ async function renderWallet(rate) {
   const mxrfPm = pm(inv['MXRF11'], portfolioData.mxrf11_cotas);
   items.push({
     icon: '🏢', name: 'MXRF11', type: 'FII de Papel · Nubank', cat: 'br',
-    val: 'R$' + fmtNum(mxrfVal),
+    val: showVal(mxrfVal, 'BRL'),
     meta: portfolioData.mxrf11_cotas ? portfolioData.mxrf11_cotas + ' cotas · R$' + fmtNum(portfolioData.mxrf11_preco) + (mxrfPm ? ' · PM R$' + fmtNum(mxrfPm) : '') : '',
     pl: plLine(inv['MXRF11'], mxrfVal, 'R$')
   });
@@ -1801,32 +1841,32 @@ async function renderWallet(rate) {
     const hglgPm = pm(inv['HGLG11'], portfolioData.hglg11_cotas);
     items.push({
       icon: '🏭', name: 'HGLG11', type: 'FII de Logística · Nubank', cat: 'br',
-      val: 'R$' + fmtNum(hglgVal),
+      val: showVal(hglgVal, 'BRL'),
       meta: portfolioData.hglg11_cotas ? portfolioData.hglg11_cotas + ' cotas · R$' + fmtNum(portfolioData.hglg11_preco) + (hglgPm ? ' · PM R$' + fmtNum(hglgPm) : '') : '',
       pl: plLine(inv['HGLG11'], hglgVal, 'R$')
     });
   }
 
-  items.push({ icon: '📈', name: 'Tesouro IPCA+', type: 'Renda Fixa · Nubank', cat: 'br', val: 'R$' + fmtNum(portfolioData.ipca), meta: 'Longo prazo' });
+  items.push({ icon: '📈', name: 'Tesouro IPCA+', type: 'Renda Fixa · Nubank', cat: 'br', val: showVal(portfolioData.ipca, 'BRL'), meta: 'Longo prazo' });
 
   if (portfolioData.selic > 0) {
-    items.push({ icon: '💵', name: 'Tesouro Selic', type: 'Liquidez · Nubank', cat: 'br', val: 'R$' + fmtNum(portfolioData.selic), meta: '' });
+    items.push({ icon: '💵', name: 'Tesouro Selic', type: 'Liquidez · Nubank', cat: 'br', val: showVal(portfolioData.selic, 'BRL'), meta: '' });
   }
   if (portfolioData.caixinha > 0) {
-    items.push({ icon: '💰', name: 'Caixinha CDI', type: 'Aguardando destino · Nubank', cat: 'cash', val: 'R$' + fmtNum(portfolioData.caixinha), meta: '' });
+    items.push({ icon: '💰', name: 'Caixinha CDI', type: 'Aguardando destino · Nubank', cat: 'cash', val: showVal(portfolioData.caixinha, 'BRL'), meta: '' });
   }
 
   const vwcePm = pm(inv['VWCE'], portfolioData.vwce_cotas);
   items.push({
     icon: '🌍', name: 'VWCE', type: 'ETF Global Acc · Revolut', cat: 'intl',
-    val: '€' + fmtNum(portfolioData.vwce),
+    val: showVal(portfolioData.vwce, 'EUR'),
     meta: portfolioData.vwce_cotas ? portfolioData.vwce_cotas.toFixed(4) + ' cotas · €' + fmtNum(portfolioData.vwce_preco || 0) + (vwcePm ? ' · PM €' + fmtNum(vwcePm) : '') : '',
     pl: plLine(inv['VWCE'], portfolioData.vwce, '€')
   });
   const eunaPm = pm(inv['EUNA'], portfolioData.euna_cotas);
   items.push({
     icon: '🔒', name: 'EUNA', type: 'ETF Bonds Acc · Revolut', cat: 'intl',
-    val: '€' + fmtNum(portfolioData.euna),
+    val: showVal(portfolioData.euna, 'EUR'),
     meta: portfolioData.euna_cotas ? portfolioData.euna_cotas.toFixed(4) + ' cotas · €' + fmtNum(portfolioData.euna_preco || 0) + (eunaPm ? ' · PM €' + fmtNum(eunaPm) : '') : '',
     pl: plLine(inv['EUNA'], portfolioData.euna, '€')
   });
@@ -1838,14 +1878,14 @@ async function renderWallet(rate) {
     const currentVal = btcPrice ? qty * btcPrice : null;
     items.push({
       icon: '₿', name: 'Bitcoin', type: 'Crypto · Informal', cat: 'btc',
-      val: currentVal !== null ? '€' + fmtNum(currentVal) : '€' + fmtNum(invested) + ' investido',
+      val: currentVal !== null ? showVal(currentVal, 'EUR') : showVal(invested, 'EUR') + ' investido',
       meta: qty > 0 ? qty.toFixed(8) + ' BTC' + (currentVal !== null ? ' · cotação ao vivo' : ' · cotação indisponível')
             : 'aguardando cotação para converter',
       pl: currentVal !== null ? plLine(inv['Bitcoin'], currentVal, '€') : null
     });
   }
   if (portfolioData.dividendos > 0) {
-    items.push({ icon: '💚', name: 'Dividendos recebidos', type: 'Acumulado total', cat: 'div', val: 'R$' + fmtNum(portfolioData.dividendos), meta: '' });
+    items.push({ icon: '💚', name: 'Dividendos recebidos', type: 'Acumulado total', cat: 'div', val: showVal(portfolioData.dividendos, 'BRL'), meta: '' });
   }
 
   list.innerHTML = items.map(it => `
@@ -1871,10 +1911,11 @@ async function renderWallet(rate) {
     const investedTotal = totalInvestedEur(inv, rate);
     const diff = currentTotal - investedTotal;
     const pct = investedTotal > 0 ? (diff / investedTotal) * 100 : 0;
+    const sumVal = v => walletCurrency === 'BRL' ? 'R$' + fmtNum(v * rate) : '€' + fmtNum(v);
     summaryEl.innerHTML = `
-      <div class="ws-tile"><div class="ws-label">Você aportou</div><div class="ws-value mval">€${fmtNum(investedTotal)}</div></div>
-      <div class="ws-tile"><div class="ws-label">Vale hoje</div><div class="ws-value mval">€${fmtNum(currentTotal)}</div></div>
-      <div class="ws-tile"><div class="ws-label">Resultado</div><div class="ws-value mval ${diff >= 0 ? 'pl-pos' : 'pl-neg'}">${diff >= 0 ? '+' : '−'}€${fmtNum(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)</div></div>`;
+      <div class="ws-tile"><div class="ws-label">Você aportou</div><div class="ws-value mval">${sumVal(investedTotal)}</div></div>
+      <div class="ws-tile"><div class="ws-label">Vale hoje</div><div class="ws-value mval">${sumVal(currentTotal)}</div></div>
+      <div class="ws-tile"><div class="ws-label">Resultado</div><div class="ws-value mval ${diff >= 0 ? 'pl-pos' : 'pl-neg'}">${diff >= 0 ? '+' : '−'}${sumVal(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)</div></div>`;
   }
 
   // ── Painel de dividendos ──
@@ -3070,6 +3111,11 @@ async function init() {
   loadDailyInsight();
   loadMonthlySummary();
   setInterval(loadMarketData, 5 * 60 * 1000);
+}
+
+// PWA: service worker só quando servido por http(s) — file:// não suporta
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 </script>
 </body>
