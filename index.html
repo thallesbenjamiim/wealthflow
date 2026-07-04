@@ -1274,9 +1274,9 @@ NUNCA incentivar: day trade, swing trade especulativo, alavancagem, uso de marge
 REGRA DE APROVAÇÃO HUMANA: Nenhuma recomendação deve ser executada automaticamente. O WealthFlow apenas sugere. O investidor sempre toma a decisão final. Toda sugestão de mudança deve incluir motivo, benefícios, riscos e impacto na meta de longo prazo.
 
 DATA ATUAL: ${new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}.
-CÂMBIO ATUAL EUR/BRL: ${cambio} (buscado em tempo real do Banco Central do Brasil)
-SELIC ATUAL: ${selic} (buscado em tempo real do Banco Central do Brasil)
-IPCA ATUAL: ${ipca}
+CÂMBIO ATUAL EUR/BRL: ${cambio} (cotação comercial em tempo real)
+SELIC ATUAL: ${selic} (meta Copom — Banco Central via proxy quando ativo; senão valor de referência recente)
+IPCA ACUMULADO 12M: ${ipca}
 
 PERFIL DO USUÁRIO — Thales:
 - Nascido 26/03/1996, 30 anos. Brasileiro morando na Irlanda, cidadania italiana.
@@ -1464,19 +1464,18 @@ async function fetchCambio() {
 }
 
 async function fetchSelic() {
-  // Selic Meta atual: 14.75% ao ano (definida pelo Copom — maio 2026)
-  // A Selic só muda a cada 45 dias. Quando mudar, atualizar este valor.
-  const SELIC_ATUAL = '14.25';
-  // HGBrasil bloqueia CORS do browser — usar valor fixo atualizado manualmente
-  ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = SELIC_ATUAL + '%'; });
-  return SELIC_ATUAL + '%';
+  // FALLBACK usado só quando o proxy está offline (o BCB bloqueia CORS direto do browser).
+  // Com o proxy ativo, a Selic real vem do Banco Central (SGS 432) em loadMarketData.
+  const SELIC_FALLBACK = '14.25';
+  ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = SELIC_FALLBACK + '%'; });
+  return SELIC_FALLBACK + '%';
 }
 
 async function fetchIPCA() {
-  // BCB bloqueia CORS direto do browser — usar valor fixo atualizado manualmente
-  const IPCA_ACUMULADO_12M = '4.72';
-  document.getElementById('pill-ipca').textContent = IPCA_ACUMULADO_12M + '%';
-  return IPCA_ACUMULADO_12M + '%';
+  // FALLBACK usado só quando o proxy está offline — com proxy, vem do BCB (SGS 13522).
+  const IPCA_FALLBACK = '4.72';
+  document.getElementById('pill-ipca').textContent = IPCA_FALLBACK + '%';
+  return IPCA_FALLBACK + '%';
 }
 
 let btcPriceEur = null; // cache em memória — evita repetir a chamada à API a cada render
@@ -1499,52 +1498,24 @@ async function fetchBTCPriceEUR() {
   }
 }
 
-// ─────────────────────────────────────────
-// COTAÇÕES AO VIVO — AÇÕES E ETFs
-// ─────────────────────────────────────────
-async function fetchLivePrices() {
-  // FIIs brasileiros via BRAPI (gratuita, sem CORS)
-  try {
-    const tickers = ['MXRF11'];
-    if (portfolioData.hglg11_cotas > 0) tickers.push('HGLG11');
-    const r = await fetch(`https://brapi.dev/api/quote/${tickers.join(',')}`);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
-    (d.results || []).forEach(s => {
-      const p = s.regularMarketPrice;
-      if (!p) return;
-      if (s.symbol === 'MXRF11' && portfolioData.mxrf11_cotas) {
-        portfolioData.mxrf11_preco = p;
-        portfolioData.mxrf11 = portfolioData.mxrf11_cotas * p;
-      }
-      if (s.symbol === 'HGLG11' && portfolioData.hglg11_cotas) {
-        portfolioData.hglg11_preco = p;
-        portfolioData.hglg11 = portfolioData.hglg11_cotas * p;
-      }
-    });
-  } catch(e) { console.warn('BRAPI indisponível:', e.message); }
-
-  // ETFs europeus via Yahoo Finance (fallback: mantém último preço)
-  try {
-    const r = await fetch(
-      'https://query1.finance.yahoo.com/v7/finance/quote?symbols=VWCE.AS,EUNA.AS',
-      { headers: { Accept: 'application/json' } }
-    );
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
-    (d.quoteResponse?.result || []).forEach(q => {
-      const p = q.regularMarketPrice;
-      if (!p) return;
-      if (q.symbol === 'VWCE.AS' && portfolioData.vwce_cotas) {
-        portfolioData.vwce_preco = p;
-        portfolioData.vwce = portfolioData.vwce_cotas * p;
-      }
-      if (q.symbol === 'EUNA.AS' && portfolioData.euna_cotas) {
-        portfolioData.euna_preco = p;
-        portfolioData.euna = portfolioData.euna_cotas * p;
-      }
-    });
-  } catch(e) { console.warn('Yahoo Finance indisponível — usando último preço:', e.message); }
+// Aplica cotações ao vivo aos ativos com cotas registradas.
+// Se o valor guardado for bem maior que cotas × preço, existe aporte antigo registrado
+// sem quantidade de cotas — avisa em vez de "sumir" com o dinheiro silenciosamente.
+function applyLivePrices(md) {
+  const desatualizados = [];
+  [['mxrf11','MXRF11'], ['hglg11','HGLG11'], ['vwce','VWCE'], ['euna','EUNA']].forEach(([k, name]) => {
+    const q = md[k];
+    const cotas = portfolioData[k + '_cotas'];
+    if (!q?.price || !cotas) return;
+    const novo = cotas * q.price;
+    if (portfolioData[k] > novo * 1.15) desatualizados.push(name);
+    portfolioData[k + '_preco'] = q.price;
+    portfolioData[k] = novo;
+  });
+  if (desatualizados.length && !window._cotasWarned) {
+    window._cotasWarned = true;
+    showToast('⚠️ ' + desatualizados.join(' e ') + ' com aportes sem quantidade de cotas — registre as cotas que aparecem na corretora para o valor ao vivo ficar completo.');
+  }
 }
 
 async function loadMarketData() {
@@ -1557,24 +1528,17 @@ async function loadMarketData() {
       if (md.eurbrl) {
         ['pill-cambio','sb-cambio'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = 'R$' + parseFloat(md.eurbrl).toFixed(2); });
       }
-      if (md.mxrf11?.price && portfolioData.mxrf11_cotas) {
-        portfolioData.mxrf11_preco = md.mxrf11.price;
-        portfolioData.mxrf11 = portfolioData.mxrf11_cotas * md.mxrf11.price;
-      }
-      if (md.hglg11?.price && portfolioData.hglg11_cotas) {
-        portfolioData.hglg11_preco = md.hglg11.price;
-        portfolioData.hglg11 = portfolioData.hglg11_cotas * md.hglg11.price;
-      }
-      if (md.vwce?.price && portfolioData.vwce_cotas) {
-        portfolioData.vwce_preco = md.vwce.price;
-        portfolioData.vwce = portfolioData.vwce_cotas * md.vwce.price;
-      }
-      if (md.euna?.price && portfolioData.euna_cotas) {
-        portfolioData.euna_preco = md.euna.price;
-        portfolioData.euna = portfolioData.euna_cotas * md.euna.price;
-      }
-    } catch(e) {}
-    await Promise.all([fetchSelic(), fetchIPCA()]);
+      applyLivePrices(md);
+      // Selic e IPCA reais do Banco Central via proxy — fallback fixo se faltarem
+      if (md.selic) ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = md.selic + '%'; });
+      else await fetchSelic();
+      if (md.ipca12m) document.getElementById('pill-ipca').textContent = md.ipca12m + '%';
+      else await fetchIPCA();
+      // Câmbio: se o proxy não trouxe, usa a fonte direta (awesomeapi tem CORS liberado)
+      if (!md.eurbrl) await fetchCambio();
+    } catch(e) {
+      await Promise.all([fetchCambio(), fetchSelic(), fetchIPCA()]);
+    }
   } else {
     // Sem proxy: usa fallback direto (chamadas externas bloqueadas por CORS)
     await Promise.all([fetchCambio(), fetchSelic(), fetchIPCA()]);
@@ -1621,7 +1585,9 @@ async function callAI(systemPrompt, messages, maxTokens = 1000) {
     });
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(`Claude ${res.status}: ${e.error?.message || 'erro'}`); }
     const d = await res.json();
-    return d.content?.[0]?.text || '';
+    const txt = d.content?.[0]?.text || '';
+    if (!txt) throw new Error('Claude retornou resposta vazia — tente novamente');
+    return txt;
   }
 
   if (useGemini) {
@@ -1629,14 +1595,18 @@ async function callAI(systemPrompt, messages, maxTokens = 1000) {
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: (i === 0 && systemPrompt) ? systemPrompt + '\n\n' + m.content : m.content }]
     }));
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
+    // thinkingBudget: 0 — sem isso o gemini-2.5-flash gasta o maxOutputTokens "pensando"
+    // e pode devolver parts vazio (bolha em branco no chat)
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 } })
+      body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7, thinkingConfig: { thinkingBudget: 0 } } })
     });
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(`Gemini ${res.status}: ${e.error?.message || 'erro'}`); }
     const d = await res.json();
-    return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const txt = (d.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+    if (!txt) throw new Error('Gemini retornou resposta vazia — tente novamente');
+    return txt;
   }
 
   throw new Error('Nenhuma chave API configurada');
@@ -1645,6 +1615,13 @@ async function callAI(systemPrompt, messages, maxTokens = 1000) {
 function openAssessorChat() {
   selectAgent(0);
   showPage('agentes', document.querySelectorAll('.nav-item')[2]);
+}
+
+// ─────────────────────────────────────────
+// FORMATAÇÃO NUMÉRICA — padrão pt-BR (ponto de milhar, vírgula decimal)
+// ─────────────────────────────────────────
+function fmtNum(value, decimals = 2) {
+  return (value || 0).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 async function updateDashboard(cambio) {
@@ -1658,8 +1635,8 @@ async function updateDashboard(cambio) {
   const totalEur = brInvestedEur + intlEur + cashEur + btcValueEur;
 
   // ── 1. HERO ──
-  document.getElementById('hero-total').textContent = '€' + totalEur.toFixed(0);
-  document.getElementById('hero-total-brl').textContent = 'R$' + (totalEur * rate).toFixed(0) + ' equivalente';
+  document.getElementById('hero-total').textContent = '€' + fmtNum(totalEur, 0);
+  document.getElementById('hero-total-brl').textContent = 'R$' + fmtNum(totalEur * rate, 0) + ' equivalente';
 
   const brPct = totalEur > 0 ? (brInvestedEur + cashEur) / totalEur : 0;
   const concentrationOk = brPct < 0.75 && brPct > 0.15;
@@ -1672,14 +1649,14 @@ async function updateDashboard(cambio) {
     statusEl.className = 'hero-status amber';
     statusText.textContent = 'Atenção à alocação';
   }
-  document.getElementById('hero-growth').textContent = totalEur > 0 ? '+ ' + portfolioData.dividendos.toFixed(2).replace('.', ',') + ' em dividendos' : 'iniciando';
+  document.getElementById('hero-growth').textContent = totalEur > 0 ? '+ R$' + fmtNum(portfolioData.dividendos) + ' em dividendos' : 'iniciando';
 
   // ── 2. META (R$1.000.000 — meta é em reais, convertida dinamicamente pela cotação do dia) ──
   const goalTargetEur = GOAL_TARGET_BRL / rate;
   const pct = (totalEur / goalTargetEur) * 100;
   document.getElementById('goal-pct').textContent = pct.toFixed(pct < 1 ? 3 : 1).replace('.', ',') + '%';
   document.getElementById('goal-bar-fill').style.width = Math.max(pct, 0.3) + '%';
-  document.getElementById('goal-current').textContent = 'R$' + (totalEur * rate).toFixed(0);
+  document.getElementById('goal-current').textContent = 'R$' + fmtNum(totalEur * rate, 0);
 
   // Projeção simples: total atual + aportes mensais crescendo a ~0.6%/mês até atingir a meta
   const monthlyReturn = 0.006;
@@ -1690,7 +1667,7 @@ async function updateDashboard(cambio) {
     months++;
   }
   const projYear = GOAL_START_YEAR + Math.ceil(months / 12);
-  document.getElementById('goal-year').textContent = months >= 12 * 60 ? '50+ anos' : projYear;
+  document.getElementById('goal-year').textContent = months >= 12 * 60 ? '60+ anos' : projYear;
 
   // ── 4. ALOCAÇÃO SIMPLIFICADA ──
   const intlPct = totalEur > 0 ? (intlEur / totalEur) * 100 : 0;
@@ -1779,8 +1756,8 @@ async function renderWallet(rate) {
     : portfolioData.mxrf11;
   items.push({
     icon: '🏢', name: 'MXRF11', type: 'FII de Papel · Nubank', cat: 'br',
-    val: 'R$' + mxrfVal.toFixed(2),
-    meta: portfolioData.mxrf11_cotas ? portfolioData.mxrf11_cotas + ' cotas · R$' + portfolioData.mxrf11_preco.toFixed(2) : ''
+    val: 'R$' + fmtNum(mxrfVal),
+    meta: portfolioData.mxrf11_cotas ? portfolioData.mxrf11_cotas + ' cotas · R$' + fmtNum(portfolioData.mxrf11_preco) : ''
   });
 
   if ((portfolioData.hglg11_cotas && portfolioData.hglg11_cotas > 0) || portfolioData.hglg11 > 0) {
@@ -1789,29 +1766,29 @@ async function renderWallet(rate) {
       : portfolioData.hglg11;
     items.push({
       icon: '🏭', name: 'HGLG11', type: 'FII de Logística · Nubank', cat: 'br',
-      val: 'R$' + hglgVal.toFixed(2),
-      meta: portfolioData.hglg11_cotas ? portfolioData.hglg11_cotas + ' cotas · R$' + portfolioData.hglg11_preco.toFixed(2) : ''
+      val: 'R$' + fmtNum(hglgVal),
+      meta: portfolioData.hglg11_cotas ? portfolioData.hglg11_cotas + ' cotas · R$' + fmtNum(portfolioData.hglg11_preco) : ''
     });
   }
 
-  items.push({ icon: '📈', name: 'Tesouro IPCA+', type: 'Renda Fixa · Nubank', cat: 'br', val: 'R$' + portfolioData.ipca.toFixed(2), meta: 'Longo prazo' });
+  items.push({ icon: '📈', name: 'Tesouro IPCA+', type: 'Renda Fixa · Nubank', cat: 'br', val: 'R$' + fmtNum(portfolioData.ipca), meta: 'Longo prazo' });
 
   if (portfolioData.selic > 0) {
-    items.push({ icon: '💵', name: 'Tesouro Selic', type: 'Liquidez · Nubank', cat: 'br', val: 'R$' + portfolioData.selic.toFixed(2), meta: '' });
+    items.push({ icon: '💵', name: 'Tesouro Selic', type: 'Liquidez · Nubank', cat: 'br', val: 'R$' + fmtNum(portfolioData.selic), meta: '' });
   }
   if (portfolioData.caixinha > 0) {
-    items.push({ icon: '💰', name: 'Caixinha CDI', type: 'Aguardando destino · Nubank', cat: 'cash', val: 'R$' + portfolioData.caixinha.toFixed(2), meta: '' });
+    items.push({ icon: '💰', name: 'Caixinha CDI', type: 'Aguardando destino · Nubank', cat: 'cash', val: 'R$' + fmtNum(portfolioData.caixinha), meta: '' });
   }
 
   items.push({
     icon: '🌍', name: 'VWCE', type: 'ETF Global Acc · Revolut', cat: 'intl',
-    val: '€' + portfolioData.vwce.toFixed(2),
-    meta: portfolioData.vwce_cotas ? portfolioData.vwce_cotas.toFixed(4) + ' cotas · €' + (portfolioData.vwce_preco || 0).toFixed(2) : ''
+    val: '€' + fmtNum(portfolioData.vwce),
+    meta: portfolioData.vwce_cotas ? portfolioData.vwce_cotas.toFixed(4) + ' cotas · €' + fmtNum(portfolioData.vwce_preco || 0) : ''
   });
   items.push({
     icon: '🔒', name: 'EUNA', type: 'ETF Bonds Acc · Revolut', cat: 'intl',
-    val: '€' + portfolioData.euna.toFixed(2),
-    meta: portfolioData.euna_cotas ? portfolioData.euna_cotas.toFixed(4) + ' cotas · €' + (portfolioData.euna_preco || 0).toFixed(2) : ''
+    val: '€' + fmtNum(portfolioData.euna),
+    meta: portfolioData.euna_cotas ? portfolioData.euna_cotas.toFixed(4) + ' cotas · €' + fmtNum(portfolioData.euna_preco || 0) : ''
   });
 
   if (portfolioData.bitcoin > 0 || portfolioData.bitcoin_invested_eur > 0) {
@@ -1821,13 +1798,13 @@ async function renderWallet(rate) {
     const currentVal = btcPrice ? qty * btcPrice : null;
     items.push({
       icon: '₿', name: 'Bitcoin', type: 'Crypto · Informal', cat: 'btc',
-      val: currentVal !== null ? '€' + currentVal.toFixed(2) : '€' + invested.toFixed(2) + ' investido',
+      val: currentVal !== null ? '€' + fmtNum(currentVal) : '€' + fmtNum(invested) + ' investido',
       meta: qty > 0 ? qty.toFixed(8) + ' BTC' + (currentVal !== null ? ' · cotação ao vivo' : ' · cotação indisponível')
             : 'aguardando cotação para converter'
     });
   }
   if (portfolioData.dividendos > 0) {
-    items.push({ icon: '💚', name: 'Dividendos recebidos', type: 'Acumulado total', cat: 'div', val: 'R$' + portfolioData.dividendos.toFixed(2), meta: '' });
+    items.push({ icon: '💚', name: 'Dividendos recebidos', type: 'Acumulado total', cat: 'div', val: 'R$' + fmtNum(portfolioData.dividendos), meta: '' });
   }
 
   list.innerHTML = items.map(it => `
@@ -1861,7 +1838,7 @@ function _drawEvoChart(points, months, sym) {
     labelsEl.innerHTML = points.map((v, i) => `
       <div class="evo-label-item">
         <div class="evo-label-month">${months[i]}</div>
-        <div class="evo-label-value mval">${sym}${v.toFixed(0)}</div>
+        <div class="evo-label-value mval">${sym}${fmtNum(v, 0)}</div>
       </div>`).join('');
   }
 }
@@ -1955,7 +1932,8 @@ function renderAlertas() {
   const brInvestedEur = (portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + portfolioData.ipca + portfolioData.selic) / rate;
   const cashEur = portfolioData.caixinha / rate;
   const intlEur = portfolioData.vwce + portfolioData.euna;
-  const btcValueEur = portfolioData.bitcoin_invested_eur || 0;
+  // Usa a cotação ao vivo do BTC quando já buscada nesta sessão — igual ao Dashboard
+  const btcValueEur = btcPriceEur ? portfolioData.bitcoin * btcPriceEur : (portfolioData.bitcoin_invested_eur || 0);
   const totalEur = brInvestedEur + intlEur + cashEur + btcValueEur;
   const brPct = totalEur > 0 ? (brInvestedEur + cashEur) / totalEur : 0;
 
@@ -1997,7 +1975,7 @@ function renderAlertas() {
 
   // Caixinha parada há muito tempo sem destino definido
   if (portfolioData.caixinha > 150) {
-    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Caixinha com saldo a decidir', desc: `R$${portfolioData.caixinha.toFixed(2)} aguardando destino. Decida no próximo aporte (28/29): HGLG11, mais MXRF11 ou IPCA+.`, action: true });
+    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Caixinha com saldo a decidir', desc: `R$${fmtNum(portfolioData.caixinha)} aguardando destino. Decida no próximo aporte (28/29): HGLG11, mais MXRF11 ou IPCA+.`, action: true });
     actionableCount++;
   }
 
@@ -2020,7 +1998,7 @@ function renderAlertas() {
   alerts.push({ type: 'blue', icon: '📅', title: 'Deemed disposal — 2033', desc: 'Exit Tax 38% sobre VWCE e EUNA. A partir de 2032, planejar liquidez para pagar.' });
 
   if (portfolioData.dividendos > 0) {
-    alerts.push({ type: 'green', icon: '💚', title: 'Dividendos ativos', desc: `Total recebido: R$${portfolioData.dividendos.toFixed(2)}. MXRF11 gerando renda passiva mensal.` });
+    alerts.push({ type: 'green', icon: '💚', title: 'Dividendos ativos', desc: `Total recebido: R$${fmtNum(portfolioData.dividendos)}. MXRF11 gerando renda passiva mensal.` });
   }
 
   if (portfolioData.hglg11_cotas && portfolioData.hglg11_cotas > 0) {
@@ -2100,7 +2078,7 @@ function onAtivoChange() {
   if (row) {
     const show = BR_ASSETS.includes(ativo) && portfolioData.caixinha > 0;
     row.style.display = show ? '' : 'none';
-    if (show) document.getElementById('f-caixinha-saldo').textContent = portfolioData.caixinha.toFixed(2);
+    if (show) document.getElementById('f-caixinha-saldo').textContent = fmtNum(portfolioData.caixinha);
     else document.getElementById('f-usar-caixinha').checked = false;
   }
 }
@@ -2118,9 +2096,6 @@ async function registrarAporte() {
     return;
   }
 
-  const db = window._db;
-  const { collection, addDoc } = window._dbFns;
-
   const btn = document.getElementById('aporteSubmitBtn');
   const btnOriginalText = btn.innerHTML;
   btn.disabled = true;
@@ -2133,14 +2108,30 @@ async function registrarAporte() {
       data: new Date().toISOString(),
       timestamp: Date.now()
     };
-    if (TEST_MODE) testAportes.unshift(aporteDoc);
-    else await addDoc(collection(db, 'aportes'), aporteDoc);
+    if (TEST_MODE) {
+      testAportes.unshift(aporteDoc);
+    } else {
+      const db = window._db;
+      if (!db || !window._dbFns) throw new Error('Firebase não carregou — verifique a conexão');
+      const { collection, addDoc } = window._dbFns;
+      await addDoc(collection(db, 'aportes'), aporteDoc);
+    }
+    _evoAportes = null; // invalida o cache para o gráfico de evolução refletir este aporte
+
+    // Conversão de moeda: cada ativo tem moeda nativa (FIIs/Tesouro/Caixinha/Dividendo em BRL,
+    // ETFs/Bitcoin em EUR). Se o valor foi informado na outra moeda, converte pelo câmbio do dia
+    // para os cálculos da carteira — o registro no histórico mantém a moeda original.
+    const cambioDia = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
+    const NATIVO_BRL = ['MXRF11', 'HGLG11', 'IPCA+', 'Selic', 'Caixinha', 'Dividendo'];
+    let valorNativo = valor;
+    if (NATIVO_BRL.includes(ativo) && moeda === 'EUR') valorNativo = valor * cambioDia;
+    if (!NATIVO_BRL.includes(ativo) && moeda === 'BRL') valorNativo = valor / cambioDia;
 
     // Update cotas and preco in portfolioData
     // Preço por cota é opcional: se não informado, é derivado de valor/qtd (o app faz a conta).
     if (qtd && parseFloat(qtd) > 0) {
       const qtdNum = parseFloat(qtd);
-      const precoEfetivo = preco ? parseFloat(preco) : (valor / qtdNum);
+      const precoEfetivo = preco ? parseFloat(preco) : (valorNativo / qtdNum);
       if (ativo === 'MXRF11') {
         portfolioData.mxrf11_cotas = (portfolioData.mxrf11_cotas || 0) + qtdNum;
         portfolioData.mxrf11_preco = precoEfetivo;
@@ -2163,23 +2154,20 @@ async function registrarAporte() {
       }
     }
     // Pagar com a Caixinha — só quando o checkbox do formulário estiver marcado
+    // (para ativos BR, valorNativo já está em BRL)
     if (document.getElementById('f-usar-caixinha')?.checked && BR_ASSETS.includes(ativo)) {
-      const cambioCx = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
-      const valorBrl = moeda === 'EUR' ? valor * cambioCx : valor;
-      portfolioData.caixinha = Math.max(0, portfolioData.caixinha - valorBrl);
+      portfolioData.caixinha = Math.max(0, portfolioData.caixinha - valorNativo);
     }
 
     // Bitcoin — usa quantidade informada no campo ou busca cotação ao vivo (CoinGecko)
     if (ativo === 'Bitcoin') {
-      const cambioAtual = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
-      const valorEur = moeda === 'BRL' ? valor / cambioAtual : valor;
-      portfolioData.bitcoin_invested_eur = (portfolioData.bitcoin_invested_eur || 0) + valorEur;
+      portfolioData.bitcoin_invested_eur = (portfolioData.bitcoin_invested_eur || 0) + valorNativo;
       if (qtd && parseFloat(qtd) > 0) {
         portfolioData.bitcoin = (portfolioData.bitcoin || 0) + parseFloat(qtd);
       } else {
         const btcPrice = await fetchBTCPriceEUR();
         if (btcPrice) {
-          portfolioData.bitcoin = (portfolioData.bitcoin || 0) + (valorEur / btcPrice);
+          portfolioData.bitcoin = (portfolioData.bitcoin || 0) + (valorNativo / btcPrice);
         } else {
           showToast('⚠️ CoinGecko indisponível — preencha o campo "Quantidade" com os BTC recebidos no Revolut para registrar corretamente.');
         }
@@ -2188,18 +2176,14 @@ async function registrarAporte() {
 
     // Update portfolio data in memory (ativos com cotas já foram atualizados acima quando qtd foi informado)
     const temQtd = qtd && parseFloat(qtd) > 0;
-    if (ativo === 'MXRF11' && !temQtd) portfolioData.mxrf11 += valor;
-    else if (ativo === 'HGLG11' && !temQtd) portfolioData.hglg11 += valor;
-    else if (ativo === 'IPCA+') portfolioData.ipca += valor;
-    else if (ativo === 'Selic') portfolioData.selic += valor;
-    else if (ativo === 'VWCE' && !temQtd) portfolioData.vwce += valor;
-    else if (ativo === 'EUNA' && !temQtd) portfolioData.euna += valor;
-    else if (ativo === 'Caixinha') {
-      // Caixinha (Nubank) é guardada em BRL — converte se o valor foi informado em EUR
-      const cambioCx = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
-      portfolioData.caixinha += moeda === 'EUR' ? valor * cambioCx : valor;
-    }
-    else if (ativo === 'Dividendo') portfolioData.dividendos += valor;
+    if (ativo === 'MXRF11' && !temQtd) portfolioData.mxrf11 += valorNativo;
+    else if (ativo === 'HGLG11' && !temQtd) portfolioData.hglg11 += valorNativo;
+    else if (ativo === 'IPCA+') portfolioData.ipca += valorNativo;
+    else if (ativo === 'Selic') portfolioData.selic += valorNativo;
+    else if (ativo === 'VWCE' && !temQtd) portfolioData.vwce += valorNativo;
+    else if (ativo === 'EUNA' && !temQtd) portfolioData.euna += valorNativo;
+    else if (ativo === 'Caixinha') portfolioData.caixinha += valorNativo;
+    else if (ativo === 'Dividendo') portfolioData.dividendos += valorNativo;
 
     // Save updated portfolio to Firebase
     await savePortfolio();
@@ -2262,14 +2246,21 @@ async function loadPortfolio() {
         portfolioData._migration_v3 = true;
         await savePortfolio();
       }
+      // Migração v4: incorpora as cotas dos aportes de 26/06 registrados sem quantidade
+      // (VWCE €50 = 0.30864197 cotas, EUNA €30 = 6.06219815 cotas — confirmados no Revolut)
+      if (!portfolioData._migration_v4) {
+        portfolioData.vwce_cotas = 0.1528491 + 0.30864197;   // 0.46149107
+        portfolioData.euna_cotas = 3.04346061 + 6.06219815;  // 9.10565876
+        portfolioData.vwce = portfolioData.vwce_cotas * (portfolioData.vwce_preco || 165.39);
+        portfolioData.euna = portfolioData.euna_cotas * (portfolioData.euna_preco || 4.92);
+        portfolioData._migration_v4 = true;
+        await savePortfolio();
+      }
       const cambio = document.getElementById('pill-cambio').textContent.replace('R$','') || '6';
       if (proxyAvailable) {
         try {
           const md = await fetch('http://localhost:3001/market-data').then(r => r.json());
-          if (md.mxrf11?.price && portfolioData.mxrf11_cotas) { portfolioData.mxrf11_preco = md.mxrf11.price; portfolioData.mxrf11 = portfolioData.mxrf11_cotas * md.mxrf11.price; }
-          if (md.hglg11?.price && portfolioData.hglg11_cotas) { portfolioData.hglg11_preco = md.hglg11.price; portfolioData.hglg11 = portfolioData.hglg11_cotas * md.hglg11.price; }
-          if (md.vwce?.price  && portfolioData.vwce_cotas)   { portfolioData.vwce_preco  = md.vwce.price;  portfolioData.vwce  = portfolioData.vwce_cotas  * md.vwce.price; }
-          if (md.euna?.price  && portfolioData.euna_cotas)   { portfolioData.euna_preco  = md.euna.price;  portfolioData.euna  = portfolioData.euna_cotas  * md.euna.price; }
+          applyLivePrices(md);
         } catch(e) {}
       }
       updateDashboard(cambio);
@@ -2307,13 +2298,22 @@ function onHistoricoFilterChange() {
 }
 
 async function loadHistorico() {
-  const db = window._db;
-  const { collection, getDocs, query, orderBy } = window._dbFns;
   const list = document.getElementById('historicoList');
+  let allDocs = [];
   try {
+    const db = window._db;
+    const { collection, getDocs, query, orderBy } = window._dbFns;
     const q = query(collection(db, 'aportes'), orderBy('timestamp', 'desc'));
     const snap = await getDocs(q);
-    const allDocs = snap.docs.map(d => d.data());
+    allDocs = snap.docs.map(d => d.data());
+  } catch(e) {
+    // Em modo teste o histórico funciona mesmo sem Firebase (mostra só os aportes de teste)
+    if (!TEST_MODE) {
+      list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">Erro ao carregar histórico.</div>';
+      return;
+    }
+  }
+  try {
     if (TEST_MODE) allDocs.unshift(...testAportes);
     if (allDocs.length === 0) {
       list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">Nenhum aporte registrado ainda.<br>O primeiro aporte do mês 1 foi feito diretamente no Nubank e Revolut.</div>';
@@ -2336,7 +2336,7 @@ async function loadHistorico() {
           <div class="hi-asset">${data.ativo}${data.qtd ? ' · ' + data.qtd + ' cotas' : ''}</div>
           <div class="hi-date">${date}${data.nota ? ' · ' + data.nota : ''}</div>
         </div>
-        <div class="hi-val mval">${sym}${parseFloat(data.valor).toFixed(2)}</div>
+        <div class="hi-val mval">${sym}${fmtNum(parseFloat(data.valor))}</div>
       </div>`;
     }).join('');
   } catch(e) {
@@ -2351,17 +2351,19 @@ let _evoAportes = null;
 let _lastTotalEur = 0;
 
 async function loadAportesForEvo() {
-  if (_evoAportes) return _evoAportes;
+  // Em modo teste, os aportes de teste (só em memória) entram no gráfico junto com os do Firebase
+  const withTest = docs => TEST_MODE ? [...docs, ...testAportes] : docs;
+  if (_evoAportes) return withTest(_evoAportes);
   const db = window._db;
-  if (!db) return [];
+  if (!db) return withTest([]);
   const { collection, getDocs, query, orderBy } = window._dbFns;
   try {
     const q = query(collection(db, 'aportes'), orderBy('timestamp', 'asc'));
     const snap = await getDocs(q);
     _evoAportes = snap.docs.map(d => d.data());
-    return _evoAportes;
+    return withTest(_evoAportes);
   } catch(e) {
-    return [];
+    return withTest([]);
   }
 }
 
