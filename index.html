@@ -799,6 +799,17 @@ textarea::placeholder { color: var(--muted2); }
 /* Painel de dividendos */
 .div-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 4px; }
 
+/* Insight do dia */
+.insight-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: linear-gradient(120deg, rgba(79,142,255,.09), var(--surf) 70%);
+  border: 1px solid rgba(79,142,255,.28);
+  border-radius: var(--r-md);
+  padding: 14px 18px; margin-bottom: 16px;
+}
+.insight-card .insight-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.insight-text { font-size: 12.5px; color: var(--txt); line-height: 1.65; }
+
 </style>
 </head>
 <body>
@@ -945,6 +956,12 @@ textarea::placeholder { color: var(--muted2); }
           </div>
         </div>
 
+        <!-- 1b. INSIGHT DO DIA (gerado 1x/dia pela IA, com cache) -->
+        <div class="insight-card" id="insight-card" style="display:none">
+          <span class="insight-icon">💡</span>
+          <div class="insight-text" id="insight-text"></div>
+        </div>
+
         <!-- 2. PROGRESSO DA META -->
         <div class="goal-card">
           <div class="goal-head">
@@ -1038,6 +1055,12 @@ textarea::placeholder { color: var(--muted2); }
           <div class="evo-note">Histórico real ainda está sendo construído — esta curva é uma estimativa até hoje. Conforme você for registrando aportes mês a mês, ela passa a refletir valores reais.</div>
         </div>
 
+        <!-- 8. RESUMO DO MÊS ANTERIOR (extrato inteligente, gerado 1x/mês) -->
+        <div class="evo-card" id="month-summary-card" style="display:none;margin-top:16px">
+          <div class="section-title">Resumo do mês <span class="stag" id="ms-tag"></span></div>
+          <div id="ms-text" style="font-size:12.5px;color:var(--txt);line-height:1.7;margin-top:4px"></div>
+        </div>
+
       </div>
 
       <!-- ── CARTEIRA ── -->
@@ -1046,6 +1069,11 @@ textarea::placeholder { color: var(--muted2); }
           <div class="section-title">Sua carteira <span class="stag" id="wallet-total-tag">aportado vs hoje</span></div>
           <div class="wallet-summary" id="wallet-summary"></div>
           <div class="wallet-list" id="wallet-list"></div>
+          <button class="score-ask-btn" id="analyzeBtn" onclick="analyzePortfolio()" style="margin-top:16px">🔍 Analisar carteira com IA</button>
+        </div>
+        <div class="wallet-card" id="analysis-card" style="display:none">
+          <div class="section-title">Análise da carteira <span class="stag" id="analysis-date"></span></div>
+          <div id="analysis-text" style="font-size:12.5px;color:var(--txt);line-height:1.75;margin-top:4px"></div>
         </div>
         <div class="wallet-card">
           <div class="section-title">Dividendos <span class="stag">renda passiva</span></div>
@@ -1377,6 +1405,7 @@ function showPage(id, el) {
   if (id === 'carteira') {
     const cambio = document.getElementById('pill-cambio').textContent.replace('R$','') || '6';
     renderWallet(parseFloat(cambio) || 6);
+    restoreLastAnalysis();
   }
   closeSidebar();
 }
@@ -1954,6 +1983,108 @@ async function renderEvolution(currentTotal) {
 }
 
 
+// ─────────────────────────────────────────
+// FASE 3 — INTELIGÊNCIA EMBUTIDA
+// ─────────────────────────────────────────
+
+// 💡 Insight do dia — 1 chamada de IA por dia, com cache no aparelho
+async function loadDailyInsight() {
+  const card = document.getElementById('insight-card');
+  const txt = document.getElementById('insight-text');
+  if (!card || !txt) return;
+  if (!apiKey && !geminiKey) { card.style.display = 'none'; return; }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const KEY = 'wf_daily_insight';
+  try {
+    const c = JSON.parse(localStorage.getItem(KEY));
+    if (c && c.date === today && c.text) { txt.textContent = c.text; card.style.display = 'flex'; return; }
+  } catch {}
+
+  try {
+    const prompt = 'Gere UM insight útil de HOJE para o investidor, com base no perfil e nos indicadores atuais. Máximo 35 palavras, texto corrido, direto, sem saudação e sem repetir números óbvios da carteira. Temas possíveis: câmbio da semana, dividendo esperado, proximidade do dia de aporte (28/29), equilíbrio da carteira.';
+    const insight = await callAI(ASSISTANT_SYSTEM + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 120);
+    localStorage.setItem(KEY, JSON.stringify({ date: today, text: insight }));
+    txt.textContent = insight;
+    card.style.display = 'flex';
+  } catch (e) { card.style.display = 'none'; }
+}
+
+// 📄 Resumo do mês anterior — extrato inteligente, gerado 1x quando o mês vira
+async function loadMonthlySummary() {
+  const card = document.getElementById('month-summary-card');
+  if (!card) return;
+  if (!apiKey && !geminiKey) return;
+
+  const now = new Date();
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+  const monthLabel = prev.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const KEY = 'wf_month_summary';
+
+  const show = text => {
+    document.getElementById('ms-tag').textContent = monthLabel;
+    document.getElementById('ms-text').innerHTML = text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    card.style.display = '';
+  };
+
+  try {
+    const c = JSON.parse(localStorage.getItem(KEY));
+    if (c && c.month === prevKey && c.text) { show(c.text); return; }
+  } catch {}
+
+  const docs = await loadAportesForEvo();
+  const monthDocs = (docs || []).filter(d => (d.data || '').startsWith(prevKey));
+  if (monthDocs.length === 0) return; // sem movimentos no mês anterior — nada a resumir
+
+  const linhas = monthDocs.map(d => `${d.ativo} ${d.moeda === 'EUR' ? '€' : 'R$'}${d.valor}${d.qtd ? ' (' + d.qtd + ' cotas)' : ''}`).join('; ');
+  try {
+    const prompt = `Resuma o mês de ${monthLabel} do investidor em UM parágrafo de no máximo 70 palavras, tom de extrato inteligente: o que foi aportado (${linhas}), dividendos se houve, e se ficou aderente ao plano de €100/mês na referência 60/40. Texto corrido, sem listas, sem saudação.`;
+    const text = await callAI(ASSISTANT_SYSTEM + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 200);
+    localStorage.setItem(KEY, JSON.stringify({ month: prevKey, text }));
+    show(text);
+  } catch (e) {}
+}
+
+// 🔍 Análise completa da carteira — sob demanda, único lugar com tom de assessor
+async function analyzePortfolio() {
+  if (!apiKey && !geminiKey) {
+    showPage('config', document.querySelectorAll('.nav-item')[5]);
+    showToast('⚠️ Configure sua chave API primeiro!');
+    return;
+  }
+  const btn = document.getElementById('analyzeBtn');
+  const card = document.getElementById('analysis-card');
+  const txtEl = document.getElementById('analysis-text');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analisando sua carteira…';
+  try {
+    const prompt = 'Faça uma ANÁLISE COMPLETA da carteira: proporção Brasil/Internacional vs referência 60/40, concentração por ativo, rentabilidade vs aportado, riscos relevantes, aderência ao plano e sugestão concreta para o próximo aporte. Aqui você PODE se aprofundar: até ~250 palavras, em parágrafos curtos, sem títulos e sem listas com asteriscos.';
+    const text = await callAI(ASSISTANT_SYSTEM + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 900);
+    txtEl.innerHTML = text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    document.getElementById('analysis-date').textContent = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    card.style.display = '';
+    localStorage.setItem('wf_last_analysis', JSON.stringify({ ts: Date.now(), text }));
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (e) {
+    showToast('❌ ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Analisar carteira com IA';
+  }
+}
+
+// Restaura a última análise salva ao abrir a Carteira
+function restoreLastAnalysis() {
+  try {
+    const c = JSON.parse(localStorage.getItem('wf_last_analysis'));
+    if (!c || !c.text) return;
+    document.getElementById('analysis-text').innerHTML = c.text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    document.getElementById('analysis-date').textContent = new Date(c.ts).toLocaleDateString('pt-BR');
+    document.getElementById('analysis-card').style.display = '';
+  } catch {}
+}
+
 function askRiskAgentAboutScore() {
   const overall = document.getElementById('score-value').textContent;
   const disciplina = document.getElementById('score-num-disciplina').textContent;
@@ -1973,7 +2104,11 @@ function askRiskAgentAboutScore() {
 // ─────────────────────────────────────────
 // ALERTAS
 // ─────────────────────────────────────────
-function renderAlertas() {
+async function renderAlertas() {
+  const docs = await loadAportesForEvo().catch(() => []);
+  const hoje = new Date();
+  const diaHoje = hoje.getDate();
+  const mesKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
   const sel = document.getElementById('pill-selic').textContent;
   const selicVal = parseFloat(sel) || 14.25;
   const rate = parseFloat(document.getElementById('pill-cambio')?.textContent.replace('R$','')) || 6;
@@ -2033,6 +2168,13 @@ function renderAlertas() {
     actionableCount++;
   }
 
+  // Lembrete do aporte mensal (dia 28/29) — só se ainda não aportou este mês
+  const aportouEsteMes = (docs || []).some(d => (d.data || '').startsWith(mesKey) && d.ativo !== 'Dividendo');
+  if (diaHoje >= 26 && !aportouEsteMes) {
+    alerts.push({ type: 'amber', icon: '📅', title: 'AÇÃO SUGERIDA: Aporte do mês chegando', desc: `O aporte de €100 é sempre dia 28/29 e ainda não há registro em ${hoje.toLocaleDateString('pt-BR', { month: 'long' })}. Veja a "Sugestão do mês" em Registrar Aporte.`, action: true });
+    actionableCount++;
+  }
+
   document.getElementById('alertCount').textContent = actionableCount;
   const badgeMobile = document.getElementById('alertCountMobile');
   if (badgeMobile) {
@@ -2059,6 +2201,15 @@ function renderAlertas() {
     alerts.push({ type: 'green', icon: '🏭', title: 'HGLG11 ativo na carteira', desc: `${portfolioData.hglg11_cotas} cotas. Diversificação de FIIs completa.` });
   } else {
     alerts.push({ type: 'blue', icon: '🎯', title: 'Próximo objetivo: HGLG11', desc: 'Programado para o aporte de 28/29 de junho.' });
+  }
+
+  // Janela típica de pagamento do MXRF11 (~dia 15) — informativo, só se ainda não registrou dividendo no mês
+  if (diaHoje >= 12 && diaHoje <= 18 && (portfolioData.mxrf11_cotas || 0) > 0) {
+    const jaRegistrou = (docs || []).some(d => d.ativo === 'Dividendo' && (d.data || '').startsWith(mesKey));
+    if (!jaRegistrou) {
+      const est = portfolioData.mxrf11_cotas * 0.10;
+      alerts.push({ type: 'blue', icon: '💰', title: 'Dividendo do MXRF11 esperado', desc: `O MXRF11 costuma pagar nesta janela (~R$${fmtNum(est)} com suas ${portfolioData.mxrf11_cotas} cotas). Quando cair no Nubank, registre em Registrar Aporte → Dividendo.` });
+    }
   }
 
   document.getElementById('alertsList').innerHTML = alerts.map(a => {
@@ -2303,7 +2454,7 @@ async function registrarAporte() {
     updateDashboard(cambio);
 
     // Refaz os Alertas na hora (não só quando o usuário navegar até lá) e notifica se este aporte desequilibrou a carteira
-    const riskAlertCount = renderAlertas();
+    const riskAlertCount = await renderAlertas();
     if (riskAlertCount > 0) {
       setTimeout(() => showToast('⚠️ Este aporte pode ter desequilibrado sua carteira — veja Alertas ou consulte o Gestor de Risco'), 3200);
     }
@@ -2915,6 +3066,9 @@ async function init() {
     });
   }
   renderAlertas();
+  // Inteligência embutida (fase 3): geradas 1x/dia e 1x/mês, com cache — custo mínimo
+  loadDailyInsight();
+  loadMonthlySummary();
   setInterval(loadMarketData, 5 * 60 * 1000);
 }
 </script>
