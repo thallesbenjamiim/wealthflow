@@ -470,7 +470,8 @@ textarea::placeholder { color: var(--muted2); }
   box-shadow: var(--shadow-pop);
 }
 @media (max-width: 820px) {
-  .test-mode-badge { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  /* No celular o selo vai para o topo — embaixo ele cobria o campo de digitação do chat */
+  .test-mode-badge { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 15px); right: 14px; left: auto; transform: none; }
 }
 
 /* PIN LOCK SCREEN */
@@ -531,7 +532,8 @@ textarea::placeholder { color: var(--muted2); }
    ═══════════════════════════════════════ */
 @media (max-width: 820px) {
   body { overflow: auto; }
-  .shell { flex-direction: column; height: 100vh; }
+  /* 100dvh: altura real visível — se ajusta quando a barra do navegador ou o teclado aparecem */
+  .shell { flex-direction: column; height: 100vh; height: 100dvh; }
 
   .sidebar {
     position: fixed;
@@ -573,7 +575,12 @@ textarea::placeholder { color: var(--muted2); }
   .content { padding: 18px 16px 90px; }
 
   .aporte-grid { grid-template-columns: 1fr; }
-  .agents-grid { grid-template-columns: 1fr; height: auto; gap: 12px; }
+
+  /* Página de agentes vira coluna flexível: o chat ocupa TODA a altura que sobrar,
+     em vez de uma altura fixa calculada — se adapta a qualquer tela e ao teclado aberto */
+  .content:has(#page-agentes.active) { display: flex; flex-direction: column; }
+  #page-agentes.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .agents-grid { display: flex; flex-direction: column; flex: 1; min-height: 0; height: auto; gap: 12px; }
 
   /* Agentes viram chips compactos em linha rolável */
   .agent-list { flex-direction: row; overflow-x: auto; gap: 8px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
@@ -584,8 +591,18 @@ textarea::placeholder { color: var(--muted2); }
   .agent-card .ac-name-full { display: none; }
   .agent-card .ac-name-short { display: inline; }
 
-  /* Chat ocupa a altura disponível até a bottom nav */
-  .chat-panel { height: calc(100vh - 245px); height: calc(100dvh - 245px); min-height: 380px; }
+  /* Chat preenche o espaço restante da coluna flexível */
+  .chat-panel { flex: 1; min-height: 0; height: auto; }
+  .agent-list { flex-shrink: 0; }
+  /* Bolhas aproveitam melhor a largura do celular */
+  .msg { max-width: 96%; }
+  /* Cabeçalho, sugestões e input mais compactos — mais espaço para as mensagens */
+  .chat-head { padding: 11px 14px; }
+  .ch-av { width: 32px; height: 32px; font-size: 15px; }
+  .ch-desc { display: none; }
+  .quick { padding: 8px 14px; }
+  .input-row { padding: 10px 14px; }
+  .msgs { padding: 14px; gap: 11px; }
   .ch-name { font-size: 13px; }
   .ch-tags { display: none; }
   .chat-clear-btn { margin-left: auto; }
@@ -607,8 +624,6 @@ textarea::placeholder { color: var(--muted2); }
 
   /* Toast acima da bottom nav, sempre visível */
   .toast { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; text-align: center; }
-  /* Em modo teste o selo ocupa essa faixa — toast sobe pra não colidir */
-  body:has(.test-mode-badge) .toast { bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ═══════════════════════════════════════
@@ -1273,6 +1288,14 @@ FILOSOFIA: priorizar consistência de aportes, diversificação, controle de ris
 NUNCA incentivar: day trade, swing trade especulativo, alavancagem, uso de margem, empréstimos para investir, ETFs alavancados, concentração excessiva em um único ativo, decisões baseadas apenas em notícias ou hype.
 
 REGRA DE APROVAÇÃO HUMANA: Nenhuma recomendação deve ser executada automaticamente. O WealthFlow apenas sugere. O investidor sempre toma a decisão final. Toda sugestão de mudança deve incluir motivo, benefícios, riscos e impacto na meta de longo prazo.
+
+ESTILO DE RESPOSTA (OBRIGATÓRIO — o chat é usado principalmente no celular):
+- Responda CURTO: no máximo ~120 palavras (umas 6-8 linhas). Vá direto ao ponto.
+- Comece pela resposta/recomendação com os números essenciais. Nada de introduções.
+- NÃO repita o contexto do perfil nem explique conceitos básicos sem ser perguntado.
+- NÃO use listas longas nem seções com títulos. No máximo 2-3 bullets quando ajudar.
+- Se o assunto exigir profundidade, dê o resumo e pergunte: "Quer que eu detalhe?"
+- Motivo/benefício/risco de uma sugestão: uma frase para cada, não parágrafos.
 
 DATA ATUAL: ${new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}.
 CÂMBIO ATUAL EUR/BRL: ${cambio} (cotação comercial em tempo real)
@@ -2601,7 +2624,7 @@ async function sendMsg() {
     const ipca   = document.getElementById('pill-ipca')?.textContent   || '4.72%';
     const ecoCtx = `\n\nIndicadores econômicos atuais (${new Date().toLocaleDateString('pt-BR')}): Selic ${selic} | IPCA 12m ${ipca} | EUR/BRL ${cambio}`;
     const fullSystem = a.system + '\n\n' + getProfile() + ecoCtx;
-    const reply = await callAI(fullSystem, histories[curAgent], 1500);
+    const reply = await callAI(fullSystem, histories[curAgent], 700);
     histories[curAgent].push({ role: 'assistant', content: reply });
     saveHistories();
 
