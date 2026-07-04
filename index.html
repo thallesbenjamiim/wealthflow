@@ -2551,6 +2551,14 @@ async function loadPortfolio() {
         portfolioData._migration_v4 = true;
         await savePortfolio();
       }
+      // Migração v5: corrige o custo real do Bitcoin (Revolut 04/07/2026:
+      // 0.00153789 BTC × entrada média $76.769,77 = $118,07 ≈ €101,84)
+      if (!portfolioData._migration_v5) {
+        portfolioData.bitcoin = 0.00153789;
+        portfolioData.bitcoin_invested_eur = 101.84;
+        portfolioData._migration_v5 = true;
+        await savePortfolio();
+      }
       const cambio = document.getElementById('pill-cambio').textContent.replace('R$','') || '6';
       if (proxyAvailable) {
         try {
