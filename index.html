@@ -786,6 +786,18 @@ textarea::placeholder { color: var(--muted2); }
 .wallet-right { text-align: right; flex-shrink: 0; }
 .wallet-val { font-size: 13px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--txt); }
 .wallet-meta { font-size: 10.5px; color: var(--muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+.wallet-pl { font-size: 10.5px; margin-top: 2px; font-family: 'DM Mono', monospace; font-weight: 600; }
+.pl-pos { color: var(--green); }
+.pl-neg { color: var(--red); }
+
+/* Resumo aportado vs hoje */
+.wallet-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 4px 0 16px; }
+.ws-tile { background: var(--surf2); border: 1px solid var(--bdr); border-radius: var(--r-sm); padding: 12px 14px; }
+.ws-label { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; margin-bottom: 5px; }
+.ws-value { font-size: 15px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--txt); }
+
+/* Painel de dividendos */
+.div-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 4px; }
 
 </style>
 </head>
@@ -1031,8 +1043,14 @@ textarea::placeholder { color: var(--muted2); }
       <!-- ── CARTEIRA ── -->
       <div class="page" id="page-carteira">
         <div class="wallet-card">
-          <div class="section-title">Sua carteira <span class="stag" id="wallet-total-tag">o que você já aportou</span></div>
+          <div class="section-title">Sua carteira <span class="stag" id="wallet-total-tag">aportado vs hoje</span></div>
+          <div class="wallet-summary" id="wallet-summary"></div>
           <div class="wallet-list" id="wallet-list"></div>
+        </div>
+        <div class="wallet-card">
+          <div class="section-title">Dividendos <span class="stag">renda passiva</span></div>
+          <div class="div-stats" id="div-stats"></div>
+          <div class="evo-note" id="div-note" style="margin-top:14px"></div>
         </div>
       </div>
 
@@ -1067,6 +1085,11 @@ textarea::placeholder { color: var(--muted2); }
 
       <!-- ── APORTAR ── -->
       <div class="page" id="page-aportar">
+        <div class="form-section" style="margin-bottom:16px">
+          <div class="fs-title">Sugestão do mês <span class="stag" id="guide-tag">€100 · dia 28/29</span></div>
+          <div class="fs-sub" id="guide-text">Carregando sugestão…</div>
+          <div id="guide-btns" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+        </div>
         <div class="aporte-grid">
           <div class="form-section">
             <div class="fs-title">Registrar Novo Aporte</div>
@@ -1348,7 +1371,7 @@ function showPage(id, el) {
   if (mobileTitle) mobileTitle.textContent = pageTitles[id][0];
   document.querySelectorAll('.bnav-item').forEach(b => b.classList.toggle('active', b.dataset.page === id));
   if (id === 'agentes') initAgents();
-  if (id === 'aportar') loadHistorico();
+  if (id === 'aportar') { loadHistorico(); renderAporteGuide(); }
   if (id === 'alertas') renderAlertas();
   if (id === 'config')  updateKeyStatus();
   if (id === 'carteira') {
@@ -1544,6 +1567,38 @@ function fmtNum(value, decimals = 2) {
   return (value || 0).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
+// ─────────────────────────────────────────
+// RENTABILIDADE REAL — custo de aquisição a partir dos aportes registrados
+// ─────────────────────────────────────────
+const ASSET_CURRENCY = { 'MXRF11':'BRL', 'HGLG11':'BRL', 'IPCA+':'BRL', 'Selic':'BRL', 'Caixinha':'BRL', 'Dividendo':'BRL', 'VWCE':'EUR', 'EUNA':'EUR', 'Bitcoin':'EUR' };
+
+// Soma o valor aportado por ativo, na moeda nativa de cada um
+function computeInvested(docs, rate) {
+  const inv = {};
+  (docs || []).forEach(d => {
+    if (d.ativo === 'Dividendo') return; // dividendo é renda, não custo
+    const cur = ASSET_CURRENCY[d.ativo] || 'EUR';
+    let v = parseFloat(d.valor) || 0;
+    if (d.moeda === 'EUR' && cur === 'BRL') v *= rate;
+    if (d.moeda === 'BRL' && cur === 'EUR') v /= rate;
+    inv[d.ativo] = (inv[d.ativo] || 0) + v;
+  });
+  // Bitcoin: compras antigas (pré-app) vivem em bitcoin_invested_eur, que já acumula as novas também
+  if (portfolioData.bitcoin_invested_eur) inv['Bitcoin'] = portfolioData.bitcoin_invested_eur;
+  return inv;
+}
+
+// Total tirado do bolso, em €: soma dos ativos (a Caixinha entra pelo SALDO atual —
+// o que saiu dela virou aporte em outro ativo e já está contado lá)
+function totalInvestedEur(inv, rate) {
+  let total = 0;
+  Object.entries(inv).forEach(([ativo, v]) => {
+    if (ativo === 'Caixinha') return;
+    total += ASSET_CURRENCY[ativo] === 'BRL' ? v / rate : v;
+  });
+  return total + (portfolioData.caixinha || 0) / rate;
+}
+
 async function updateDashboard(cambio) {
   const rate = parseFloat(cambio) || 6.0;
   const brInvested = portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + portfolioData.ipca + portfolioData.selic;
@@ -1569,7 +1624,22 @@ async function updateDashboard(cambio) {
     statusEl.className = 'hero-status amber';
     statusText.textContent = 'Atenção à alocação';
   }
-  document.getElementById('hero-growth').textContent = totalEur > 0 ? '+ R$' + fmtNum(portfolioData.dividendos) + ' em dividendos' : 'iniciando';
+  // Rentabilidade real: valor de mercado vs total aportado (dos registros de aporte)
+  const growthEl = document.getElementById('hero-growth');
+  try {
+    const invDocs = await loadAportesForEvo();
+    const investedEur = totalInvestedEur(computeInvested(invDocs, rate), rate);
+    if (investedEur > 1) {
+      const diff = totalEur - investedEur;
+      const diffPct = (diff / investedEur) * 100;
+      growthEl.textContent = `${diff >= 0 ? '▲ +' : '▼ −'}€${fmtNum(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(diffPct).toFixed(1)}%) vs €${fmtNum(investedEur, 0)} aportados`;
+      growthEl.style.color = diff >= 0 ? 'var(--green)' : 'var(--red)';
+    } else {
+      growthEl.textContent = totalEur > 0 ? '+ R$' + fmtNum(portfolioData.dividendos) + ' em dividendos' : 'iniciando';
+    }
+  } catch(e) {
+    growthEl.textContent = totalEur > 0 ? '+ R$' + fmtNum(portfolioData.dividendos) + ' em dividendos' : 'iniciando';
+  }
 
   // ── 2. META (R$1.000.000 — meta é em reais, convertida dinamicamente pela cotação do dia) ──
   const goalTargetEur = GOAL_TARGET_BRL / rate;
@@ -1671,23 +1741,40 @@ async function renderWallet(rate) {
   if (!list) return;
   const items = [];
 
+  // Custo de aquisição real por ativo (a partir dos aportes registrados)
+  const invDocs = await loadAportesForEvo();
+  const inv = computeInvested(invDocs, rate);
+
+  // Monta a linha de ganho/perda de um ativo com preço de mercado
+  const plLine = (invested, current, sym) => {
+    if (!invested || invested <= 0 || !current) return null;
+    const diff = current - invested;
+    const pct = (diff / invested) * 100;
+    return { txt: `${diff >= 0 ? '▲ +' : '▼ −'}${sym}${fmtNum(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)`, cls: diff >= 0 ? 'pl-pos' : 'pl-neg' };
+  };
+  const pm = (invested, cotas) => (invested > 0 && cotas > 0) ? invested / cotas : null;
+
   const mxrfVal = portfolioData.mxrf11_cotas
     ? (portfolioData.mxrf11_cotas * portfolioData.mxrf11_preco)
     : portfolioData.mxrf11;
+  const mxrfPm = pm(inv['MXRF11'], portfolioData.mxrf11_cotas);
   items.push({
     icon: '🏢', name: 'MXRF11', type: 'FII de Papel · Nubank', cat: 'br',
     val: 'R$' + fmtNum(mxrfVal),
-    meta: portfolioData.mxrf11_cotas ? portfolioData.mxrf11_cotas + ' cotas · R$' + fmtNum(portfolioData.mxrf11_preco) : ''
+    meta: portfolioData.mxrf11_cotas ? portfolioData.mxrf11_cotas + ' cotas · R$' + fmtNum(portfolioData.mxrf11_preco) + (mxrfPm ? ' · PM R$' + fmtNum(mxrfPm) : '') : '',
+    pl: plLine(inv['MXRF11'], mxrfVal, 'R$')
   });
 
   if ((portfolioData.hglg11_cotas && portfolioData.hglg11_cotas > 0) || portfolioData.hglg11 > 0) {
     const hglgVal = portfolioData.hglg11_cotas
       ? (portfolioData.hglg11_cotas * portfolioData.hglg11_preco)
       : portfolioData.hglg11;
+    const hglgPm = pm(inv['HGLG11'], portfolioData.hglg11_cotas);
     items.push({
       icon: '🏭', name: 'HGLG11', type: 'FII de Logística · Nubank', cat: 'br',
       val: 'R$' + fmtNum(hglgVal),
-      meta: portfolioData.hglg11_cotas ? portfolioData.hglg11_cotas + ' cotas · R$' + fmtNum(portfolioData.hglg11_preco) : ''
+      meta: portfolioData.hglg11_cotas ? portfolioData.hglg11_cotas + ' cotas · R$' + fmtNum(portfolioData.hglg11_preco) + (hglgPm ? ' · PM R$' + fmtNum(hglgPm) : '') : '',
+      pl: plLine(inv['HGLG11'], hglgVal, 'R$')
     });
   }
 
@@ -1700,15 +1787,19 @@ async function renderWallet(rate) {
     items.push({ icon: '💰', name: 'Caixinha CDI', type: 'Aguardando destino · Nubank', cat: 'cash', val: 'R$' + fmtNum(portfolioData.caixinha), meta: '' });
   }
 
+  const vwcePm = pm(inv['VWCE'], portfolioData.vwce_cotas);
   items.push({
     icon: '🌍', name: 'VWCE', type: 'ETF Global Acc · Revolut', cat: 'intl',
     val: '€' + fmtNum(portfolioData.vwce),
-    meta: portfolioData.vwce_cotas ? portfolioData.vwce_cotas.toFixed(4) + ' cotas · €' + fmtNum(portfolioData.vwce_preco || 0) : ''
+    meta: portfolioData.vwce_cotas ? portfolioData.vwce_cotas.toFixed(4) + ' cotas · €' + fmtNum(portfolioData.vwce_preco || 0) + (vwcePm ? ' · PM €' + fmtNum(vwcePm) : '') : '',
+    pl: plLine(inv['VWCE'], portfolioData.vwce, '€')
   });
+  const eunaPm = pm(inv['EUNA'], portfolioData.euna_cotas);
   items.push({
     icon: '🔒', name: 'EUNA', type: 'ETF Bonds Acc · Revolut', cat: 'intl',
     val: '€' + fmtNum(portfolioData.euna),
-    meta: portfolioData.euna_cotas ? portfolioData.euna_cotas.toFixed(4) + ' cotas · €' + fmtNum(portfolioData.euna_preco || 0) : ''
+    meta: portfolioData.euna_cotas ? portfolioData.euna_cotas.toFixed(4) + ' cotas · €' + fmtNum(portfolioData.euna_preco || 0) + (eunaPm ? ' · PM €' + fmtNum(eunaPm) : '') : '',
+    pl: plLine(inv['EUNA'], portfolioData.euna, '€')
   });
 
   if (portfolioData.bitcoin > 0 || portfolioData.bitcoin_invested_eur > 0) {
@@ -1720,7 +1811,8 @@ async function renderWallet(rate) {
       icon: '₿', name: 'Bitcoin', type: 'Crypto · Informal', cat: 'btc',
       val: currentVal !== null ? '€' + fmtNum(currentVal) : '€' + fmtNum(invested) + ' investido',
       meta: qty > 0 ? qty.toFixed(8) + ' BTC' + (currentVal !== null ? ' · cotação ao vivo' : ' · cotação indisponível')
-            : 'aguardando cotação para converter'
+            : 'aguardando cotação para converter',
+      pl: currentVal !== null ? plLine(inv['Bitcoin'], currentVal, '€') : null
     });
   }
   if (portfolioData.dividendos > 0) {
@@ -1736,8 +1828,49 @@ async function renderWallet(rate) {
       <div class="wallet-right">
         <div class="wallet-val mval">${it.val}</div>
         ${it.meta ? `<div class="wallet-meta mval">${it.meta}</div>` : ''}
+        ${it.pl ? `<div class="wallet-pl mval ${it.pl.cls}">${it.pl.txt}</div>` : ''}
       </div>
     </div>`).join('');
+
+  // ── Resumo: aportado vs vale hoje ──
+  const summaryEl = document.getElementById('wallet-summary');
+  if (summaryEl) {
+    const btcPriceNow = await fetchBTCPriceEUR();
+    const btcNow = btcPriceNow ? (portfolioData.bitcoin || 0) * btcPriceNow : (portfolioData.bitcoin_invested_eur || 0);
+    const currentTotal = (portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + portfolioData.ipca + portfolioData.selic + portfolioData.caixinha) / rate
+      + portfolioData.vwce + portfolioData.euna + btcNow;
+    const investedTotal = totalInvestedEur(inv, rate);
+    const diff = currentTotal - investedTotal;
+    const pct = investedTotal > 0 ? (diff / investedTotal) * 100 : 0;
+    summaryEl.innerHTML = `
+      <div class="ws-tile"><div class="ws-label">Você aportou</div><div class="ws-value mval">€${fmtNum(investedTotal)}</div></div>
+      <div class="ws-tile"><div class="ws-label">Vale hoje</div><div class="ws-value mval">€${fmtNum(currentTotal)}</div></div>
+      <div class="ws-tile"><div class="ws-label">Resultado</div><div class="ws-value mval ${diff >= 0 ? 'pl-pos' : 'pl-neg'}">${diff >= 0 ? '+' : '−'}€${fmtNum(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)</div></div>`;
+  }
+
+  // ── Painel de dividendos ──
+  const divStats = document.getElementById('div-stats');
+  if (divStats) {
+    const now = new Date();
+    const esteMes = (invDocs || []).filter(d => {
+      if (d.ativo !== 'Dividendo') return false;
+      const dt = new Date(d.data);
+      return dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth();
+    }).reduce((s, d) => s + (d.moeda === 'EUR' ? parseFloat(d.valor) * rate : parseFloat(d.valor)), 0);
+
+    // Estimativas com base nos dividendos típicos por cota (MXRF11 ~R$0,10 · HGLG11 ~R$1,10)
+    const estMensal = (portfolioData.mxrf11_cotas || 0) * 0.10 + (portfolioData.hglg11_cotas || 0) * 1.10;
+    const invFiis = (inv['MXRF11'] || 0) + (inv['HGLG11'] || 0);
+    const yoc = invFiis > 0 ? (estMensal * 12 / invFiis) * 100 : 0;
+
+    divStats.innerHTML = `
+      <div class="ws-tile"><div class="ws-label">Total recebido</div><div class="ws-value mval">R$${fmtNum(portfolioData.dividendos)}</div></div>
+      <div class="ws-tile"><div class="ws-label">Este mês</div><div class="ws-value mval">R$${fmtNum(esteMes)}</div></div>
+      <div class="ws-tile"><div class="ws-label">Estimativa mensal</div><div class="ws-value mval">R$${fmtNum(estMensal)}</div></div>
+      <div class="ws-tile"><div class="ws-label">Yield on cost (a.a.)</div><div class="ws-value mval">${yoc.toFixed(1).replace('.', ',')}%</div></div>`;
+    const divNote = document.getElementById('div-note');
+    if (divNote) divNote.textContent = 'Estimativa: MXRF11 ~R$0,10/cota e HGLG11 ~R$1,10/cota por mês. Registre cada dividendo recebido em "Registrar Aporte" → Dividendo para o total real crescer.';
+  }
 }
 
 function _drawEvoChart(points, months, sym) {
@@ -1989,6 +2122,55 @@ async function seedMayAportes() {
 const COTA_ASSETS = ['MXRF11', 'HGLG11', 'VWCE', 'EUNA'];
 // A Caixinha é a reserva para o lado Brasil do próximo aporte — qualquer um destes pode ser pago com ela
 const BR_ASSETS = ['MXRF11', 'HGLG11', 'IPCA+', 'Selic'];
+
+// ─────────────────────────────────────────
+// APORTE GUIADO — sugestão do mês (60/40) com preenchimento em 1 toque
+// ─────────────────────────────────────────
+function fillAporte(ativo, valor, moeda) {
+  document.getElementById('f-ativo').value = ativo;
+  onAtivoChange();
+  document.getElementById('f-valor').value = valor;
+  document.getElementById('f-moeda').value = moeda;
+  document.getElementById('f-qtd').value = '';
+  document.getElementById('f-preco').value = '';
+  const campo = COTA_ASSETS.includes(ativo) ? 'f-qtd' : 'f-nota';
+  document.getElementById(campo).focus();
+  showToast('✏️ Formulário preenchido — ' + (COTA_ASSETS.includes(ativo) ? 'informe as cotas e confirme' : 'confira e confirme'));
+}
+
+function renderAporteGuide() {
+  const btnsEl = document.getElementById('guide-btns');
+  const textEl = document.getElementById('guide-text');
+  if (!btnsEl || !textEl) return;
+  const rate = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
+  const brlBudget = 60 * rate;
+
+  // Lado Brasil: sugere o ativo com MENOR peso (MXRF11, HGLG11 ou IPCA+) p/ manter o equilíbrio interno
+  const brAssets = [
+    { ativo: 'MXRF11', val: portfolioData.mxrf11 || 0 },
+    { ativo: 'HGLG11', val: portfolioData.hglg11 || 0 },
+    { ativo: 'IPCA+',  val: portfolioData.ipca || 0 }
+  ];
+  const menor = brAssets.reduce((m, a) => a.val < m.val ? a : m, brAssets[0]);
+
+  const cx = portfolioData.caixinha || 0;
+  textEl.innerHTML = `Referência 60/40: <strong>€60 Brasil</strong> (≈ R$${fmtNum(brlBudget, 0)} — sugerido em <strong>${menor.ativo}</strong>, o de menor peso hoje) + <strong>€40 Internacional</strong> (VWCE €25 · EUNA €15).`
+    + (cx > 0 ? ` Há <strong>R$${fmtNum(cx)}</strong> na Caixinha aguardando destino — marque "pagar com a Caixinha" ao registrar.` : '');
+
+  const sugestoes = [
+    { label: `🇧🇷 ${menor.ativo} · R$${fmtNum(brlBudget, 0)}`, ativo: menor.ativo, valor: brlBudget.toFixed(2), moeda: 'BRL' },
+    { label: '🌍 VWCE · €25', ativo: 'VWCE', valor: '25', moeda: 'EUR' },
+    { label: '🔒 EUNA · €15', ativo: 'EUNA', valor: '15', moeda: 'EUR' }
+  ];
+  btnsEl.innerHTML = '';
+  sugestoes.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'qbtn';
+    b.textContent = s.label;
+    b.addEventListener('click', () => fillAporte(s.ativo, s.valor, s.moeda));
+    btnsEl.appendChild(b);
+  });
+}
 
 function onAtivoChange() {
   const ativo = document.getElementById('f-ativo').value;
