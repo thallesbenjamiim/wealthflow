@@ -546,16 +546,22 @@ textarea::placeholder { color: var(--muted2); }
   /* 100dvh: altura real visível — se ajusta quando a barra do navegador ou o teclado aparecem */
   .shell { flex-direction: column; height: 100vh; height: 100dvh; }
 
+  /* No celular o menu vira uma folha que sobe de baixo (aberta pelo ☰ da barra inferior) */
   .sidebar {
     position: fixed;
-    top: 0; left: 0; bottom: 0;
-    width: 270px;
-    transform: translateX(-100%);
-    box-shadow: 24px 0 60px rgba(0,0,0,.6);
-    /* Logo do menu lateral abaixo do notch no PWA */
-    padding-top: env(safe-area-inset-top, 0px);
+    left: 0; right: 0; bottom: 0; top: auto;
+    width: 100%;
+    max-height: 78dvh;
+    transform: translateY(100%);
+    border-right: none;
+    border-top: 1px solid var(--bdr2);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -24px 60px rgba(0,0,0,.6);
+    overflow-y: auto;
+    /* Não fica escondido atrás da barra inferior nem da barra do iPhone */
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
-  .sidebar.open { transform: translateX(0); }
+  .sidebar.open { transform: translateY(0); }
   .sidebar-overlay.open { display: block; }
 
   .mobile-topbar {
@@ -569,16 +575,6 @@ textarea::placeholder { color: var(--muted2); }
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--bdr);
     position: sticky; top: 0; z-index: 50;
-  }
-  .hamburger-btn {
-    width: 38px; height: 38px;
-    border-radius: var(--r-sm);
-    background: var(--surf2);
-    border: 1px solid var(--bdr2);
-    color: var(--txt);
-    font-size: 18px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; flex-shrink: 0;
   }
   .mobile-logo {
     font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px;
@@ -913,9 +909,8 @@ textarea::placeholder { color: var(--muted2); }
   <!-- MAIN -->
   <div class="main">
 
-    <!-- MOBILE TOPBAR (hambúrguer) -->
+    <!-- MOBILE TOPBAR -->
     <div class="mobile-topbar">
-      <button class="hamburger-btn" onclick="openSidebar()">☰</button>
       <span class="mobile-logo" id="mobilePageTitle">Dashboard</span>
     </div>
 
@@ -1267,6 +1262,10 @@ textarea::placeholder { color: var(--muted2); }
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
       Alertas
       <span class="bnav-badge" id="alertCountMobile">2</span>
+    </button>
+    <button class="bnav-item" data-page="menu" onclick="openSidebar()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      Menu
     </button>
   </nav>
 </div><!-- /shell -->
