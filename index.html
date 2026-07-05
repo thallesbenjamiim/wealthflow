@@ -1551,8 +1551,7 @@ async function salvarPerfil() {
   try {
     await saveProfile();
     refreshDerivedFromProfile();
-    const cambio = document.getElementById('pill-cambio').textContent.replace('R$','') || '6';
-    updateDashboard(cambio);
+    updateDashboard(getRate());
     showToast('✓ Perfil salvo!');
   } catch (e) {
     showToast('❌ Erro ao salvar perfil. Verifique a conexão.');
@@ -1565,9 +1564,9 @@ async function salvarPerfil() {
 // (versão enxuta: só os dados que mudam as respostas; o resto vive no system prompt)
 // ─────────────────────────────────────────
 function getProfile() {
-  const cambio = document.getElementById('pill-cambio').textContent || 'R$6,00';
-  const selic = document.getElementById('pill-selic').textContent || '14.25%';
-  const ipca = document.getElementById('pill-ipca').textContent || '4.72%';
+  const cambio = 'R$' + fmtNum(getRate());
+  const selic = fmtNum(marketRates.selic ?? 14.25) + '%';
+  const ipca = fmtNum(marketRates.ipca ?? 4.72) + '%';
   const fx = v => (v || 0).toFixed(2);
   const btcEur = btcPriceEur ? (portfolioData.bitcoin * btcPriceEur).toFixed(0) : (portfolioData.bitcoin_invested_eur || 0);
   const patrimonioAlvo = (profileData.rendaPassivaAlvo * 650 / 1000000).toFixed(1);
@@ -1646,8 +1645,7 @@ function showPage(id, el) {
   if (id === 'config')  updateKeyStatus();
   if (id === 'perfil')  preencherPerfil();
   if (id === 'carteira') {
-    const cambio = document.getElementById('pill-cambio').textContent.replace('R$','') || '6';
-    renderWallet(parseFloat(cambio) || 6);
+    renderWallet(getRate());
     restoreLastAnalysis();
   }
   closeSidebar();
@@ -1666,32 +1664,40 @@ function closeSidebar() {
 // ─────────────────────────────────────────
 // MARKET DATA
 // ─────────────────────────────────────────
+// Valores numéricos dos indicadores — fonte única para os cálculos.
+// Os pills mostram texto formatado pt-BR; nunca ler número de volta do textContent.
+let marketRates = { eurbrl: null, selic: null, ipca: null };
+function getRate() { return marketRates.eurbrl || 6; }
+
 async function fetchCambio() {
   try {
     const r = await fetch('https://economia.awesomeapi.com.br/json/last/EUR-BRL');
     const d = await r.json();
-    const val = parseFloat(d.EURBRL.bid).toFixed(2);
-    ['pill-cambio','sb-cambio'].forEach(id => document.getElementById(id).textContent = 'R$' + val);
+    const val = parseFloat(d.EURBRL.bid);
+    marketRates.eurbrl = val;
+    ['pill-cambio','sb-cambio'].forEach(id => document.getElementById(id).textContent = 'R$' + fmtNum(val));
     return val;
   } catch {
     ['pill-cambio','sb-cambio'].forEach(id => document.getElementById(id).textContent = '~R$6,00');
-    return '6.00';
+    return 6;
   }
 }
 
 async function fetchSelic() {
   // FALLBACK usado só quando o proxy está offline (o BCB bloqueia CORS direto do browser).
   // Com o proxy ativo, a Selic real vem do Banco Central (SGS 432) em loadMarketData.
-  const SELIC_FALLBACK = '14.25';
-  ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = SELIC_FALLBACK + '%'; });
-  return SELIC_FALLBACK + '%';
+  const SELIC_FALLBACK = 14.25;
+  marketRates.selic = SELIC_FALLBACK;
+  ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = fmtNum(SELIC_FALLBACK) + '%'; });
+  return SELIC_FALLBACK;
 }
 
 async function fetchIPCA() {
   // FALLBACK usado só quando o proxy está offline — com proxy, vem do BCB (SGS 13522).
-  const IPCA_FALLBACK = '4.72';
-  document.getElementById('pill-ipca').textContent = IPCA_FALLBACK + '%';
-  return IPCA_FALLBACK + '%';
+  const IPCA_FALLBACK = 4.72;
+  marketRates.ipca = IPCA_FALLBACK;
+  document.getElementById('pill-ipca').textContent = fmtNum(IPCA_FALLBACK) + '%';
+  return IPCA_FALLBACK;
 }
 
 let btcPriceEur = null; // cache em memória — evita repetir a chamada à API a cada render
@@ -1745,13 +1751,14 @@ async function loadMarketData() {
     try {
       const md = await fetch(proxyBase + '/market-data').then(r => r.json());
       if (md.eurbrl) {
-        ['pill-cambio','sb-cambio'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = 'R$' + parseFloat(md.eurbrl).toFixed(2); });
+        marketRates.eurbrl = parseFloat(md.eurbrl);
+        ['pill-cambio','sb-cambio'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = 'R$' + fmtNum(marketRates.eurbrl); });
       }
       applyLivePrices(md);
       // Selic e IPCA reais do Banco Central via proxy — fallback fixo se faltarem
-      if (md.selic) ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = md.selic + '%'; });
+      if (md.selic) { marketRates.selic = parseFloat(md.selic); ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = fmtNum(marketRates.selic) + '%'; }); }
       else await fetchSelic();
-      if (md.ipca12m) document.getElementById('pill-ipca').textContent = md.ipca12m + '%';
+      if (md.ipca12m) { marketRates.ipca = parseFloat(md.ipca12m); document.getElementById('pill-ipca').textContent = fmtNum(marketRates.ipca) + '%'; }
       else await fetchIPCA();
       // Câmbio: se o proxy não trouxe, usa a fonte direta (awesomeapi tem CORS liberado)
       if (!md.eurbrl) await fetchCambio();
@@ -1765,19 +1772,18 @@ async function loadMarketData() {
 
   document.getElementById('topbarRight')?.classList.remove('pills-loading');
 
-  const cambio = document.getElementById('pill-cambio')?.textContent?.replace('R$','') || '6.00';
-  const selic  = document.getElementById('pill-selic')?.textContent || '14.75%';
+  const rate = getRate();
   const mes = new Date().toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
   document.getElementById('sb-mes').textContent = mes;
 
   const w0c = document.getElementById('w0-cambio');
   const w0s = document.getElementById('w0-selic');
   const w0b = document.getElementById('w0-brl');
-  if (w0c) w0c.textContent = 'R$' + cambio;
-  if (w0s) w0s.textContent = selic;
-  if (w0b) w0b.textContent = 'R$' + fmtNum(profileData.aporteBrEur * parseFloat(cambio), 0);
+  if (w0c) w0c.textContent = 'R$' + fmtNum(rate);
+  if (w0s) w0s.textContent = fmtNum(marketRates.selic ?? 14.25) + '%';
+  if (w0b) w0b.textContent = 'R$' + fmtNum(profileData.aporteBrEur * rate, 0);
 
-  updateDashboard(cambio);
+  updateDashboard(rate);
 }
 
 // ─────────────────────────────────────────
@@ -2066,8 +2072,7 @@ let walletCurrency = localStorage.getItem('wf_wallet_currency') || 'nativa';
 function setWalletCurrency(cur) {
   walletCurrency = cur;
   localStorage.setItem('wf_wallet_currency', cur);
-  const rate = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
-  renderWallet(rate);
+  renderWallet(getRate());
 }
 
 async function renderWallet(rate) {
@@ -2262,7 +2267,7 @@ async function renderEvolution(currentTotal) {
 
   if (docs && docs.length > 0) {
     // Dados reais: agrupa aportes por mês convertendo tudo para €
-    const rate = parseFloat(document.getElementById('pill-cambio')?.textContent.replace('R$','')) || 6;
+    const rate = getRate();
     const byMonth = {};
     docs.forEach(d => {
       const dt = new Date(d.data);
@@ -2436,9 +2441,8 @@ async function renderAlertas() {
   const hoje = new Date();
   const diaHoje = hoje.getDate();
   const mesKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-  const sel = document.getElementById('pill-selic').textContent;
-  const selicVal = parseFloat(sel) || 14.25;
-  const rate = parseFloat(document.getElementById('pill-cambio')?.textContent.replace('R$','')) || 6;
+  const selicVal = marketRates.selic ?? 14.25;
+  const rate = getRate();
   const alerts = [];
   let actionableCount = 0; // só conta alertas que exigem ação REAL do investidor
 
@@ -2502,7 +2506,9 @@ async function renderAlertas() {
     actionableCount++;
   }
 
-  document.getElementById('alertCount').textContent = actionableCount;
+  const badgeDesk = document.getElementById('alertCount');
+  badgeDesk.textContent = actionableCount;
+  badgeDesk.style.display = actionableCount > 0 ? '' : 'none';
   const badgeMobile = document.getElementById('alertCountMobile');
   if (badgeMobile) {
     badgeMobile.textContent = actionableCount;
@@ -2527,7 +2533,7 @@ async function renderAlertas() {
   if (portfolioData.hglg11_cotas && portfolioData.hglg11_cotas > 0) {
     alerts.push({ type: 'green', icon: '🏭', title: 'HGLG11 ativo na carteira', desc: `${fmtNum(portfolioData.hglg11_cotas, 0)} cotas. Diversificação de FIIs completa.` });
   } else {
-    alerts.push({ type: 'blue', icon: '🎯', title: 'Próximo objetivo: HGLG11', desc: 'Programado para o aporte de 28/29 de junho.' });
+    alerts.push({ type: 'blue', icon: '🎯', title: 'Próximo objetivo: HGLG11', desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
   }
 
   // Janela típica de pagamento do MXRF11 (~dia 15) — informativo, só se ainda não registrou dividendo no mês
@@ -2607,7 +2613,7 @@ const BR_ASSETS = ['MXRF11', 'HGLG11', 'IPCA+', 'Selic'];
 async function renderAporteGuide() {
   const textEl = document.getElementById('guide-text');
   if (!textEl) return;
-  const rate = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
+  const rate = getRate();
 
   const docs = await loadAportesForEvo().catch(() => []);
   const now = new Date();
@@ -2665,9 +2671,24 @@ async function registrarAporte() {
     showToast('⚠️ Informe a quantidade de cotas — obrigatória para ' + ativo + '!');
     return;
   }
+  // Sanidade anti-typo: se o preço por cota implícito (valor ÷ qtd) fugir muito do último
+  // preço conhecido, o aporte revalorizaria a posição inteira errado — confirma antes.
+  if (COTA_ASSETS.includes(ativo)) {
+    const nativoBRL = ASSET_CURRENCY[ativo] === 'BRL';
+    let vNat = valor;
+    if (nativoBRL && moeda === 'EUR') vNat = valor * getRate();
+    if (!nativoBRL && moeda === 'BRL') vNat = valor / getRate();
+    const precoInformado = parseFloat(document.getElementById('f-preco').value);
+    const precoAporte = precoInformado > 0 ? precoInformado : vNat / parseFloat(qtd);
+    const precoRef = portfolioData[ativo.toLowerCase() + '_preco'] || 0;
+    const sym = nativoBRL ? 'R$' : '€';
+    if (precoRef > 0 && (precoAporte > precoRef * 1.5 || precoAporte < precoRef / 1.5)) {
+      const ok = confirm(`O preço por cota deste aporte (${sym}${fmtNum(precoAporte)}) está muito longe do preço atual do ${ativo} (${sym}${fmtNum(precoRef)}).\n\nConfira o valor e a quantidade digitados. Registrar mesmo assim?`);
+      if (!ok) return;
+    }
+  }
   if (ativo === 'Reserva' && tipoReserva === 'retirada') {
-    const cambioAtual = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
-    const valorEmEur = moeda === 'BRL' ? valor / cambioAtual : valor;
+    const valorEmEur = moeda === 'BRL' ? valor / getRate() : valor;
     if (valorEmEur > (portfolioData.reserva || 0) + 0.01) {
       showToast('⚠️ Valor maior que o saldo atual da Reserva (€' + fmtNum(portfolioData.reserva || 0) + ')!');
       return;
@@ -2700,7 +2721,7 @@ async function registrarAporte() {
     // Conversão de moeda: cada ativo tem moeda nativa (FIIs/Tesouro/Caixinha/Dividendo em BRL,
     // ETFs/Bitcoin em EUR). Se o valor foi informado na outra moeda, converte pelo câmbio do dia
     // para os cálculos da carteira — o registro no histórico mantém a moeda original.
-    const cambioDia = parseFloat(document.getElementById('pill-cambio').textContent.replace('R$','')) || 6;
+    const cambioDia = getRate();
     const NATIVO_BRL = ['MXRF11', 'HGLG11', 'IPCA+', 'Selic', 'Caixinha', 'Dividendo'];
     let valorNativo = valor;
     if (NATIVO_BRL.includes(ativo) && moeda === 'EUR') valorNativo = valor * cambioDia;
@@ -2778,8 +2799,8 @@ async function registrarAporte() {
 
     showToast(TEST_MODE ? '🧪 Aporte de TESTE registrado — não foi salvo' : '✓ Aporte registrado com sucesso!');
     loadHistorico();
-    const cambio = document.getElementById('pill-cambio').textContent.replace('R$','');
-    updateDashboard(cambio);
+    renderAporteGuide();
+    updateDashboard(getRate());
 
     // Refaz os Alertas na hora (não só quando o usuário navegar até lá) e notifica se este aporte desequilibrou a carteira
     const riskAlertCount = await renderAlertas();
@@ -2846,14 +2867,33 @@ async function loadPortfolio() {
         portfolioData._migration_v5 = true;
         await savePortfolio();
       }
-      const cambio = document.getElementById('pill-cambio').textContent.replace('R$','') || '6';
+      // Migração v6: registra no histórico as compras antigas de Bitcoin feitas fora do app
+      // (custo real Revolut €101,84 − €26 já registrados = €75,84), para o extrato bater com
+      // o "você aportou". Não muda nenhum cálculo: o custo do BTC já vem de bitcoin_invested_eur.
+      if (!TEST_MODE && !portfolioData._migration_v6) {
+        try {
+          const { collection, addDoc } = window._dbFns;
+          const docsExist = await loadAportesForEvo();
+          const jaTem = (docsExist || []).some(d => d.ativo === 'Bitcoin' && (d.nota || '').startsWith('Ajuste de custo'));
+          if (!jaTem) {
+            await addDoc(collection(db, 'aportes'), {
+              ativo: 'Bitcoin', valor: 75.84, moeda: 'EUR', qtd: null, preco: null,
+              nota: 'Ajuste de custo: compras antigas no Revolut (pré-app)', tipo: null,
+              data: '2026-06-15T12:00:00', timestamp: new Date('2026-06-15T12:00:00').getTime()
+            });
+            _evoAportes = null;
+          }
+          portfolioData._migration_v6 = true;
+          await savePortfolio();
+        } catch (e) { console.error('migração v6:', e); }
+      }
       if (proxyAvailable) {
         try {
           const md = await fetch(proxyBase + '/market-data').then(r => r.json());
           applyLivePrices(md);
         } catch(e) {}
       }
-      updateDashboard(cambio);
+      updateDashboard(getRate());
       updatePortfolioTable();
       seedMayAportes();
     }
@@ -3117,14 +3157,12 @@ function renderMsgs() {
     msgs.innerHTML += buildAgentMsg(getWelcome());
     // Update welcome with real data
     setTimeout(() => {
-      const cambio = document.getElementById('pill-cambio').textContent.replace('R$','');
-      const selic = document.getElementById('pill-selic').textContent;
       const w0c = document.getElementById('w0-cambio');
       const w0s = document.getElementById('w0-selic');
       const w0b = document.getElementById('w0-brl');
-      if(w0c) w0c.textContent = 'R$' + cambio;
-      if(w0s) w0s.textContent = selic;
-      if(w0b) w0b.textContent = 'R$' + fmtNum(profileData.aporteBrEur * parseFloat(cambio || 6), 0);
+      if(w0c) w0c.textContent = 'R$' + fmtNum(getRate());
+      if(w0s) w0s.textContent = fmtNum(marketRates.selic ?? 14.25) + '%';
+      if(w0b) w0b.textContent = 'R$' + fmtNum(profileData.aporteBrEur * getRate(), 0);
     }, 500);
   } else {
     chatHistory.forEach(m => {
