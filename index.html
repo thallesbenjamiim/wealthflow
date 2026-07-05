@@ -579,6 +579,7 @@ textarea::placeholder { color: var(--muted2); }
   .mobile-logo {
     font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px;
     color: var(--txt);
+    display: flex; align-items: center; gap: 9px;
   }
 
   .main { width: 100%; }
@@ -915,7 +916,7 @@ textarea::placeholder { color: var(--muted2); }
 
     <!-- MOBILE TOPBAR -->
     <div class="mobile-topbar">
-      <span class="mobile-logo" id="mobilePageTitle">Dashboard</span>
+      <div class="mobile-logo"><div class="logo-dot"></div>WealthFlow</div>
     </div>
 
     <!-- TOPBAR -->
@@ -1636,8 +1637,6 @@ function showPage(id, el) {
   if (el) el.classList.add('active');
   document.getElementById('pageTitle').textContent = pageTitles[id][0];
   document.getElementById('pageSub').textContent = pageTitles[id][1];
-  const mobileTitle = document.getElementById('mobilePageTitle');
-  if (mobileTitle) mobileTitle.textContent = pageTitles[id][0];
   document.querySelectorAll('.bnav-item').forEach(b => b.classList.toggle('active', b.dataset.page === id));
   if (id === 'agentes') initAgents();
   if (id === 'aportar') { loadHistorico(); renderAporteGuide(); }
