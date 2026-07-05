@@ -1345,12 +1345,8 @@ textarea::placeholder { color: var(--muted2); }
             <div class="fs-title">🛟 Reserva de emergência</div>
             <div class="fs-sub">Isto define só a META — para adicionar ou retirar dinheiro da reserva, use Registrar Aporte.</div>
             <div class="form-row">
-              <div class="form-label">Meta mínima (€)</div>
-              <input class="form-input" id="pf-reserva-min" type="number" step="500">
-            </div>
-            <div class="form-row">
-              <div class="form-label">Meta máxima (€)</div>
-              <input class="form-input" id="pf-reserva-max" type="number" step="500">
+              <div class="form-label">Meta (€)</div>
+              <input class="form-input" id="pf-reserva-meta" type="number" step="500">
             </div>
           </div>
 
@@ -1487,8 +1483,7 @@ let profileData = {
   aporteIntlEur: 40,
   diaAporte: '28/29',
   bitcoinMensalEur: 10,
-  reservaMetaMinEur: 15000,
-  reservaMetaMaxEur: 20000
+  reservaMetaEur: 15000
 };
 
 async function loadProfile() {
@@ -1523,8 +1518,7 @@ function preencherPerfil() {
   document.getElementById('pf-aporte-intl').value = profileData.aporteIntlEur;
   document.getElementById('pf-dia').value = profileData.diaAporte;
   document.getElementById('pf-btc').value = profileData.bitcoinMensalEur;
-  document.getElementById('pf-reserva-min').value = profileData.reservaMetaMinEur;
-  document.getElementById('pf-reserva-max').value = profileData.reservaMetaMaxEur;
+  document.getElementById('pf-reserva-meta').value = profileData.reservaMetaEur;
 }
 
 async function salvarPerfil() {
@@ -1548,8 +1542,7 @@ async function salvarPerfil() {
     aporteIntlEur: num('pf-aporte-intl', profileData.aporteIntlEur),
     diaAporte: txt('pf-dia', profileData.diaAporte),
     bitcoinMensalEur: num('pf-btc', profileData.bitcoinMensalEur),
-    reservaMetaMinEur: num('pf-reserva-min', profileData.reservaMetaMinEur),
-    reservaMetaMaxEur: num('pf-reserva-max', profileData.reservaMetaMaxEur)
+    reservaMetaEur: num('pf-reserva-meta', profileData.reservaMetaEur)
   };
 
   try {
@@ -1582,9 +1575,9 @@ CARTEIRA ATUAL:
 - Brasil (Nubank): MXRF11 R$${fx(portfolioData.mxrf11)} (${portfolioData.mxrf11_cotas || 0} cotas, último dividendo R$${divPerShare.mxrf11}/cota/mês) · HGLG11 R$${fx(portfolioData.hglg11)} (${portfolioData.hglg11_cotas || 0} cotas, FII logística, último dividendo R$${divPerShare.hglg11}/cota/mês) · Tesouro IPCA+ R$${fx(portfolioData.ipca)} · Caixinha CDI R$${fx(portfolioData.caixinha)} (liquidez temporária entre aportes) · Dividendos recebidos R$${fx(portfolioData.dividendos)}
 - Internacional (Revolut): VWCE €${fx(portfolioData.vwce)} · EUNA €${fx(portfolioData.euna)} (ambos Acc — sem imposto anual de dividendos)
 - Bitcoin informal (fora do plano): ${portfolioData.bitcoin || 0} BTC (~€${btcEur})
-- Reserva de emergência (fora do plano de investimento, intocável): €${fx(portfolioData.reserva)} de uma meta de €${profileData.reservaMetaMinEur}-${profileData.reservaMetaMaxEur}
+- Reserva de emergência (fora do plano de investimento, intocável): €${fx(portfolioData.reserva)} de uma meta de €${profileData.reservaMetaEur}
 META: renda passiva de R$${fmtNum(profileData.rendaPassivaAlvo, 0)}/mês em valores de hoje aos ${profileData.anoAlvo} — patrimônio-alvo ~R$${patrimonioAlvo} mi. Meta intermediária do app: R$${fmtNum(profileData.metaIntermediariaBRL, 0)}.
-APORTE: €${profileData.aporteMensalEur}/mês todo dia ${profileData.diaAporte} (€${profileData.aporteBrEur} Brasil + €${profileData.aporteIntlEur} Internacional). Referência 60/40 Brasil/Internacional — é referência, não regra rígida; EUNA sempre considerado no lado internacional. Bitcoin €${profileData.bitcoinMensalEur}/mês informal. Reserva de emergência €${profileData.reservaMetaMinEur}-${profileData.reservaMetaMaxEur} separada e INTOCÁVEL.
+APORTE: €${profileData.aporteMensalEur}/mês todo dia ${profileData.diaAporte} (€${profileData.aporteBrEur} Brasil + €${profileData.aporteIntlEur} Internacional). Referência 60/40 Brasil/Internacional — é referência, não regra rígida; EUNA sempre considerado no lado internacional. Bitcoin €${profileData.bitcoinMensalEur}/mês informal. Reserva de emergência €${profileData.reservaMetaEur} separada e INTOCÁVEL.
 REGRAS DO PLANO: NUNCA Tesouro Selic (Caixinha é liquidez temporária — sempre direcionar ao ativo mais adequado); nunca day trade/alavancagem/margem/especulação; reinvestir 100% dos dividendos; aportar todo mês independente do mercado; só realocar em desvio ESTRUTURAL (oscilação cambial de semanas é ruído); mudanças graduais (5-10% por vez); quando aporte Brasil chegar a R$450/mês, avaliar KNRI11.
 FISCAL: Irlanda — Exit Tax 38% sobre ETFs, deemed disposal em 2033 (planejar liquidez a partir de 2032). Brasil — dividendos de FII isentos de IR; Tesouro com IR retido na fonte.
 GATILHOS: Selic <10% → migrar aporte renda fixa p/ FIIs e internacional; Selic <7% → realocar gradual BR→Intl; ETFs -20% → comprar mais; 2 anos antes de voltar ao Brasil → parar ETFs europeus e converter gradualmente.`;
@@ -1977,9 +1970,8 @@ async function updateDashboard(cambio) {
 
   // ── 3b. RESERVA DE EMERGÊNCIA (independente da meta de R$1.000.000) ──
   const reservaEur = portfolioData.reserva || 0;
-  const reservaPct = Math.min(100, (reservaEur / profileData.reservaMetaMinEur) * 100);
-  document.getElementById('reserva-target').textContent =
-    '€' + fmtNum(profileData.reservaMetaMinEur, 0) + ' – €' + fmtNum(profileData.reservaMetaMaxEur, 0);
+  const reservaPct = Math.min(100, (reservaEur / profileData.reservaMetaEur) * 100);
+  document.getElementById('reserva-target').textContent = '€' + fmtNum(profileData.reservaMetaEur, 0);
   document.getElementById('reserva-pct').textContent = reservaPct.toFixed(0) + '%';
   document.getElementById('reserva-bar-fill').style.width = Math.max(reservaPct, reservaEur > 0 ? 0.3 : 0) + '%';
   document.getElementById('reserva-current').textContent = '€' + fmtNum(reservaEur);
@@ -2169,7 +2161,7 @@ async function renderWallet(rate) {
     items.push({ icon: '💚', name: 'Dividendos recebidos', type: 'Acumulado total', cat: 'div', val: showVal(portfolioData.dividendos, 'BRL'), meta: '' });
   }
   if (portfolioData.reserva > 0) {
-    items.push({ icon: '🛟', name: 'Reserva de Emergência', type: 'Intocável · Revolut', cat: 'reserva', val: showVal(portfolioData.reserva, 'EUR'), meta: 'Meta: €' + fmtNum(profileData.reservaMetaMinEur, 0) + ' – €' + fmtNum(profileData.reservaMetaMaxEur, 0) });
+    items.push({ icon: '🛟', name: 'Reserva de Emergência', type: 'Intocável · Revolut', cat: 'reserva', val: showVal(portfolioData.reserva, 'EUR'), meta: 'Meta: €' + fmtNum(profileData.reservaMetaEur, 0) });
   }
 
   list.innerHTML = items.map(it => `
