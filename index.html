@@ -1893,7 +1893,16 @@ function setMaskedValue(el, num, decimals = 0) {
 function maskThousandsInput(el, decimals = 0) {
   el.addEventListener('input', () => {
     const cursorFromEnd = el.value.length - el.selectionStart;
-    let digits = el.value.replace(/[^\d,]/g, '');
+    let raw = el.value;
+    if (decimals > 0) {
+      // aceita "." OU "," como decimal — o último símbolo digitado vira a vírgula decimal,
+      // os anteriores (ponto de milhar já formatado) são descartados e recriados abaixo
+      const lastSepIdx = Math.max(raw.lastIndexOf(','), raw.lastIndexOf('.'));
+      if (lastSepIdx >= 0) {
+        raw = raw.slice(0, lastSepIdx).replace(/[.,]/g, '') + ',' + raw.slice(lastSepIdx + 1).replace(/[.,]/g, '');
+      }
+    }
+    let digits = raw.replace(/[^\d,]/g, '');
     if (decimals === 0) digits = digits.replace(/,/g, '');
     const commaIdx = digits.indexOf(',');
     let intPart = (commaIdx >= 0 ? digits.slice(0, commaIdx) : digits).replace(/^0+(?=\d)/, '');
