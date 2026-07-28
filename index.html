@@ -1198,6 +1198,7 @@ textarea::placeholder { color: var(--muted2); }
               <select class="form-select" id="f-ativo" onchange="onAtivoChange()">
                 <option value="MXRF11">🏢 MXRF11 — FII Maxi Renda</option>
                 <option value="HGLG11">🏭 HGLG11 — FII Logística</option>
+                <option value="KNRI11">🏛️ KNRI11 — FII Híbrido</option>
                 <option value="IPCA+">📈 Tesouro IPCA+</option>
                 <option value="Selic">💵 Tesouro Selic</option>
                 <option value="Caixinha">💰 Caixinha — reserva p/ próximo aporte</option>
@@ -1477,6 +1478,7 @@ let loading = false;
 let portfolioData = {
   mxrf11: 79.84, mxrf11_cotas: 8, mxrf11_preco: 9.98,
   hglg11: 0, hglg11_cotas: 0, hglg11_preco: 0,
+  knri11: 0, knri11_cotas: 0, knri11_preco: 0,
   ipca: 118.47,
   selic: 0, caixinha: 152.63,
   vwce: 25.28, vwce_cotas: 0.1528491, vwce_preco: 165.39,
@@ -1489,7 +1491,7 @@ let portfolioData = {
 
 // Último dividendo real por cota (Brasil apenas) — atualizado por applyLivePrices() quando os
 // dados de mercado chegam; os valores abaixo são só o fallback caso a fonte esteja fora do ar.
-let divPerShare = { mxrf11: 0.10, hglg11: 1.10, mxrf11Date: null, hglg11Date: null };
+let divPerShare = { mxrf11: 0.10, hglg11: 1.10, knri11: 0, mxrf11Date: null, hglg11Date: null, knri11Date: null };
 
 // ─────────────────────────────────────────
 // PERFIL DO USUÁRIO — editável na página Perfil, persistido no Firebase
@@ -1597,13 +1599,13 @@ function getProfile() {
   return `PERFIL — ${profileData.nome}, ${profileData.idade} anos, morando em ${profileData.pais} (${profileData.cidadania}), volta ao Brasil em ~${profileData.horizonteRetorno}. ${profileData.perfilRisco}.
 HOJE (${new Date().toLocaleDateString('pt-BR')}): EUR/BRL ${cambio} · Selic ${selic} · IPCA 12m ${ipca}.
 CARTEIRA ATUAL:
-- Brasil (Nubank): MXRF11 R$${fx(portfolioData.mxrf11)} (${portfolioData.mxrf11_cotas || 0} cotas, último dividendo R$${divPerShare.mxrf11}/cota/mês) · HGLG11 R$${fx(portfolioData.hglg11)} (${portfolioData.hglg11_cotas || 0} cotas, FII logística, último dividendo R$${divPerShare.hglg11}/cota/mês) · Tesouro IPCA+ R$${fx(portfolioData.ipca)} · Caixinha CDI R$${fx(portfolioData.caixinha)} (liquidez temporária entre aportes) · Dividendos recebidos R$${fx(portfolioData.dividendos)}
+- Brasil (Nubank): MXRF11 R$${fx(portfolioData.mxrf11)} (${portfolioData.mxrf11_cotas || 0} cotas, último dividendo R$${divPerShare.mxrf11}/cota/mês) · HGLG11 R$${fx(portfolioData.hglg11)} (${portfolioData.hglg11_cotas || 0} cotas, FII logística, último dividendo R$${divPerShare.hglg11}/cota/mês) · KNRI11 R$${fx(portfolioData.knri11)} (${portfolioData.knri11_cotas || 0} cotas, FII híbrido, último dividendo R$${divPerShare.knri11}/cota/mês) · Tesouro IPCA+ R$${fx(portfolioData.ipca)} · Caixinha CDI R$${fx(portfolioData.caixinha)} (liquidez temporária entre aportes) · Dividendos recebidos R$${fx(portfolioData.dividendos)}
 - Internacional (Revolut): VWCE €${fx(portfolioData.vwce)} · EUNA €${fx(portfolioData.euna)} (ambos Acc — sem imposto anual de dividendos)
 - Bitcoin informal (fora do plano): ${portfolioData.bitcoin || 0} BTC (~€${btcEur})
 - Reserva de emergência (fora do plano de investimento, intocável): €${fx(portfolioData.reserva)} de uma meta de €${profileData.reservaMetaEur}
 META: renda passiva de R$${fmtNum(profileData.rendaPassivaAlvo, 0)}/mês em valores de hoje aos ${profileData.anoAlvo} — patrimônio-alvo ~R$${patrimonioAlvo} mi. Meta intermediária do app: R$${fmtNum(profileData.metaIntermediariaBRL, 0)}.
 APORTE: €${profileData.aporteMensalEur}/mês todo dia ${profileData.diaAporte} (€${profileData.aporteBrEur} Brasil + €${profileData.aporteIntlEur} Internacional). Referência 60/40 Brasil/Internacional — é referência, não regra rígida; EUNA sempre considerado no lado internacional. Bitcoin €${profileData.bitcoinMensalEur}/mês informal. Reserva de emergência €${profileData.reservaMetaEur} separada e INTOCÁVEL.
-REGRAS DO PLANO: NUNCA Tesouro Selic (Caixinha é liquidez temporária — sempre direcionar ao ativo mais adequado); nunca day trade/alavancagem/margem/especulação; reinvestir 100% dos dividendos; aportar todo mês independente do mercado; só realocar em desvio ESTRUTURAL (oscilação cambial de semanas é ruído); mudanças graduais (5-10% por vez); quando aporte Brasil chegar a R$450/mês, avaliar KNRI11.
+REGRAS DO PLANO: NUNCA Tesouro Selic (Caixinha é liquidez temporária — sempre direcionar ao ativo mais adequado); nunca day trade/alavancagem/margem/especulação; reinvestir 100% dos dividendos; aportar todo mês independente do mercado; só realocar em desvio ESTRUTURAL (oscilação cambial de semanas é ruído); mudanças graduais (5-10% por vez); KNRI11 já faz parte dos FIIs acompanhados, ao lado de MXRF11 e HGLG11.
 FISCAL: Irlanda — Exit Tax 38% sobre ETFs, deemed disposal em 2033 (planejar liquidez a partir de 2032). Brasil — dividendos de FII isentos de IR; Tesouro com IR retido na fonte.
 GATILHOS: Selic <10% → migrar aporte renda fixa p/ FIIs e internacional; Selic <7% → realocar gradual BR→Intl; ETFs -20% → comprar mais; 2 anos antes de voltar ao Brasil → parar ETFs europeus e converter gradualmente.`;
 }
@@ -1748,7 +1750,7 @@ async function fetchBTCPriceEUR() {
 // sem quantidade de cotas — avisa em vez de "sumir" com o dinheiro silenciosamente.
 function applyLivePrices(md) {
   const desatualizados = [];
-  [['mxrf11','MXRF11'], ['hglg11','HGLG11'], ['vwce','VWCE'], ['euna','EUNA']].forEach(([k, name]) => {
+  [['mxrf11','MXRF11'], ['hglg11','HGLG11'], ['knri11','KNRI11'], ['vwce','VWCE'], ['euna','EUNA']].forEach(([k, name]) => {
     const q = md[k];
     const cotas = portfolioData[k + '_cotas'];
     if (!q?.price || !cotas) return;
@@ -1761,9 +1763,10 @@ function applyLivePrices(md) {
     window._cotasWarned = true;
     showToast('⚠️ ' + desatualizados.join(' e ') + ' com aportes sem quantidade de cotas — registre as cotas que aparecem na corretora para o valor ao vivo ficar completo.');
   }
-  // Último dividendo por cota realmente pago (Brasil apenas — MXRF11/HGLG11)
+  // Último dividendo por cota realmente pago (Brasil apenas — MXRF11/HGLG11/KNRI11)
   if (md.mxrf11Dividend?.amount) { divPerShare.mxrf11 = md.mxrf11Dividend.amount; divPerShare.mxrf11Date = md.mxrf11Dividend.date; }
   if (md.hglg11Dividend?.amount) { divPerShare.hglg11 = md.hglg11Dividend.amount; divPerShare.hglg11Date = md.hglg11Dividend.date; }
+  if (md.knri11Dividend?.amount) { divPerShare.knri11 = md.knri11Dividend.amount; divPerShare.knri11Date = md.knri11Dividend.date; }
 }
 
 async function loadMarketData() {
@@ -1917,7 +1920,7 @@ function maskThousandsInput(el, decimals = 0) {
 // ─────────────────────────────────────────
 // RENTABILIDADE REAL — custo de aquisição a partir dos aportes registrados
 // ─────────────────────────────────────────
-const ASSET_CURRENCY = { 'MXRF11':'BRL', 'HGLG11':'BRL', 'IPCA+':'BRL', 'Selic':'BRL', 'Caixinha':'BRL', 'Dividendo':'BRL', 'VWCE':'EUR', 'EUNA':'EUR', 'Bitcoin':'EUR', 'Reserva':'EUR' };
+const ASSET_CURRENCY = { 'MXRF11':'BRL', 'HGLG11':'BRL', 'KNRI11':'BRL', 'IPCA+':'BRL', 'Selic':'BRL', 'Caixinha':'BRL', 'Dividendo':'BRL', 'VWCE':'EUR', 'EUNA':'EUR', 'Bitcoin':'EUR', 'Reserva':'EUR' };
 
 // Soma o valor aportado por ativo, na moeda nativa de cada um
 function computeInvested(docs, rate) {
@@ -1948,7 +1951,7 @@ function totalInvestedEur(inv, rate) {
 
 async function updateDashboard(cambio) {
   const rate = parseFloat(cambio) || 6.0;
-  const brInvested = portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + portfolioData.ipca + portfolioData.selic;
+  const brInvested = portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + (portfolioData.knri11 || 0) + portfolioData.ipca + portfolioData.selic;
   const cashEur = portfolioData.caixinha / rate;
   const brInvestedEur = brInvested / rate;
   const intlEur = portfolioData.vwce + portfolioData.euna;
@@ -2052,6 +2055,7 @@ async function updateDashboard(cambio) {
   const positions = [
     { name: 'mxrf11', eur: portfolioData.mxrf11 / rate },
     { name: 'hglg11', eur: (portfolioData.hglg11 || 0) / rate },
+    { name: 'knri11', eur: (portfolioData.knri11 || 0) / rate },
     { name: 'ipca', eur: portfolioData.ipca / rate },
     { name: 'selic', eur: (portfolioData.selic + portfolioData.caixinha) / rate },
     { name: 'vwce', eur: portfolioData.vwce },
@@ -2189,6 +2193,19 @@ async function renderWallet(rate) {
     });
   }
 
+  if ((portfolioData.knri11_cotas && portfolioData.knri11_cotas > 0) || portfolioData.knri11 > 0) {
+    const knriVal = portfolioData.knri11_cotas
+      ? (portfolioData.knri11_cotas * portfolioData.knri11_preco)
+      : portfolioData.knri11;
+    const knriPm = pm(inv['KNRI11'], portfolioData.knri11_cotas);
+    items.push({
+      icon: '🏛️', name: 'KNRI11', type: 'FII Híbrido · Nubank', cat: 'br',
+      val: showVal(knriVal, 'BRL'),
+      meta: portfolioData.knri11_cotas ? fmtNum(portfolioData.knri11_cotas, 0) + ' cotas · R$' + fmtNum(portfolioData.knri11_preco) + (knriPm ? ' · PM R$' + fmtNum(knriPm) : '') : '',
+      pl: plLine(inv['KNRI11'], knriVal, 'R$')
+    });
+  }
+
   items.push({ icon: '📈', name: 'Tesouro IPCA+', type: 'Renda Fixa · Nubank', cat: 'br', val: showVal(portfolioData.ipca, 'BRL'), meta: 'Longo prazo' });
 
   if (portfolioData.selic > 0) {
@@ -2251,7 +2268,7 @@ async function renderWallet(rate) {
   if (summaryEl) {
     const btcPriceNow = await fetchBTCPriceEUR();
     const btcNow = btcPriceNow ? (portfolioData.bitcoin || 0) * btcPriceNow : (portfolioData.bitcoin_invested_eur || 0);
-    const currentTotal = (portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + portfolioData.ipca + portfolioData.selic + portfolioData.caixinha) / rate
+    const currentTotal = (portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + (portfolioData.knri11 || 0) + portfolioData.ipca + portfolioData.selic + portfolioData.caixinha) / rate
       + portfolioData.vwce + portfolioData.euna + btcNow;
     const investedTotal = totalInvestedEur(inv, rate);
     const diff = currentTotal - investedTotal;
@@ -2273,13 +2290,15 @@ async function renderWallet(rate) {
       return dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth();
     }).reduce((s, d) => s + (d.moeda === 'EUR' ? parseFloat(d.valor) * rate : parseFloat(d.valor)), 0);
 
-    // Estimativa real: último dividendo por cota de fato pago por cada FII (Brasil apenas — MXRF11/HGLG11)
+    // Estimativa real: último dividendo por cota de fato pago por cada FII (Brasil apenas — MXRF11/HGLG11/KNRI11)
     const mxrfPorCota = divPerShare.mxrf11;
     const hglgPorCota = divPerShare.hglg11;
+    const knriPorCota = divPerShare.knri11;
     const estMxrf = (portfolioData.mxrf11_cotas || 0) * mxrfPorCota;
     const estHglg = (portfolioData.hglg11_cotas || 0) * hglgPorCota;
-    const estMensal = estMxrf + estHglg;
-    const invFiis = (inv['MXRF11'] || 0) + (inv['HGLG11'] || 0);
+    const estKnri = (portfolioData.knri11_cotas || 0) * knriPorCota;
+    const estMensal = estMxrf + estHglg + estKnri;
+    const invFiis = (inv['MXRF11'] || 0) + (inv['HGLG11'] || 0) + (inv['KNRI11'] || 0);
     const yoc = invFiis > 0 ? (estMensal * 12 / invFiis) * 100 : 0;
 
     divStats.innerHTML = `
@@ -2292,6 +2311,7 @@ async function renderWallet(rate) {
       const partes = [];
       if (portfolioData.mxrf11_cotas > 0) partes.push(`MXRF11: R$${fmtNum(mxrfPorCota)}/cota × ${fmtNum(portfolioData.mxrf11_cotas, 0)} = R$${fmtNum(estMxrf)}`);
       if (portfolioData.hglg11_cotas > 0) partes.push(`HGLG11: R$${fmtNum(hglgPorCota)}/cota × ${fmtNum(portfolioData.hglg11_cotas, 0)} = R$${fmtNum(estHglg)}`);
+      if (portfolioData.knri11_cotas > 0) partes.push(`KNRI11: R$${fmtNum(knriPorCota)}/cota × ${fmtNum(portfolioData.knri11_cotas, 0)} = R$${fmtNum(estKnri)}`);
       divNote.textContent = (partes.length ? partes.join(' · ') + '. ' : '') + 'Baseado no último dividendo real pago por cada FII (Yahoo Finance/B3), só Brasil — VWCE e EUNA são Acc e não distribuem. Registre cada dividendo recebido em "Registrar Aporte" → Dividendo para o total real crescer.';
     }
   }
@@ -2512,7 +2532,7 @@ async function renderAlertas() {
   // ─── GATILHOS ACIONÁVEIS (definidos na Constituição do WealthFlow) ───
 
   // Gatilho de desequilíbrio Brasil/Internacional — mesma faixa 15%-75% usada no badge do Dashboard
-  const brInvestedEur = (portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + portfolioData.ipca + portfolioData.selic) / rate;
+  const brInvestedEur = (portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + (portfolioData.knri11 || 0) + portfolioData.ipca + portfolioData.selic) / rate;
   const cashEur = portfolioData.caixinha / rate;
   const intlEur = portfolioData.vwce + portfolioData.euna;
   // Usa a cotação ao vivo do BTC quando já buscada nesta sessão — igual ao Dashboard
@@ -2532,6 +2552,7 @@ async function renderAlertas() {
   const positions = [
     { name: 'MXRF11', eur: portfolioData.mxrf11 / rate },
     { name: 'HGLG11', eur: (portfolioData.hglg11 || 0) / rate },
+    { name: 'KNRI11', eur: (portfolioData.knri11 || 0) / rate },
     { name: 'Tesouro IPCA+', eur: portfolioData.ipca / rate },
     { name: 'Tesouro Selic + Caixinha', eur: (portfolioData.selic + portfolioData.caixinha) / rate },
     { name: 'VWCE', eur: portfolioData.vwce },
@@ -2558,7 +2579,7 @@ async function renderAlertas() {
 
   // Caixinha parada há muito tempo sem destino definido
   if (portfolioData.caixinha > 150) {
-    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Caixinha com saldo a decidir', desc: `R$${fmtNum(portfolioData.caixinha)} aguardando destino. Decida no próximo aporte (28/29): HGLG11, mais MXRF11 ou IPCA+.`, action: true });
+    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Caixinha com saldo a decidir', desc: `R$${fmtNum(portfolioData.caixinha)} aguardando destino. Decida no próximo aporte (28/29): HGLG11, KNRI11, MXRF11 ou IPCA+.`, action: true });
     actionableCount++;
   }
 
@@ -2594,9 +2615,15 @@ async function renderAlertas() {
   }
 
   if (portfolioData.hglg11_cotas && portfolioData.hglg11_cotas > 0) {
-    alerts.push({ type: 'green', icon: '🏭', title: 'HGLG11 ativo na carteira', desc: `${fmtNum(portfolioData.hglg11_cotas, 0)} cotas. Diversificação de FIIs completa.` });
+    alerts.push({ type: 'green', icon: '🏭', title: 'HGLG11 ativo na carteira', desc: `${fmtNum(portfolioData.hglg11_cotas, 0)} cotas de FII de logística.` });
   } else {
     alerts.push({ type: 'blue', icon: '🎯', title: 'Próximo objetivo: HGLG11', desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
+  }
+
+  if (portfolioData.knri11_cotas && portfolioData.knri11_cotas > 0) {
+    alerts.push({ type: 'green', icon: '🏛️', title: 'KNRI11 ativo na carteira', desc: `${fmtNum(portfolioData.knri11_cotas, 0)} cotas de FII híbrido.` });
+  } else {
+    alerts.push({ type: 'blue', icon: '🎯', title: 'Próximo objetivo: KNRI11', desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
   }
 
   // Janela típica de pagamento do MXRF11 (~dia 15) — informativo, só se ainda não registrou dividendo no mês
@@ -2666,9 +2693,9 @@ async function seedMayAportes() {
 // ─────────────────────────────────────────
 // Ativos negociados em cotas: a carteira calcula o valor deles como cotas × preço,
 // então um aporte sem quantidade seria apagado na próxima atualização de mercado.
-const COTA_ASSETS = ['MXRF11', 'HGLG11', 'VWCE', 'EUNA'];
+const COTA_ASSETS = ['MXRF11', 'HGLG11', 'KNRI11', 'VWCE', 'EUNA'];
 // A Caixinha é a reserva para o lado Brasil do próximo aporte — qualquer um destes pode ser pago com ela
-const BR_ASSETS = ['MXRF11', 'HGLG11', 'IPCA+', 'Selic'];
+const BR_ASSETS = ['MXRF11', 'HGLG11', 'KNRI11', 'IPCA+', 'Selic'];
 
 
 // Resumo neutro do mês: quanto já foi aportado e como ficou dividido Brasil/Internacional —
@@ -2680,7 +2707,7 @@ async function renderAporteGuide() {
 
   const docs = await loadAportesForEvo().catch(() => []);
   const now = new Date();
-  const BR_NATIVE = ['MXRF11', 'HGLG11', 'IPCA+', 'Selic', 'Caixinha'];
+  const BR_NATIVE = ['MXRF11', 'HGLG11', 'KNRI11', 'IPCA+', 'Selic', 'Caixinha'];
   let brEur = 0, intlEur = 0;
   (docs || []).forEach(d => {
     if (d.ativo === 'Dividendo' || d.ativo === 'Reserva') return; // renda e reserva não são "aporte de investimento"
@@ -2785,7 +2812,7 @@ async function registrarAporte() {
     // ETFs/Bitcoin em EUR). Se o valor foi informado na outra moeda, converte pelo câmbio do dia
     // para os cálculos da carteira — o registro no histórico mantém a moeda original.
     const cambioDia = getRate();
-    const NATIVO_BRL = ['MXRF11', 'HGLG11', 'IPCA+', 'Selic', 'Caixinha', 'Dividendo'];
+    const NATIVO_BRL = ['MXRF11', 'HGLG11', 'KNRI11', 'IPCA+', 'Selic', 'Caixinha', 'Dividendo'];
     let valorNativo = valor;
     if (NATIVO_BRL.includes(ativo) && moeda === 'EUR') valorNativo = valor * cambioDia;
     if (!NATIVO_BRL.includes(ativo) && moeda === 'BRL') valorNativo = valor / cambioDia;
@@ -2804,6 +2831,11 @@ async function registrarAporte() {
         portfolioData.hglg11_cotas = (portfolioData.hglg11_cotas || 0) + qtdNum;
         portfolioData.hglg11_preco = precoEfetivo;
         portfolioData.hglg11 = portfolioData.hglg11_cotas * portfolioData.hglg11_preco;
+      }
+      if (ativo === 'KNRI11') {
+        portfolioData.knri11_cotas = (portfolioData.knri11_cotas || 0) + qtdNum;
+        portfolioData.knri11_preco = precoEfetivo;
+        portfolioData.knri11 = portfolioData.knri11_cotas * portfolioData.knri11_preco;
       }
       if (ativo === 'VWCE') {
         portfolioData.vwce_cotas = (portfolioData.vwce_cotas || 0) + qtdNum;
@@ -2841,6 +2873,7 @@ async function registrarAporte() {
     const temQtd = qtd && parseFloat(qtd) > 0;
     if (ativo === 'MXRF11' && !temQtd) portfolioData.mxrf11 += valorNativo;
     else if (ativo === 'HGLG11' && !temQtd) portfolioData.hglg11 += valorNativo;
+    else if (ativo === 'KNRI11' && !temQtd) portfolioData.knri11 += valorNativo;
     else if (ativo === 'IPCA+') portfolioData.ipca += valorNativo;
     else if (ativo === 'Selic') portfolioData.selic += valorNativo;
     else if (ativo === 'VWCE' && !temQtd) portfolioData.vwce += valorNativo;
@@ -3069,6 +3102,7 @@ function populateEvoFromPortfolio() {
   const candidates = [
     { value: 'MXRF11',   label: 'MXRF11',       active: (portfolioData.mxrf11 || 0) > 0 || (portfolioData.mxrf11_cotas || 0) > 0 },
     { value: 'HGLG11',   label: 'HGLG11',       active: (portfolioData.hglg11 || 0) > 0 || (portfolioData.hglg11_cotas || 0) > 0 },
+    { value: 'KNRI11',   label: 'KNRI11',       active: (portfolioData.knri11 || 0) > 0 || (portfolioData.knri11_cotas || 0) > 0 },
     { value: 'IPCA+',    label: 'IPCA+',        active: (portfolioData.ipca || 0) > 0 },
     { value: 'Selic',    label: 'Selic',        active: (portfolioData.selic || 0) > 0 },
     { value: 'Caixinha', label: 'Caixinha CDI', active: (portfolioData.caixinha || 0) > 0 },
@@ -3105,6 +3139,7 @@ function populateEvoDropdown(docs) {
 const _EVO_ASSET = {
   'MXRF11':   { get: () => portfolioData.mxrf11 || 0,              sym: 'R$' },
   'HGLG11':   { get: () => portfolioData.hglg11 || 0,              sym: 'R$' },
+  'KNRI11':   { get: () => portfolioData.knri11 || 0,              sym: 'R$' },
   'IPCA+':    { get: () => portfolioData.ipca || 0,                sym: 'R$' },
   'Selic':    { get: () => portfolioData.selic || 0,               sym: 'R$' },
   'Caixinha': { get: () => portfolioData.caixinha || 0,            sym: 'R$' },
