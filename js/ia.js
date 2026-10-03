@@ -107,13 +107,10 @@ function restoreLastAnalysis() {
 }
 
 function askRiskAgentAboutScore() {
-  const overall = document.getElementById('score-value').textContent;
-  const disciplina = document.getElementById('score-num-disciplina').textContent;
-  const diversificacao = document.getElementById('score-num-diversificacao').textContent;
-  const risco = document.getElementById('score-num-risco').textContent;
-  const progresso = document.getElementById('score-num-progresso').textContent;
-
-  const question = `Meu WealthFlow Score está em ${overall}/100 (Disciplina ${disciplina}, Diversificação ${diversificacao}, Risco ${risco}, Progresso ${progresso}). Pode analisar o que cada número significa na minha carteira atual e o que eu poderia ajustar para melhorar?`;
+  // Manda as notas e os motivos que tiraram pontos, para a IA comentar sobre fatos e não adivinhar
+  const sc = scoreAtual;
+  const detalhe = sc ? sc.itens.map(i => `${i.nome} ${i.valor}${i.motivos.length ? ' (' + i.motivos.join('; ') + ')' : ''}`).join(', ') : '';
+  const question = `Meu WealthFlow Score está em ${sc ? sc.total : document.getElementById('score-value').textContent}/100 — ${detalhe}. Pode analisar o que isso significa na minha carteira atual e o que eu poderia ajustar para melhorar?`;
 
   showPage('agentes');
   chatMode = 'risco'; // pergunta sobre score vai com o olhar de risco

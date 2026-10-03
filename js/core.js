@@ -289,6 +289,10 @@ const pageTitles = {
 // Mantido só para não quebrar chamadas antigas do tipo showPage('x', el).
 function showPage(id) {
   if (!pageTitles[id]) id = 'dashboard';
+  // Ao sair de Alertas, a nota atual do Score passa a ser a "vista" (o aviso "subiu/caiu" compara com ela)
+  if (id !== 'alertas' && document.getElementById('page-alertas')?.classList.contains('active') && typeof scoreAtual !== 'undefined' && scoreAtual) {
+    try { localStorage.setItem('wf_score_visto', JSON.stringify({ total: scoreAtual.total })); } catch {}
+  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('.nav-item, .bnav-item').forEach(n => n.classList.toggle('active', n.dataset.page === id));

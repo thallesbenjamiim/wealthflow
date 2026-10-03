@@ -128,6 +128,28 @@ async function renderAlertas() {
 
   // ─── INFORMATIVOS (situação, sem exigir ação) ───
   if (divAlert) alerts.push(divAlert);
+
+  // WealthFlow Score: o card do Início mostra só os números; o porquê fica aqui.
+  // Aparece quando algo está tirando pontos ou quando a nota mudou desde a última visita a Alertas.
+  if (scoreAtual) {
+    let visto = null;
+    try { visto = JSON.parse(localStorage.getItem('wf_score_visto')); } catch {}
+    const mudouDesdeVisto = visto && visto.total !== scoreAtual.total;
+    const comMotivo = scoreAtual.itens.filter(i => i.motivos.length);
+    if (comMotivo.length || mudouDesdeVisto) {
+      const subiu = mudouDesdeVisto && scoreAtual.total > visto.total;
+      alerts.push({
+        type: mudouDesdeVisto ? (subiu ? 'green' : 'amber') : 'blue',
+        icon: 'target',
+        title: mudouDesdeVisto
+          ? `WealthFlow Score ${subiu ? 'subiu' : 'caiu'}: ${visto.total} → ${scoreAtual.total}`
+          : `WealthFlow Score ${scoreAtual.total}: o que está tirando pontos`,
+        desc: comMotivo.length
+          ? comMotivo.map(i => `<strong>${i.nome} ${i.valor}</strong> — ${i.motivos.join('; ')}.`).join('<br>')
+          : 'Nada está tirando pontos agora.'
+      });
+    }
+  }
   if (primeiroDeemedDisposal) {
     const anoDD = primeiroDeemedDisposal.getFullYear();
     alerts.push({ type: 'blue', icon: 'calendar', title: `Deemed disposal — ${primeiroDeemedDisposal.toLocaleDateString('pt-BR')}`, desc: `Exit Tax 38% sobre VWCE e EUNA, 8 anos após cada compra. A partir de ${anoDD - 1}, planejar liquidez — veja a estimativa em Carteira → Exit Tax.` });

@@ -160,6 +160,9 @@ function totalInvestedEur(inv, rate) {
 // renderiza, para nunca mostrar os valores de exemplo do código como se fossem seus.
 let portfolioLoaded = false;
 
+// Último WealthFlow Score calculado (notas + motivos) — lido por renderAlertas()
+let scoreAtual = null;
+
 async function updateDashboard(cambio) {
   if (!portfolioLoaded) return;
   const rate = parseFloat(cambio) || 6.0;
@@ -295,29 +298,48 @@ async function updateDashboard(cambio) {
     statusText.textContent = 'Concentração alta — veja Alertas';
   }
 
-  // Diversificação: quantas posições de investimento você já tem, de todas as possíveis.
-  // Dinheiro parado na Caixinha não é diversificação — só o Tesouro Selic conta nessa linha.
-  const investCount = positions.filter(p => (p.name === 'selic' ? portfolioData.selic : p.eur) > 0).length;
-  const diversificacaoScore = Math.round(Math.min(100, (investCount / positions.length) * 100));
+  // Cada item do Score guarda os motivos que tiraram pontos — a explicação aparece em Alertas,
+  // não no Início, para a tela principal não ficar carregada.
+  const NOMES = { mxrf11: 'MXRF11', hglg11: 'HGLG11', knri11: 'KNRI11', ipca: 'Tesouro IPCA+', selic: 'Caixinha/Tesouro Selic', vwce: 'VWCE', euna: 'EUNA', bitcoin: 'Bitcoin' };
+  const pctTxt = v => v.toFixed(0) + '%';
 
-  // Risco: começa em 100 e desconta fatores reais — concentração numa única posição,
-  // cripto acima de 5% da carteira e desvio estrutural da referência 60/40
-  let riscoScore = 100;
-  riscoScore -= Math.max(0, maxWeightPct - 25) * 1.6;
-  riscoScore -= Math.max(0, btcPct - 5) * 2.2;
-  riscoScore -= Math.max(0, Math.abs(brPct * 100 - 60) - 15) * 0.8;
-  riscoScore = Math.round(Math.max(10, Math.min(100, riscoScore)));
+  // Diversificação: as 4 classes que o plano quer ter — FIIs, renda fixa Brasil (IPCA+),
+  // ações globais (VWCE) e títulos internacionais (EUNA). Tesouro Selic não conta (fora do plano).
+  // Uma classe só vale com pelo menos 3% da carteira: R$1 num ativo não diversifica nada.
+  const pesoDe = eur => (eur / positionsTotal) * 100;
+  const classes = [
+    { nome: 'FIIs', peso: pesoDe(portfolioData.mxrf11 / rate + (portfolioData.hglg11 || 0) / rate + (portfolioData.knri11 || 0) / rate) },
+    { nome: 'renda fixa Brasil (IPCA+)', peso: pesoDe(ipcaValor() / rate) },
+    { nome: 'ações globais (VWCE)', peso: pesoDe(portfolioData.vwce) },
+    { nome: 'títulos internacionais (EUNA)', peso: pesoDe(portfolioData.euna) }
+  ];
+  const faltando = classes.filter(c => c.peso < 3);
+  const diversificacaoScore = Math.round(((classes.length - faltando.length) / classes.length) * 100);
+  const motivosDiv = faltando.map(c => c.peso > 0 ? `${c.nome} com só ${pctTxt(c.peso)} da carteira (mínimo 3%)` : `sem ${c.nome}`);
+
+  // Controle de risco: começa em 100 e desconta fatores reais — concentração numa única posição,
+  // cripto acima de 5% da carteira e desvio estrutural da referência 60/40. 100 = risco bem controlado.
+  const maior = positions.reduce((m, p) => p.eur > m.eur ? p : m, positions[0]);
+  const descontos = [
+    { pts: Math.max(0, maxWeightPct - 25) * 1.6, txt: `${NOMES[maior.name]} com ${pctTxt(maxWeightPct)} da carteira (ideal até 25% num único ativo)` },
+    { pts: Math.max(0, btcPct - 5) * 2.2, txt: `cripto com ${pctTxt(btcPct)} da carteira (limite 5%)` },
+    { pts: Math.max(0, Math.abs(brPct * 100 - 60) - 15) * 0.8, txt: `Brasil + Caixa em ${pctTxt(brPct * 100)} (referência 60%, tolerância de 15 pontos)` }
+  ];
+  const riscoScore = Math.round(Math.max(10, Math.min(100, 100 - descontos.reduce((s, d) => s + d.pts, 0))));
+  const motivosRisco = descontos.filter(d => d.pts >= 0.5).map(d => `${d.txt}: −${Math.round(d.pts)}`);
 
   // Disciplina: consistência REAL de aportes — meses fechados com registro (janela de 3),
   // dividendos reinvestindo e pouco dinheiro parado. Pular um mês agora derruba o número.
   const firstMonth = (invDocs || []).map(d => monthKeyOf(d.data)).filter(Boolean).sort()[0] || null;
   let mesesAvaliados = 0, mesesComAporte = 0;
+  const mesesSemAporte = [];
   if (firstMonth) {
     for (let i = 1; i <= 3; i++) {
       const key = currentMonthKey(-i);
       if (key < firstMonth) break; // não penaliza meses antes do app existir
       mesesAvaliados++;
       if ((invDocs || []).some(dc => monthKeyOf(dc.data) === key && dc.ativo !== 'Dividendo' && dc.ativo !== 'Reserva')) mesesComAporte++;
+      else { const [a, m] = key.split('-').map(Number); mesesSemAporte.push(new Date(a, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long' })); }
     }
   }
   const aderencia = mesesAvaliados > 0 ? mesesComAporte / mesesAvaliados : 0.5; // sem mês fechado ainda: neutro
@@ -325,25 +347,38 @@ async function updateDashboard(cambio) {
   if (portfolioData.dividendos > 0) disciplinaScore += 10;
   if (cashPct < 35) disciplinaScore += 10;
   disciplinaScore = Math.round(Math.max(10, Math.min(100, disciplinaScore)));
+  const motivosDisc = [];
+  if (mesesSemAporte.length) motivosDisc.push(`sem aporte registrado em ${mesesSemAporte.join(', ')}`);
+  if (mesesAvaliados === 0) motivosDisc.push('ainda não há mês fechado para medir a regularidade dos aportes');
+  if (!(portfolioData.dividendos > 0)) motivosDisc.push('nenhum dividendo registrado ainda');
+  if (cashPct >= 35) motivosDisc.push(`${pctTxt(cashPct)} da carteira parado em Caixa (ideal abaixo de 35%)`);
 
-  // Progresso: % real da meta de R$1.000.000
-  const progressScore = Math.round(Math.min(100, Math.max(1, pct * 8 + 20)));
-
+  // O progresso até a meta fica no card próprio da Meta — não entra no Score
   document.getElementById('score-bar-disciplina').style.width = disciplinaScore + '%';
   document.getElementById('score-bar-diversificacao').style.width = diversificacaoScore + '%';
   document.getElementById('score-bar-risco').style.width = riscoScore + '%';
-  document.getElementById('score-bar-progress').style.width = progressScore + '%';
   document.getElementById('score-num-disciplina').textContent = disciplinaScore;
   document.getElementById('score-num-diversificacao').textContent = diversificacaoScore;
   document.getElementById('score-num-risco').textContent = riscoScore;
-  document.getElementById('score-num-progresso').textContent = progressScore;
 
-  const overallScore = Math.round((disciplinaScore + diversificacaoScore + riscoScore + progressScore) / 4);
+  const overallScore = Math.round((disciplinaScore + diversificacaoScore + riscoScore) / 3);
   document.getElementById('score-value').textContent = overallScore;
   const circumference = 2 * Math.PI * 52; // r=52 no SVG
   const offset = circumference * (1 - overallScore / 100);
   document.getElementById('score-ring-fill').setAttribute('stroke-dasharray', circumference.toFixed(1));
   document.getElementById('score-ring-fill').setAttribute('stroke-dashoffset', offset.toFixed(1));
+
+  const novoScore = {
+    total: overallScore,
+    itens: [
+      { nome: 'Disciplina', valor: disciplinaScore, motivos: motivosDisc },
+      { nome: 'Diversificação', valor: diversificacaoScore, motivos: motivosDiv },
+      { nome: 'Controle de risco', valor: riscoScore, motivos: motivosRisco }
+    ]
+  };
+  const mudou = JSON.stringify(novoScore) !== JSON.stringify(scoreAtual);
+  scoreAtual = novoScore;
+  if (mudou) renderAlertas(); // a explicação do Score vive em Alertas
 
   // ── 7. EVOLUÇÃO (tendência ilustrativa a partir do total atual) ──
   renderEvolution(totalEur);
