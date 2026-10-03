@@ -3,7 +3,7 @@
 // as regras do Firestore (firestore.rules) só deixam esse usuário ler/gravar.
 //
 // Variáveis de ambiente (Vercel → Settings → Environment Variables):
-//   WF_PIN_HASH               SHA-256 (hex) do PIN
+//   WF_PIN_HASH               o PIN (só dígitos) ou o SHA-256 (hex) dele
 //   FIREBASE_SERVICE_ACCOUNT  JSON da conta de serviço do Firebase (Project settings → Service accounts)
 //
 // Enquanto FIREBASE_SERVICE_ACCOUNT não existir, responde { ok: true, token: null } e o app
@@ -46,9 +46,14 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
 
   const { pin } = await readBody(req);
-  // Tolera espaço, quebra de linha ou texto extra colado junto: pega só os 64 caracteres do hash
-  const envHash = process.env.WF_PIN_HASH;
-  const found = envHash ? (envHash.match(/[0-9a-f]{64}/i) || [])[0] : LEGACY_PIN_HASH;
+  // WF_PIN_HASH aceita o hash SHA-256 OU o próprio PIN (4-8 dígitos) — a variável é secreta
+  // e só existe no servidor, então guardar o PIN puro lá é tão seguro quanto o hash.
+  // Tolera espaço, quebra de linha ou texto extra colado junto.
+  const envHash = (process.env.WF_PIN_HASH || '').trim();
+  let found;
+  if (!envHash) found = LEGACY_PIN_HASH;
+  else if (/^\d{4,8}$/.test(envHash)) found = crypto.createHash('sha256').update(envHash).digest('hex');
+  else found = (envHash.match(/[0-9a-f]{64}/i) || [])[0];
   if (!found) {
     console.error('WF_PIN_HASH não contém um hash SHA-256 de 64 caracteres');
     return res.status(500).json({ ok: false, error: 'config_pin_hash' });
