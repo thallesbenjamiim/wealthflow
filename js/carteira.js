@@ -58,7 +58,7 @@ async function callAI(systemPrompt, messages, maxTokens = 1000) {
 }
 
 function openAssessorChat() {
-  showPage('agentes', document.querySelectorAll('.nav-item')[2]);
+  showPage('agentes');
 }
 
 // ─────────────────────────────────────────
@@ -173,7 +173,7 @@ async function updateDashboard(cambio) {
 
   // ── 1. HERO ──
   document.getElementById('hero-total').textContent = '€' + fmtNum(totalEur, 0);
-  document.getElementById('hero-total-brl').textContent = 'R$' + fmtNum(totalEur * rate, 0) + ' equivalente';
+  document.getElementById('hero-total-brl').textContent = '≈ R$' + fmtNum(totalEur * rate, 0);
 
   const brPct = totalEur > 0 ? (brInvestedEur + cashEur) / totalEur : 0;
   const concentrationOk = brPct < 0.75 && brPct > 0.15;
@@ -188,6 +188,7 @@ async function updateDashboard(cambio) {
   }
   // Rentabilidade real: valor de mercado vs total aportado (dos registros de aporte)
   const growthEl = document.getElementById('hero-growth');
+  const investedEl = document.getElementById('hero-invested');
   let invDocs = []; // reutilizado no cálculo de Disciplina do Score
   try {
     invDocs = await loadAportesForEvo();
@@ -196,14 +197,18 @@ async function updateDashboard(cambio) {
     if (investedEur > 1) {
       const diff = totalEur - investedEur;
       const diffPct = (diff / investedEur) * 100;
-      growthEl.textContent = `${diff >= 0 ? '▲ +' : '▼ −'}€${fmtNum(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(diffPct).toFixed(1).replace(".", ",")}%) vs €${fmtNum(investedEur, 0)} do seu bolso`;
-      growthEl.title = 'Inclui dividendos recebidos — reinvestidos ou não';
-      growthEl.style.color = diff >= 0 ? 'var(--green)' : 'var(--red)';
+      growthEl.textContent = `${diff >= 0 ? '+' : '−'}€${fmtNum(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(diffPct).toFixed(1).replace(".", ",")}%)`;
+      growthEl.title = 'Valor de hoje menos o que saiu do seu bolso. Inclui dividendos recebidos — reinvestidos ou não';
+      growthEl.style.color = diff >= 0 ? 'var(--pos)' : 'var(--red)';
+      investedEl.textContent = '€' + fmtNum(investedEur, 0);
     } else {
-      growthEl.textContent = totalEur > 0 ? '+ R$' + fmtNum(portfolioData.dividendos) + ' em dividendos' : 'iniciando';
+      growthEl.textContent = '—';
+      growthEl.style.color = '';
+      investedEl.textContent = '—';
     }
   } catch(e) {
-    growthEl.textContent = totalEur > 0 ? '+ R$' + fmtNum(portfolioData.dividendos) + ' em dividendos' : 'iniciando';
+    growthEl.textContent = '—';
+    investedEl.textContent = '—';
   }
 
   // ── 2. META (meta editável no Perfil, em reais, convertida dinamicamente pela cotação do dia) ──
@@ -225,7 +230,7 @@ async function updateDashboard(cambio) {
   // Ano em que a meta é atingida = hoje + N meses (não um ano-base fixo)
   const hojeD = new Date();
   const projYear = new Date(hojeD.getFullYear(), hojeD.getMonth() + months, 1).getFullYear();
-  document.getElementById('goal-year').textContent = months >= 12 * 60 ? '60+ anos' : projYear;
+  document.getElementById('goal-year').textContent = months >= 12 * 60 ? 'mais de 60 anos' : projYear;
 
   // ── 3b. RESERVA DE EMERGÊNCIA (independente da meta de R$1.000.000) ──
   const reservaEur = portfolioData.reserva || 0;
@@ -233,7 +238,9 @@ async function updateDashboard(cambio) {
   document.getElementById('reserva-target').textContent = '€' + fmtNum(profileData.reservaMetaEur, 0);
   document.getElementById('reserva-pct').textContent = reservaPct.toFixed(0) + '%';
   document.getElementById('reserva-bar-fill').style.width = Math.max(reservaPct, reservaEur > 0 ? 0.3 : 0) + '%';
-  document.getElementById('reserva-current').textContent = '€' + fmtNum(reservaEur);
+  document.getElementById('reserva-current').textContent = '€' + fmtNum(reservaEur, 0);
+  const falta = Math.max(0, profileData.reservaMetaEur - reservaEur);
+  document.getElementById('reserva-falta').textContent = falta > 0 ? '€' + fmtNum(falta, 0) : 'Meta atingida';
 
   // ── 4. ALOCAÇÃO SIMPLIFICADA ──
   const intlPct = totalEur > 0 ? (intlEur / totalEur) * 100 : 0;
@@ -381,7 +388,7 @@ async function renderWallet(rate) {
     if (!invested || invested <= 0 || !current) return null;
     const diff = current - invested;
     const pct = (diff / invested) * 100;
-    return { txt: `${diff >= 0 ? '▲ +' : '▼ −'}${sym}${fmtNum(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1).replace(".", ",")}%)`, cls: diff >= 0 ? 'pl-pos' : 'pl-neg' };
+    return { txt: `${diff >= 0 ? '+' : '−'}${sym}${fmtNum(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1).replace(".", ",")}%)`, cls: diff >= 0 ? 'pl-pos' : 'pl-neg' };
   };
   const pm = (invested, cotas) => (invested > 0 && cotas > 0) ? invested / cotas : null;
 
@@ -390,7 +397,7 @@ async function renderWallet(rate) {
     : portfolioData.mxrf11;
   const mxrfPm = pm(inv['MXRF11'], portfolioData.mxrf11_cotas);
   items.push({
-    icon: '🏢', name: 'MXRF11', type: 'FII de Papel · Nubank', cat: 'br',
+    icon: 'building', name: 'MXRF11', type: 'FII de papel · Nubank', cat: 'br', eur: mxrfVal / rate,
     val: showVal(mxrfVal, 'BRL'),
     meta: portfolioData.mxrf11_cotas ? fmtNum(portfolioData.mxrf11_cotas, 0) + ' cotas · R$' + fmtNum(portfolioData.mxrf11_preco) + (mxrfPm ? ' · PM R$' + fmtNum(mxrfPm) : '') : '',
     pl: plLine(inv['MXRF11'], mxrfVal, 'R$')
@@ -402,7 +409,7 @@ async function renderWallet(rate) {
       : portfolioData.hglg11;
     const hglgPm = pm(inv['HGLG11'], portfolioData.hglg11_cotas);
     items.push({
-      icon: '🏭', name: 'HGLG11', type: 'FII de Logística · Nubank', cat: 'br',
+      icon: 'warehouse', name: 'HGLG11', type: 'FII de logística · Nubank', cat: 'br', eur: hglgVal / rate,
       val: showVal(hglgVal, 'BRL'),
       meta: portfolioData.hglg11_cotas ? fmtNum(portfolioData.hglg11_cotas, 0) + ' cotas · R$' + fmtNum(portfolioData.hglg11_preco) + (hglgPm ? ' · PM R$' + fmtNum(hglgPm) : '') : '',
       pl: plLine(inv['HGLG11'], hglgVal, 'R$')
@@ -415,7 +422,7 @@ async function renderWallet(rate) {
       : portfolioData.knri11;
     const knriPm = pm(inv['KNRI11'], portfolioData.knri11_cotas);
     items.push({
-      icon: '🏛️', name: 'KNRI11', type: 'FII Híbrido · Nubank', cat: 'br',
+      icon: 'landmark', name: 'KNRI11', type: 'FII híbrido · Nubank', cat: 'br', eur: knriVal / rate,
       val: showVal(knriVal, 'BRL'),
       meta: portfolioData.knri11_cotas ? fmtNum(portfolioData.knri11_cotas, 0) + ' cotas · R$' + fmtNum(portfolioData.knri11_preco) + (knriPm ? ' · PM R$' + fmtNum(knriPm) : '') : '',
       pl: plLine(inv['KNRI11'], knriVal, 'R$')
@@ -424,7 +431,7 @@ async function renderWallet(rate) {
 
   const ipcaMercado = portfolioData.ipca_mercado != null;
   items.push({
-    icon: '📈', name: 'Tesouro IPCA+', type: 'Renda Fixa · Nubank', cat: 'br', val: showVal(ipcaValor(), 'BRL'),
+    icon: 'trending-up', name: 'Tesouro IPCA+', type: 'Renda fixa · Nubank', cat: 'br', eur: ipcaValor() / rate, val: showVal(ipcaValor(), 'BRL'),
     meta: ipcaMercado
       ? 'valor de mercado' + (portfolioData.ipca_mercado_data ? ' de ' + new Date(portfolioData.ipca_mercado_data).toLocaleDateString('pt-BR') : '')
       : 'valor aplicado',
@@ -432,22 +439,22 @@ async function renderWallet(rate) {
   });
 
   if (portfolioData.selic > 0) {
-    items.push({ icon: '💵', name: 'Tesouro Selic', type: 'Liquidez · Nubank', cat: 'br', val: showVal(portfolioData.selic, 'BRL'), meta: '' });
+    items.push({ icon: 'banknote', name: 'Tesouro Selic', type: 'Liquidez · Nubank', cat: 'br', eur: portfolioData.selic / rate, val: showVal(portfolioData.selic, 'BRL'), meta: '' });
   }
   if (portfolioData.caixinha > 0) {
-    items.push({ icon: '💰', name: 'Caixinha CDI', type: 'Aguardando destino · Nubank', cat: 'cash', val: showVal(portfolioData.caixinha, 'BRL'), meta: '' });
+    items.push({ icon: 'coins', name: 'Caixinha CDI', type: 'Aguardando destino · Nubank', cat: 'cash', eur: portfolioData.caixinha / rate, val: showVal(portfolioData.caixinha, 'BRL'), meta: '' });
   }
 
   const vwcePm = pm(inv['VWCE'], portfolioData.vwce_cotas);
   items.push({
-    icon: '🌍', name: 'VWCE', type: 'ETF Global Acc · Revolut', cat: 'intl',
+    icon: 'globe', name: 'VWCE', type: 'ETF global (Acc) · Revolut', cat: 'intl', eur: portfolioData.vwce,
     val: showVal(portfolioData.vwce, 'EUR'),
     meta: portfolioData.vwce_cotas ? fmtNum(portfolioData.vwce_cotas, 4) + ' cotas · €' + fmtNum(portfolioData.vwce_preco || 0) + (vwcePm ? ' · PM €' + fmtNum(vwcePm) : '') : '',
     pl: plLine(inv['VWCE'], portfolioData.vwce, '€')
   });
   const eunaPm = pm(inv['EUNA'], portfolioData.euna_cotas);
   items.push({
-    icon: '🔒', name: 'EUNA', type: 'ETF Bonds Acc · Revolut', cat: 'intl',
+    icon: 'shield', name: 'EUNA', type: 'ETF de títulos (Acc) · Revolut', cat: 'intl', eur: portfolioData.euna,
     val: showVal(portfolioData.euna, 'EUR'),
     meta: portfolioData.euna_cotas ? fmtNum(portfolioData.euna_cotas, 4) + ' cotas · €' + fmtNum(portfolioData.euna_preco || 0) + (eunaPm ? ' · PM €' + fmtNum(eunaPm) : '') : '',
     pl: plLine(inv['EUNA'], portfolioData.euna, '€')
@@ -459,24 +466,31 @@ async function renderWallet(rate) {
     const invested = portfolioData.bitcoin_invested_eur || 0;
     const currentVal = btcPrice ? qty * btcPrice : null;
     items.push({
-      icon: '₿', name: 'Bitcoin', type: 'Crypto · Informal', cat: 'btc',
+      icon: 'bitcoin', name: 'Bitcoin', type: 'Cripto · informal', cat: 'btc', eur: currentVal !== null ? currentVal : invested,
       val: currentVal !== null ? showVal(currentVal, 'EUR') : showVal(invested, 'EUR') + ' investido',
       meta: qty > 0 ? qty.toFixed(8) + ' BTC' + (currentVal !== null ? ' · cotação ao vivo' : ' · cotação indisponível')
             : 'aguardando cotação para converter',
       pl: currentVal !== null ? plLine(inv['Bitcoin'], currentVal, '€') : null
     });
   }
-  if (portfolioData.dividendos > 0) {
-    items.push({ icon: '💚', name: 'Dividendos recebidos', type: 'Acumulado total', cat: 'div', val: showVal(portfolioData.dividendos, 'BRL'), meta: '' });
-  }
   if (portfolioData.reserva > 0) {
-    items.push({ icon: '🛟', name: 'Reserva de Emergência', type: 'Intocável · Revolut', cat: 'reserva', val: showVal(portfolioData.reserva, 'EUR'), meta: 'Meta: €' + fmtNum(profileData.reservaMetaEur, 0) });
+    items.push({ icon: 'lifebuoy', name: 'Reserva de emergência', type: 'Fora dos investimentos · Revolut', cat: 'reserva', eur: portfolioData.reserva, val: showVal(portfolioData.reserva, 'EUR'), meta: 'Meta: €' + fmtNum(profileData.reservaMetaEur, 0) });
   }
 
-  list.innerHTML = items.map(it => `
+  // Agrupa por classe, com subtotal e % do patrimônio (a reserva de emergência fica à parte, fora do %)
+  const GRUPOS = [
+    { cat: 'br', nome: 'Brasil', cor: 'var(--alloc-br)' },
+    { cat: 'intl', nome: 'Internacional', cor: 'var(--alloc-intl)' },
+    { cat: 'cash', nome: 'Caixa', cor: 'var(--alloc-cash)' },
+    { cat: 'btc', nome: 'Cripto', cor: 'var(--alloc-btc)' },
+    { cat: 'reserva', nome: 'Reserva de emergência', cor: 'var(--blue)' }
+  ];
+  const totalInvestEur = items.filter(it => it.cat !== 'reserva').reduce((s, it) => s + (it.eur || 0), 0) || 1;
+  const fmtGrupo = eur => walletCurrency === 'BRL' ? 'R$' + fmtNum(eur * rate, 0) : '€' + fmtNum(eur, 0);
+  const linha = it => `
     <div class="wallet-item">
       <div class="wallet-left">
-        <div class="wallet-icon wallet-icon-${it.cat}">${it.icon}</div>
+        <div class="wallet-icon wallet-icon-${it.cat}">${icon(it.icon)}</div>
         <div><div class="wallet-name">${it.name}</div><div class="wallet-type">${it.type}</div></div>
       </div>
       <div class="wallet-right">
@@ -484,7 +498,17 @@ async function renderWallet(rate) {
         ${it.meta ? `<div class="wallet-meta mval">${it.meta}</div>` : ''}
         ${it.pl ? `<div class="wallet-pl mval ${it.pl.cls}">${it.pl.txt}</div>` : ''}
       </div>
-    </div>`).join('');
+    </div>`;
+  list.innerHTML = GRUPOS.map(g => {
+    const doGrupo = items.filter(it => it.cat === g.cat);
+    if (!doGrupo.length) return '';
+    const sub = doGrupo.reduce((s, it) => s + (it.eur || 0), 0);
+    const pct = g.cat === 'reserva' ? '' : `<span class="wg-pct">${Math.round(sub / totalInvestEur * 100)}%</span>`;
+    return `<div class="wallet-group">
+      <div class="wallet-group-head"><span class="alloc-dot" style="background:${g.cor}"></span>${g.nome}<span class="wg-total mval">${fmtGrupo(sub)}</span>${pct}</div>
+      ${doGrupo.map(linha).join('')}
+    </div>`;
+  }).join('');
 
   // ── Resumo: aportado vs vale hoje ──
   const summaryEl = document.getElementById('wallet-summary');
@@ -579,7 +603,7 @@ function renderConferencia() {
   list.innerHTML = conferenciaItens().map(it => `
     <div class="conf-row">
       <div><div class="conf-name">${it.nome}</div><div class="conf-sub">${it.sub}</div></div>
-      <div class="conf-app mval">no app: ${fmtConf(it, it.valorApp)}</div>
+      <div class="conf-app mval">No app: ${fmtConf(it, it.valorApp)}</div>
       <div>
         <input class="form-input" type="text" inputmode="decimal" data-campo="${it.campo}" placeholder="na corretora" oninput="atualizarDiffConferencia(this)">
         <div class="conf-diff" id="conf-diff-${it.campo}"></div>
@@ -594,7 +618,7 @@ function atualizarDiffConferencia(input) {
   if (!input.value.trim() || isNaN(v)) { out.textContent = ''; return; }
   const diff = v - it.valorApp;
   const tol = it.dec === 8 ? 1e-8 : it.dec === 0 ? 0.5 : 0.005;
-  if (Math.abs(diff) < tol) { out.textContent = '✓ bate'; out.style.color = 'var(--green)'; return; }
+  if (Math.abs(diff) < tol) { out.textContent = 'Bate com o app'; out.style.color = 'var(--pos)'; return; }
   out.textContent = (diff > 0 ? '+' : '−') + fmtConf(it, Math.abs(diff)) + ' de diferença';
   out.style.color = 'var(--amber)';
 }
@@ -616,7 +640,7 @@ async function salvarConferencia() {
   if (!mudancas.length) { showToast('Nada a corrigir — tudo bate ✓'); return; }
 
   const resumo = mudancas.map(m => `• ${m.it.nome}: ${fmtConf(m.it, m.it.valorApp)} → ${fmtConf(m.it, m.novo)}`).join('\n');
-  if (!confirm(`Corrigir a carteira com estes valores?\n\n${resumo}`)) return;
+  if (!await confirmDialog(resumo, { titulo: 'Corrigir a carteira com estes valores?', ok: 'Salvar correções' })) return;
 
   const agora = new Date();
   const moedaDe = a => ['VWCE', 'EUNA', 'Bitcoin', 'Reserva'].includes(a) ? 'EUR' : 'BRL';
@@ -782,8 +806,9 @@ function _drawEvoChart(points, months, sym, nowValue = null) {
     nowLine.id = 'evo-now-line';
     nowLine.setAttribute('fill', 'none');
     nowLine.setAttribute('stroke', 'var(--gold)');
-    nowLine.setAttribute('stroke-width', '2.5');
+    nowLine.setAttribute('stroke-width', '2');
     nowLine.setAttribute('stroke-dasharray', '6 5');
+    nowLine.setAttribute('vector-effect', 'non-scaling-stroke');
     nowLine.setAttribute('stroke-linecap', 'round');
     svg.appendChild(nowLine);
   }

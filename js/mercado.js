@@ -10,16 +10,24 @@ let marketRates = { eurbrl: null, selic: null, ipca: null, selicEstimada: false,
 let lastMarketData = null; // última resposta do /market-data — reaplicada quando a carteira é relida do Firebase
 function getRate() { return marketRates.eurbrl || 6; }
 
+// Escreve num indicador do topo (se ele existir na tela), com dica opcional ao passar o mouse
+function setText(id, txt, title) {
+  const e = document.getElementById(id);
+  if (!e) return;
+  e.textContent = txt;
+  if (title) e.title = title;
+}
+
 async function fetchCambio() {
   try {
     const r = await fetch('https://economia.awesomeapi.com.br/json/last/EUR-BRL');
     const d = await r.json();
     const val = parseFloat(d.EURBRL.bid);
     marketRates.eurbrl = val;
-    ['pill-cambio','sb-cambio'].forEach(id => document.getElementById(id).textContent = 'R$' + fmtNum(val));
+    setText('pill-cambio', 'R$' + fmtNum(val));
     return val;
   } catch {
-    ['pill-cambio','sb-cambio'].forEach(id => document.getElementById(id).textContent = '~R$6,00');
+    setText('pill-cambio', '≈R$6,00');
     return 6;
   }
 }
@@ -30,7 +38,7 @@ async function fetchSelic() {
   const SELIC_FALLBACK = 13.75;
   marketRates.selic = SELIC_FALLBACK;
   marketRates.selicEstimada = true;
-  ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) { e.textContent = '≈' + fmtNum(SELIC_FALLBACK) + '%'; e.title = 'Estimativa — Banco Central indisponível agora'; } });
+  setText('pill-selic', '≈' + fmtNum(SELIC_FALLBACK) + '%', 'Estimativa — Banco Central indisponível agora');
   return SELIC_FALLBACK;
 }
 
@@ -39,9 +47,7 @@ async function fetchIPCA() {
   const IPCA_FALLBACK = 4.22;
   marketRates.ipca = IPCA_FALLBACK;
   marketRates.ipcaEstimado = true;
-  const e = document.getElementById('pill-ipca');
-  e.textContent = '≈' + fmtNum(IPCA_FALLBACK) + '%';
-  e.title = 'Estimativa — Banco Central indisponível agora';
+  setText('pill-ipca', '≈' + fmtNum(IPCA_FALLBACK) + '%', 'Estimativa — Banco Central indisponível agora');
   return IPCA_FALLBACK;
 }
 
@@ -104,22 +110,20 @@ async function loadMarketData() {
       lastMarketData = md;
       if (md.eurbrl) {
         marketRates.eurbrl = parseFloat(md.eurbrl);
-        ['pill-cambio','sb-cambio'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = 'R$' + fmtNum(marketRates.eurbrl); });
+        setText('pill-cambio', 'R$' + fmtNum(marketRates.eurbrl));
       }
       applyLivePrices(md);
       // Selic e IPCA reais (BrasilAPI/Banco Central) via proxy — fallback fixo se faltarem
       if (md.selic) {
         marketRates.selic = parseFloat(md.selic);
         marketRates.selicEstimada = false;
-        ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) { e.textContent = fmtNum(marketRates.selic) + '%'; e.title = 'Dado do dia (BrasilAPI/Banco Central)'; } });
+        setText('pill-selic', fmtNum(marketRates.selic) + '%', 'Dado do dia (BrasilAPI/Banco Central)');
       }
       else await fetchSelic();
       if (md.ipca12m) {
         marketRates.ipca = parseFloat(md.ipca12m);
         marketRates.ipcaEstimado = false;
-        const e = document.getElementById('pill-ipca');
-        e.textContent = fmtNum(marketRates.ipca) + '%';
-        e.title = 'Dado do dia (BrasilAPI/Banco Central)';
+        setText('pill-ipca', fmtNum(marketRates.ipca) + '%', 'Dado do dia (BrasilAPI/Banco Central)');
       }
       else await fetchIPCA();
       // Câmbio: se o proxy não trouxe, usa a fonte direta (awesomeapi tem CORS liberado)
@@ -135,8 +139,6 @@ async function loadMarketData() {
   document.getElementById('topbarRight')?.classList.remove('pills-loading');
 
   const rate = getRate();
-  const mes = new Date().toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
-  document.getElementById('sb-mes').textContent = mes;
 
   const w0c = document.getElementById('w0-cambio');
   const w0s = document.getElementById('w0-selic');

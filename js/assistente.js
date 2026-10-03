@@ -153,7 +153,7 @@ async function onEvoChange() {
 // AGENTS
 // ─────────────────────────────────────────
 function initAgents() {
-  document.getElementById('apiNotice').style.display = (apiKey || geminiKey) ? 'none' : 'block';
+  document.getElementById('apiNotice').style.display = (apiKey || geminiKey) ? 'none' : 'flex';
 
   const qa = document.getElementById('quickArea');
   qa.innerHTML = '';
@@ -166,12 +166,13 @@ function initAgents() {
   });
 
   const ma = document.getElementById('modeArea');
-  ma.innerHTML = '';
+  ma.innerHTML = '<span class="mode-label">Tom da resposta:</span>';
   Object.entries(MODES).forEach(([key, m]) => {
     const btn = document.createElement('button');
     btn.className = 'qbtn mode' + (chatMode === key ? ' active' : '');
     btn.id = 'mode-' + key;
-    btn.textContent = m.label;
+    btn.innerHTML = icon(m.icon) + ' ' + m.label;
+    btn.title = 'Responder com o olhar de ' + m.label.toLowerCase() + ' (clique de novo para desligar)';
     btn.addEventListener('click', () => toggleMode(key));
     ma.appendChild(btn);
   });
@@ -184,8 +185,8 @@ function toggleMode(key) {
   document.querySelectorAll('.qbtn.mode').forEach(b => b.classList.toggle('active', b.id === 'mode-' + chatMode));
 }
 
-function clearChat() {
-  if (chatHistory.length && !confirm('Limpar a conversa?')) return;
+async function clearChat() {
+  if (chatHistory.length && !await confirmDialog('As mensagens desta conversa serão apagadas deste aparelho.', { titulo: 'Limpar a conversa?', ok: 'Limpar', perigo: true })) return;
   chatHistory = [];
   saveHistories();
   renderMsgs();
@@ -193,7 +194,7 @@ function clearChat() {
 
 function renderMsgs() {
   const msgs = document.getElementById('msgs');
-  msgs.innerHTML = `<div style="text-align:center;padding:12px 0"><span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">— conversa iniciada —</span></div>`;
+  msgs.innerHTML = '';
 
   if (chatHistory.length === 0) {
     msgs.innerHTML += buildAgentMsg(getWelcome(), true);
@@ -221,12 +222,12 @@ function renderMsgs() {
 // raw = HTML do próprio app (boas-vindas); qualquer texto vindo da IA passa pelo mdLite, que escapa antes
 function buildAgentMsg(text, raw = false) {
   const fmt = raw ? text : mdLite(text);
-  return `<div class="msg agent"><div class="mavatar" style="background:${ASSISTANT.color}">${ASSISTANT.icon}</div><div><div class="mbubble">${fmt}</div><div class="mmeta">${ASSISTANT.name}</div></div></div>`;
+  return `<div class="msg agent"><div class="mavatar">${icon('sparkles')}</div><div><div class="mbubble">${fmt}</div></div></div>`;
 }
 
 function buildUserMsg(text) {
   const inicial = (profileData.nome || 'T').charAt(0).toUpperCase();
-  return `<div class="msg user"><div class="mavatar" style="background:var(--surf2)">${escapeHtml(inicial)}</div><div><div class="mbubble">${escapeHtml(text).replace(/\n/g, '<br>')}</div><div class="mmeta">${profileData.nome}</div></div></div>`;
+  return `<div class="msg user"><div class="mavatar">${escapeHtml(inicial)}</div><div><div class="mbubble">${escapeHtml(text).replace(/\n/g, '<br>')}</div></div></div>`;
 }
 
 function sendQuick(t) { document.getElementById('userInput').value = t; sendMsg(); }
@@ -238,7 +239,7 @@ async function sendMsg() {
   if (!text) return;
 
   if (!apiKey && !geminiKey) {
-    showPage('config', document.querySelectorAll('.nav-item')[5]);
+    showPage('config');
     showToast('⚠️ Configure sua chave API primeiro!');
     return;
   }
@@ -253,7 +254,7 @@ async function sendMsg() {
   if (qa) qa.style.display = 'none';
 
   const tid = 'typing-' + Date.now();
-  msgs.innerHTML += `<div class="msg agent" id="${tid}"><div class="mavatar" style="background:${ASSISTANT.color}">${ASSISTANT.icon}</div><div class="typing"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div></div>`;
+  msgs.innerHTML += `<div class="msg agent" id="${tid}"><div class="mavatar">${icon('sparkles')}</div><div class="typing"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div></div>`;
   msgs.scrollTop = msgs.scrollHeight;
 
   loading = true;
@@ -272,14 +273,14 @@ async function sendMsg() {
     saveHistories();
 
     const el = document.getElementById(tid);
-    if (el) el.innerHTML = `<div class="mavatar" style="background:${ASSISTANT.color}">${ASSISTANT.icon}</div><div><div class="mbubble">${mdLite(reply)}</div><div class="mmeta">${ASSISTANT.name} · agora</div></div>`;
+    if (el) el.innerHTML = `<div class="mavatar">${icon('sparkles')}</div><div><div class="mbubble">${mdLite(reply)}</div></div>`;
 
   } catch (err) {
     chatHistory.pop();
     saveHistories();
     const el = document.getElementById(tid);
-    const msg = err.message.includes('401') ? '❌ Chave API inválida. Vá em Configurar API e verifique.' : `❌ Erro: ${escapeHtml(err.message)}`;
-    if (el) el.innerHTML = `<div class="mavatar" style="background:var(--rdim)">⚠️</div><div><div class="mbubble" style="color:var(--red)">${msg}</div></div>`;
+    const msg = err.message.includes('401') ? 'Chave de IA inválida. Confira em Chaves de IA.' : `Não foi possível responder: ${escapeHtml(err.message)}`;
+    if (el) { el.classList.add('error'); el.innerHTML = `<div class="mavatar">${icon('alert')}</div><div><div class="mbubble">${msg}</div></div>`; }
   }
 
   loading = false;
@@ -314,8 +315,8 @@ function saveGeminiKey() {
   localStorage.setItem('wf_active_provider', 'gemini');
   localStorage.removeItem('wf_suggestion_cache');
   updateKeyStatus();
-  showToast('✓ Gemini ativado! Gratuito e pronto.');
-  setTimeout(() => showPage('agentes', document.querySelectorAll('.nav-item')[2]), 800);
+  showToast('✓ Gemini conectado');
+  setTimeout(() => showPage('agentes'), 800);
 }
 
 function saveApiKey() {
@@ -327,7 +328,7 @@ function saveApiKey() {
   localStorage.setItem('wf_active_provider', 'anthropic');
   localStorage.removeItem('wf_suggestion_cache');
   updateKeyStatus();
-  showToast('✓ Anthropic ativado!');
-  setTimeout(() => showPage('agentes', document.querySelectorAll('.nav-item')[2]), 800);
+  showToast('✓ Claude conectado');
+  setTimeout(() => showPage('agentes'), 800);
 }
 

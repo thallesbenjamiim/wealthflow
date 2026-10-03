@@ -70,7 +70,7 @@ async function loadMonthlySummary() {
 // 🔍 Análise completa da carteira — sob demanda, único lugar com tom de assessor
 async function analyzePortfolio() {
   if (!apiKey && !geminiKey) {
-    showPage('config', document.querySelectorAll('.nav-item')[5]);
+    showPage('config');
     showToast('⚠️ Configure sua chave API primeiro!');
     return;
   }
@@ -78,7 +78,7 @@ async function analyzePortfolio() {
   const card = document.getElementById('analysis-card');
   const txtEl = document.getElementById('analysis-text');
   btn.disabled = true;
-  btn.textContent = '⏳ Analisando sua carteira…';
+  btn.innerHTML = icon('search') + ' Analisando sua carteira…';
   try {
     const prompt = 'Faça uma ANÁLISE COMPLETA da carteira: proporção Brasil/Internacional vs referência 60/40, concentração por ativo, rentabilidade vs aportado, riscos relevantes, aderência ao plano e sugestão concreta para o próximo aporte. Aqui você PODE se aprofundar: até ~250 palavras, em parágrafos curtos, sem títulos e sem listas com asteriscos.';
     const text = await callAI(getAssistantSystem() + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 900);
@@ -91,7 +91,7 @@ async function analyzePortfolio() {
     showToast('❌ ' + e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = '🔍 Analisar carteira com IA';
+    btn.innerHTML = icon('search') + ' Analisar carteira com IA';
   }
 }
 
@@ -115,7 +115,7 @@ function askRiskAgentAboutScore() {
 
   const question = `Meu WealthFlow Score está em ${overall}/100 (Disciplina ${disciplina}, Diversificação ${diversificacao}, Risco ${risco}, Progresso ${progresso}). Pode analisar o que cada número significa na minha carteira atual e o que eu poderia ajustar para melhorar?`;
 
-  showPage('agentes', document.querySelectorAll('.nav-item')[2]);
+  showPage('agentes');
   chatMode = 'risco'; // pergunta sobre score vai com o olhar de risco
   document.querySelectorAll('.qbtn.mode').forEach(b => b.classList.toggle('active', b.id === 'mode-risco'));
   document.getElementById('userInput').value = question;

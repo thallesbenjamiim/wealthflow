@@ -28,9 +28,9 @@ async function renderAlertas() {
 
   if (totalEur > 0 && (brPct >= 0.75 || brPct <= 0.15)) {
     const desc = brPct >= 0.75
-      ? `${(brPct*100).toFixed(0)}% da carteira está em Brasil/Caixa — considere reforçar Internacional (VWCE/EUNA) no próximo aporte. Pergunte ao Assistente (modo 🛡️ Risco) antes de agir.`
-      : `Só ${(brPct*100).toFixed(0)}% da carteira está em Brasil/Caixa, abaixo da referência 60/40. Pergunte ao Assistente (modo 🛡️ Risco) antes de agir.`;
-    alerts.push({ type: 'red', icon: '⚖️', title: 'AÇÃO SUGERIDA: Carteira desequilibrada', desc, action: true });
+      ? `${(brPct*100).toFixed(0)}% da carteira está em Brasil/Caixa — considere reforçar Internacional (VWCE/EUNA) no próximo aporte. Pergunte ao Assistente (tom Risco) antes de agir.`
+      : `Só ${(brPct*100).toFixed(0)}% da carteira está em Brasil/Caixa, abaixo da referência 60/40. Pergunte ao Assistente (tom Risco) antes de agir.`;
+    alerts.push({ type: 'red', icon: 'scale', title: 'Carteira desequilibrada', desc, action: true });
     actionableCount++;
   }
 
@@ -50,7 +50,7 @@ async function renderAlertas() {
   const maxWeightPct = (maxPosition.eur / positionsTotal) * 100;
 
   if (totalEur > 0 && maxWeightPct > 30) {
-    alerts.push({ type: 'red', icon: '🎯', title: `AÇÃO SUGERIDA: Concentração alta em ${maxPosition.name}`, desc: `${maxPosition.name} representa ${maxWeightPct.toFixed(0)}% da carteira — acima do limite saudável de 30%. Pergunte ao Assistente (modo 🛡️ Risco) antes do próximo aporte.`, action: true });
+    alerts.push({ type: 'red', icon: 'pie', title: `Concentração alta em ${maxPosition.name}`, desc: `${maxPosition.name} representa ${maxWeightPct.toFixed(0)}% da carteira — acima do limite saudável de 30%. Pergunte ao Assistente (tom Risco) antes do próximo aporte.`, action: true });
     actionableCount++;
   }
 
@@ -58,70 +58,70 @@ async function renderAlertas() {
   if (marketRates.selicEstimada) {
     // informativo, adicionado abaixo junto dos demais
   } else if (selicVal < 7) {
-    alerts.push({ type: 'red', icon: '🚨', title: 'AÇÃO SUGERIDA: Selic abaixo de 7%', desc: 'Realocar gradualmente do Brasil para Internacional (5-10% por vez, 60/40 → 50/50). Pergunte ao Assistente (modo 🛡️ Risco) antes de agir.', action: true });
+    alerts.push({ type: 'red', icon: 'alert', title: 'Selic abaixo de 7%', desc: 'Realocar gradualmente do Brasil para Internacional (5-10% por vez, 60/40 → 50/50). Pergunte ao Assistente (tom Risco) antes de agir.', action: true });
     actionableCount++;
   } else if (selicVal < 10) {
-    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Selic abaixo de 10%', desc: 'Migrar o aporte de renda fixa para FIIs e Internacional. Pergunte ao Assistente antes de agir.', action: true });
+    alerts.push({ type: 'amber', icon: 'bell', title: 'Selic abaixo de 10%', desc: 'Migrar o aporte de renda fixa para FIIs e Internacional. Pergunte ao Assistente antes de agir.', action: true });
     actionableCount++;
   }
 
   // Caixinha parada há muito tempo sem destino definido
   if (portfolioData.caixinha > 150) {
-    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Caixinha com saldo a decidir', desc: `R$${fmtNum(portfolioData.caixinha)} aguardando destino. Decida no próximo aporte (dia ${profileData.diaAporte}): HGLG11, KNRI11, MXRF11 ou IPCA+.`, action: true });
+    alerts.push({ type: 'amber', icon: 'coins', title: 'Caixinha com saldo a decidir', desc: `R$${fmtNum(portfolioData.caixinha)} aguardando destino. Decida no próximo aporte (dia ${profileData.diaAporte}): HGLG11, KNRI11, MXRF11 ou IPCA+.`, action: true });
     actionableCount++;
   }
 
   // Lembrete do aporte mensal — só se ainda não aportou este mês (Caixinha/Reserva não são aporte de investimento)
   const aportouEsteMes = (docs || []).some(d => monthKeyOf(d.data) === mesKey && !['Dividendo', 'Reserva', 'Caixinha'].includes(d.ativo));
   if (diaHoje >= 26 && !aportouEsteMes) {
-    alerts.push({ type: 'amber', icon: '📅', title: 'AÇÃO SUGERIDA: Aporte do mês chegando', desc: `O aporte de €${profileData.aporteMensalEur} é sempre dia ${profileData.diaAporte} e ainda não há registro em ${hoje.toLocaleDateString('pt-BR', { month: 'long' })}.`, action: true });
+    alerts.push({ type: 'amber', icon: 'calendar', title: 'Aporte do mês chegando', desc: `O aporte de €${profileData.aporteMensalEur} é sempre dia ${profileData.diaAporte} e ainda não há registro em ${hoje.toLocaleDateString('pt-BR', { month: 'long' })}.`, action: true });
     actionableCount++;
   }
 
   const badgeDesk = document.getElementById('alertCount');
   badgeDesk.textContent = actionableCount;
-  badgeDesk.style.display = actionableCount > 0 ? '' : 'none';
+  badgeDesk.hidden = actionableCount === 0;
   const badgeMobile = document.getElementById('alertCountMobile');
   if (badgeMobile) {
     badgeMobile.textContent = actionableCount;
-    badgeMobile.style.display = actionableCount > 0 ? '' : 'none';
+    badgeMobile.hidden = actionableCount === 0;
   }
 
   // ─── SEPARADOR ───
   if (actionableCount > 0) {
-    alerts.push({ type: 'divider', title: '— Informativos abaixo, sem ação necessária —' });
+    alerts.push({ type: 'divider', title: 'Informativos' });
   } else {
-    alerts.unshift({ type: 'green', icon: '✅', title: 'Nenhuma ação necessária agora', desc: 'Carteira dentro do plano. Os gatilhos só disparam quando Selic, câmbio ou mercado saírem da faixa definida na Constituição do WealthFlow.' });
+    alerts.unshift({ type: 'divider', title: 'Informativos' });
+    alerts.unshift({ type: 'green', icon: 'check-circle', title: 'Nenhuma ação necessária agora', desc: 'Carteira dentro do plano. Os gatilhos só disparam quando Selic, câmbio ou mercado saírem da faixa definida na Constituição do WealthFlow.' });
   }
 
   // ─── INFORMATIVOS (situação, sem exigir ação) ───
-  alerts.push({ type: 'green', icon: '✅', title: 'Dupla residência fiscal confirmada', desc: 'Brasil e Irlanda — situação regularizada.' });
   if (primeiroDeemedDisposal) {
     const anoDD = primeiroDeemedDisposal.getFullYear();
-    alerts.push({ type: 'blue', icon: '📅', title: `Deemed disposal — ${primeiroDeemedDisposal.toLocaleDateString('pt-BR')}`, desc: `Exit Tax 38% sobre VWCE e EUNA, 8 anos após cada compra. A partir de ${anoDD - 1}, planejar liquidez — veja a estimativa em Carteira → Exit Tax.` });
+    alerts.push({ type: 'blue', icon: 'calendar', title: `Deemed disposal — ${primeiroDeemedDisposal.toLocaleDateString('pt-BR')}`, desc: `Exit Tax 38% sobre VWCE e EUNA, 8 anos após cada compra. A partir de ${anoDD - 1}, planejar liquidez — veja a estimativa em Carteira → Exit Tax.` });
   }
 
   if (marketRates.selicEstimada) {
-    alerts.push({ type: 'blue', icon: '📡', title: 'Selic do dia indisponível', desc: `O Banco Central não respondeu — o app está usando a estimativa ${selicLabel()} e os gatilhos de Selic ficam pausados até o dado real voltar.` });
+    alerts.push({ type: 'blue', icon: 'info', title: 'Selic do dia indisponível', desc: `O Banco Central não respondeu — o app está usando a estimativa ${selicLabel()} e os gatilhos de Selic ficam pausados até o dado real voltar.` });
   }
 
   if (portfolioData.dividendos > 0) {
     const pagantes = [['MXRF11', portfolioData.mxrf11_cotas], ['HGLG11', portfolioData.hglg11_cotas], ['KNRI11', portfolioData.knri11_cotas]]
       .filter(([, c]) => (c || 0) > 0).map(([n]) => n);
     const quem = pagantes.length ? `${pagantes.join(', ')} gerando renda passiva mensal.` : '';
-    alerts.push({ type: 'green', icon: '💚', title: 'Dividendos ativos', desc: `Total recebido: R$${fmtNum(portfolioData.dividendos)}. ${quem}` });
+    alerts.push({ type: 'green', icon: 'coins', title: 'Dividendos ativos', desc: `Total recebido: R$${fmtNum(portfolioData.dividendos)}. ${quem}` });
   }
 
   if (portfolioData.hglg11_cotas && portfolioData.hglg11_cotas > 0) {
-    alerts.push({ type: 'green', icon: '🏭', title: 'HGLG11 ativo na carteira', desc: `${fmtNum(portfolioData.hglg11_cotas, 0)} cotas de FII de logística.` });
+    alerts.push({ type: 'green', icon: 'warehouse', title: 'HGLG11 ativo na carteira', desc: `${fmtNum(portfolioData.hglg11_cotas, 0)} cotas de FII de logística.` });
   } else {
-    alerts.push({ type: 'blue', icon: '🎯', title: 'Próximo objetivo: HGLG11', desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
+    alerts.push({ type: 'blue', icon: 'target', title: 'Próximo objetivo: HGLG11', desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
   }
 
   if (portfolioData.knri11_cotas && portfolioData.knri11_cotas > 0) {
-    alerts.push({ type: 'green', icon: '🏛️', title: 'KNRI11 ativo na carteira', desc: `${fmtNum(portfolioData.knri11_cotas, 0)} cotas de FII híbrido.` });
+    alerts.push({ type: 'green', icon: 'landmark', title: 'KNRI11 ativo na carteira', desc: `${fmtNum(portfolioData.knri11_cotas, 0)} cotas de FII híbrido.` });
   } else {
-    alerts.push({ type: 'blue', icon: '🎯', title: 'Próximo objetivo: KNRI11', desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
+    alerts.push({ type: 'blue', icon: 'target', title: 'Próximo objetivo: KNRI11', desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
   }
 
   // Janela típica de pagamento do MXRF11 (~dia 15) — informativo, só se ainda não registrou dividendo no mês
@@ -129,17 +129,18 @@ async function renderAlertas() {
     const jaRegistrou = (docs || []).some(d => d.ativo === 'Dividendo' && monthKeyOf(d.data) === mesKey);
     if (!jaRegistrou) {
       const est = portfolioData.mxrf11_cotas * divPerShare.mxrf11;
-      alerts.push({ type: 'blue', icon: '💰', title: 'Dividendo do MXRF11 esperado', desc: `O MXRF11 costuma pagar nesta janela (~R$${fmtNum(est)} com suas ${fmtNum(portfolioData.mxrf11_cotas, 0)} cotas). Quando cair no Nubank, registre em Registrar Aporte → Dividendo.` });
+      alerts.push({ type: 'blue', icon: 'coins', title: 'Dividendo do MXRF11 esperado', desc: `O MXRF11 costuma pagar nesta janela (~R$${fmtNum(est)} com suas ${fmtNum(portfolioData.mxrf11_cotas, 0)} cotas). Quando cair no Nubank, registre em Registrar Aporte → Dividendo.` });
     }
   }
 
-  document.getElementById('alertsList').innerHTML = alerts.map(a => {
-    if (a.type === 'divider') {
-      return `<div style="text-align:center;padding:10px 0;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">${a.title}</div>`;
-    }
-    return `<div class="alert-card ${a.type}">
-      <div class="alert-icon">${a.icon}</div>
-      <div><div class="alert-title">${a.title}</div><div class="alert-desc">${a.desc}</div></div>
+  const cabecalho = actionableCount > 0
+    ? `<div class="alert-section">Pedem sua atenção <span class="count">${actionableCount}</span></div>`
+    : '';
+  document.getElementById('alertsList').innerHTML = cabecalho + alerts.map(a => {
+    if (a.type === 'divider') return `<div class="alert-section">${a.title}</div>`;
+    return `<div class="alert-card ${a.type}${a.action ? ' action' : ''}">
+      <div class="alert-icon">${icon(a.icon)}</div>
+      <div><div class="alert-title">${a.title}${a.action ? '<span class="alert-badge">Ação sugerida</span>' : ''}</div><div class="alert-desc">${a.desc}</div></div>
     </div>`;
   }).join('');
 

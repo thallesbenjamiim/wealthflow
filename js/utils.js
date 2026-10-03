@@ -56,7 +56,7 @@ async function atualizarStatusPush() {
   const reg = await navigator.serviceWorker.getRegistration();
   const sub = reg && await reg.pushManager.getSubscription();
   if (sub && Notification.permission === 'granted') {
-    st.textContent = '✓ Ativas neste aparelho.';
+    st.textContent = 'Ativas neste aparelho.';
     show(false, true, true);
   } else {
     st.textContent = 'Desativadas neste aparelho.';
@@ -112,10 +112,22 @@ function mdLite(text) {
   return escapeHtml(text).replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<em>$1</em>');
 }
 
+// O tipo do aviso vem do símbolo no começo da mensagem (✓ sucesso, ❌ erro, ⚠️ atenção, 🧪 teste):
+// o símbolo vira um ícone colorido do app em vez de aparecer como emoji.
+let _toastTimer = null;
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
+  const tipos = [['✓', 'success', 'check-circle'], ['✅', 'success', 'check-circle'], ['❌', 'error', 'x-circle'], ['⚠️', 'warn', 'alert'], ['🧪', 'info', 'flask']];
+  let texto = String(msg).trim(), tipo = 'info', ic = 'info';
+  for (const [prefixo, tp, i] of tipos) {
+    if (texto.startsWith(prefixo)) { texto = texto.slice(prefixo.length).trim(); tipo = tp; ic = i; break; }
+  }
+  t.className = 'toast ' + tipo;
+  t.innerHTML = icon(ic) + '<span></span>';
+  t.querySelector('span').textContent = texto;
+  void t.offsetWidth; // reinicia a animação se já havia um aviso na tela
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), texto.length > 70 ? 5000 : 3200);
 }
 

@@ -1,12 +1,11 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>WealthFlow — Carteira Digital Inteligente</title>
 <!-- PWA -->
-<meta name="theme-color" content="#060807">
+<meta name="theme-color" content="#090A0D">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
@@ -14,7 +13,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="WealthFlow">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
 
 <!-- Firebase -->
 <script type="module" src="js/firebase.js"></script>
@@ -23,9 +24,54 @@
 </head>
 <body>
 
+<!-- ÍCONES — um único conjunto (traço de 2px), usado como <svg class="i"><use href="#i-nome"/></svg>.
+     No JavaScript: icon('nome'). Emojis não são usados como ícone: cada sistema desenha de um jeito. -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9.5 9-7 9 7V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M10 3 8.5 8.5 3 10l5.5 1.5L10 17l1.5-5.5L17 10l-5.5-1.5z"/><path d="M18 14v6M15 17h6"/></symbol>
+  <symbol id="i-plus-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></symbol>
+  <symbol id="i-warehouse" viewBox="0 0 24 24"><path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35a2 2 0 0 1 1.26-1.86l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z"/><path d="M6 18h12M6 14h12"/><rect x="6" y="10" width="12" height="12"/></symbol>
+  <symbol id="i-landmark" viewBox="0 0 24 24"><path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"/></symbol>
+  <symbol id="i-trending-up" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
+  <symbol id="i-banknote" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></symbol>
+  <symbol id="i-coins" viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18M7 6h1v4M16.71 13.88l.7.71-2.82 2.82"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+  <symbol id="i-bitcoin" viewBox="0 0 24 24"><path d="M11.77 19.09c4.92.87 6.14-6.03 1.21-6.9m-1.21 6.9-5.91-1.04m5.91 1.04-.35 1.97m1.56-8.87c4.93.87 6.14-6.02 1.22-6.89m-1.220 6.89-3.94-.69m5.16-6.2L8.29 4.26m5.91 1.04.35-1.97M7.48 20.36l3.13-17.72"/></symbol>
+  <symbol id="i-lifebuoy" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></symbol>
+  <symbol id="i-lightbulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1ZM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10M12 3v18M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></symbol>
+  <symbol id="i-hourglass" viewBox="0 0 24 24"><path d="M5 22h14M5 2h14M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+  <symbol id="i-pie" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></symbol>
+  <symbol id="i-backspace" viewBox="0 0 24 24"><path d="M10 5a2 2 0 0 0-1.34.52l-6.33 5.74a1 1 0 0 0 0 1.48l6.33 5.74A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6M18 9l-6 6"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 11 8 11 8a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.53 13.53 0 0 0 1 12s4 8 11 8a9.74 9.74 0 0 0 5.39-1.61M2 2l20 20"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M10 2v7.53a2 2 0 0 1-.21.9L4.72 20.55A1 1 0 0 0 5.6 22h12.8a1 1 0 0 0 .89-1.45l-5.07-10.12a2 2 0 0 1-.22-.9V2M8.5 2h7M7 16h10"/></symbol>
+</svg>
+
 <!-- PIN LOCK SCREEN -->
 <div class="pin-lock" id="pinLock">
-  <div class="pin-logo"><div class="logo-dot" style="width:10px;height:10px;border-radius:50%;background:var(--green);animation:pulse 2s infinite"></div>WealthFlow</div>
+  <div class="pin-logo"><img src="icons/icon-192.png" alt="" class="pin-logo-mark">WealthFlow</div>
   <div class="pin-sub">Digite seu PIN para entrar</div>
   <div class="pin-dots" id="pinDots">
     <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
@@ -42,66 +88,62 @@
     <button class="pin-key" data-num="7">7</button>
     <button class="pin-key" data-num="8">8</button>
     <button class="pin-key" data-num="9">9</button>
-    <button class="pin-key empty"></button>
+    <button class="pin-key empty" tabindex="-1"></button>
     <button class="pin-key" data-num="0">0</button>
-    <button class="pin-key" id="pinBackspace">⌫</button>
+    <button class="pin-key pin-key-icon" id="pinBackspace" aria-label="Apagar"><svg class="i" width="22" height="22"><use href="#i-backspace"/></svg></button>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- Janela de confirmação do app (substitui o confirm() do navegador) -->
+<div class="modal-backdrop" id="modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-text" id="modal-text"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+      <button class="btn btn-primary" id="modal-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
 
 <div class="shell" id="appShell" style="display:none">
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR (no celular vira a folha "Mais") -->
   <aside class="sidebar" id="sidebar">
     <div class="logo-area">
-      <div class="logo"><div class="logo-dot"></div>WealthFlow</div>
-      <div class="logo-sub">carteira inteligente</div>
+      <div class="logo"><img src="icons/icon-192.png" alt="" class="logo-mark">WealthFlow</div>
     </div>
 
     <nav class="nav">
-      <div class="nav-section">Principal</div>
-      <div class="nav-item active" onclick="showPage('dashboard', this)">
-        <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="5" height="9"/><rect x="10" y="7" width="5" height="14"/><rect x="17" y="3" width="5" height="18"/></svg></span> Dashboard
-      </div>
-      <div class="nav-item" onclick="showPage('carteira', this)">
-        <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Carteira
-      </div>
-      <div class="nav-item" onclick="showPage('agentes', this)">
-        <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg></span> Assistente
-      </div>
-      <div class="nav-item" onclick="showPage('aportar', this)">
-        <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Registrar Aporte
-      </div>
-      <div class="nav-item" onclick="showPage('alertas', this)">
-        <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg></span> Alertas
-        <span class="nav-badge" id="alertCount">2</span>
-      </div>
+      <div class="nav-section nav-section-main">Principal</div>
+      <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+        <svg class="i icon"><use href="#i-home"/></svg> Início
+      </button>
+      <button class="nav-item" data-page="carteira" onclick="showPage('carteira')">
+        <svg class="i icon"><use href="#i-wallet"/></svg> Carteira
+      </button>
+      <button class="nav-item" data-page="aportar" onclick="showPage('aportar')">
+        <svg class="i icon"><use href="#i-plus-circle"/></svg> Registrar aporte
+      </button>
+      <button class="nav-item" data-page="agentes" onclick="showPage('agentes')">
+        <svg class="i icon"><use href="#i-sparkles"/></svg> Assistente
+      </button>
+      <button class="nav-item" data-page="alertas" onclick="showPage('alertas')">
+        <svg class="i icon"><use href="#i-bell"/></svg> Alertas
+        <span class="nav-badge" id="alertCount" hidden></span>
+      </button>
       <div class="nav-section">Configurações</div>
-      <div class="nav-item" onclick="showPage('config', this)">
-        <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></span> Configurar API
-      </div>
-      <div class="nav-item" onclick="showPage('perfil', this)">
-        <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Perfil
-      </div>
+      <button class="nav-item" data-page="perfil" onclick="showPage('perfil')">
+        <svg class="i icon"><use href="#i-user"/></svg> Perfil e plano
+      </button>
+      <button class="nav-item" data-page="config" onclick="showPage('config')">
+        <svg class="i icon"><use href="#i-key"/></svg> Chaves de IA
+      </button>
     </nav>
-
-    <div class="status-card">
-      <div class="status-row">
-        <span class="status-label">Câmbio EUR/BRL</span>
-        <span class="status-val green" id="sb-cambio">—</span>
-      </div>
-      <div class="status-row">
-        <span class="status-label">Selic anual</span>
-        <span class="status-val green" id="sb-selic">—</span>
-      </div>
-      <div class="status-row">
-        <span class="status-label">Mês atual</span>
-        <span class="status-val" id="sb-mes">—</span>
-      </div>
-    </div>
   </aside>
 
   <!-- MAIN -->
@@ -109,39 +151,39 @@
 
     <!-- MOBILE TOPBAR -->
     <div class="mobile-topbar">
-      <div class="mobile-logo"><div class="logo-dot"></div>WealthFlow</div>
+      <div class="mobile-title" id="mobilePageTitle">Início</div>
+      <button class="icon-btn" onclick="showPage('alertas')" aria-label="Alertas">
+        <svg class="i" width="20" height="20"><use href="#i-bell"/></svg>
+        <span class="icon-btn-badge" id="alertCountMobile" hidden></span>
+      </button>
     </div>
 
     <!-- TOPBAR -->
     <div class="topbar">
-      <div>
-        <div class="page-title" id="pageTitle">Dashboard</div>
-        <div class="page-sub" id="pageSub">Visão geral da sua carteira</div>
+      <div class="topbar-title">
+        <div class="page-title" id="pageTitle">Início</div>
+        <div class="page-sub" id="pageSub">Sua situação em um olhar</div>
       </div>
       <div class="topbar-right pills-loading" id="topbarRight">
         <div class="data-pill">
-          <div class="dot" style="background:var(--green)"></div>
           <span class="label">EUR/BRL</span>
-          <span class="value" id="pill-cambio">carregando...</span>
+          <span class="value" id="pill-cambio">—</span>
         </div>
         <div class="data-pill">
-          <div class="dot" style="background:var(--blue)"></div>
           <span class="label">Selic</span>
-          <span class="value" id="pill-selic">carregando...</span>
+          <span class="value" id="pill-selic">—</span>
         </div>
         <div class="data-pill">
-          <div class="dot" style="background:var(--amber)"></div>
-          <span class="label">IPCA</span>
-          <span class="value" id="pill-ipca">carregando...</span>
+          <span class="label">IPCA 12m</span>
+          <span class="value" id="pill-ipca">—</span>
         </div>
-        <span id="proxy-indicator" style="font-size:11px;font-family:'DM Mono',monospace;opacity:.8"></span>
       </div>
     </div>
 
     <!-- CONTENT -->
     <div class="content">
 
-      <!-- ── DASHBOARD ── -->
+      <!-- ── INÍCIO ── -->
       <div class="page active" id="page-dashboard">
 
         <!-- 1. RESUMO PRINCIPAL -->
@@ -152,73 +194,77 @@
               <div class="hero-amount-row">
                 <div class="hero-amount mval" id="hero-total">€—</div>
                 <button class="value-toggle-btn" id="valueToggleBtn" onclick="toggleValuesVisibility()" title="Ocultar valores" aria-label="Ocultar valores">
-                  <svg id="eyeIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg class="i" width="17" height="17"><use id="eyeIcon" href="#i-eye"/></svg>
                 </button>
               </div>
-              <div class="hero-sub mval" id="hero-total-brl">R$— equivalente</div>
+              <div class="hero-sub mval" id="hero-total-brl">R$—</div>
             </div>
-            <div class="hero-right">
-              <div class="hero-status" id="hero-status">
-                <span class="hero-status-dot" id="hero-status-dot"></span>
-                <span id="hero-status-text">Carregando…</span>
-              </div>
+            <div class="hero-status" id="hero-status">
+              <span class="hero-status-dot" id="hero-status-dot"></span>
+              <span id="hero-status-text">Carregando…</span>
+            </div>
+          </div>
+          <div class="hero-foot">
+            <div>
+              <div class="mc-label">Resultado</div>
               <div class="hero-growth mval" id="hero-growth">—</div>
+            </div>
+            <div>
+              <div class="mc-label">Investido do seu bolso</div>
+              <div class="hero-invested mval" id="hero-invested">—</div>
             </div>
           </div>
         </div>
 
         <!-- 1b. INSIGHT DO DIA (gerado 1x/dia pela IA, com cache) -->
         <div class="insight-card" id="insight-card" style="display:none">
-          <span class="insight-icon">💡</span>
-          <div class="insight-text" id="insight-text"></div>
-        </div>
-
-        <!-- 2. PROGRESSO DA META -->
-        <div class="goal-card">
-          <div class="goal-head">
-            <div>
-              <div class="mc-label">Meta de longo prazo</div>
-              <div class="goal-target mval" id="goal-target">R$1.000.000</div>
-            </div>
-            <div class="goal-head-right">
-              <div class="mc-label">Concluído</div>
-              <div class="goal-pct" id="goal-pct">0,0%</div>
-            </div>
-          </div>
-          <div class="goal-bar-track">
-            <div class="goal-bar-fill" id="goal-bar-fill" style="width:0%"></div>
-          </div>
-          <div class="goal-foot">
-            <span class="goal-foot-item"><span class="mc-label">Hoje você tem</span> <strong class="mval" id="goal-current">€—</strong></span>
-            <span class="goal-foot-item"><span class="mc-label">Previsão de chegada</span> <strong class="goal-year" id="goal-year">—</strong></span>
+          <span class="insight-icon"><svg class="i" width="16" height="16"><use href="#i-lightbulb"/></svg></span>
+          <div>
+            <div class="insight-label">Insight do dia</div>
+            <div class="insight-text" id="insight-text"></div>
           </div>
         </div>
 
-        <!-- 2b. RESERVA DE EMERGÊNCIA -->
-        <div class="goal-card">
-          <div class="goal-head">
-            <div>
-              <div class="mc-label">🛟 Reserva de emergência</div>
-              <div class="goal-target mval" id="reserva-target">€15.000 – €20.000</div>
+        <!-- 2. METAS: longo prazo + reserva de emergência -->
+        <div class="dash-pair dash-pair-even">
+          <div class="goal-card">
+            <div class="goal-head">
+              <div>
+                <div class="mc-label">Meta de longo prazo</div>
+                <div class="goal-target mval" id="goal-target">—</div>
+              </div>
+              <div class="goal-pct" id="goal-pct">—</div>
             </div>
-            <div class="goal-head-right">
-              <div class="mc-label">Concluído</div>
-              <div class="goal-pct" id="reserva-pct">0%</div>
+            <div class="goal-bar-track">
+              <div class="goal-bar-fill" id="goal-bar-fill" style="width:0%"></div>
+            </div>
+            <div class="goal-foot">
+              <div class="goal-foot-item"><span>Hoje você tem</span><strong class="mval" id="goal-current">—</strong></div>
+              <div class="goal-foot-item"><span>Previsão de chegada</span><strong id="goal-year">—</strong></div>
             </div>
           </div>
-          <div class="goal-bar-track">
-            <div class="goal-bar-fill" id="reserva-bar-fill" style="width:0%"></div>
-          </div>
-          <div class="goal-foot">
-            <span class="goal-foot-item"><span class="mc-label">Hoje você tem</span> <strong class="mval" id="reserva-current">€—</strong></span>
-            <span class="goal-foot-item"><span class="mc-label">Intocável</span> <strong class="goal-year">reserva</strong></span>
+
+          <div class="goal-card">
+            <div class="goal-head">
+              <div>
+                <div class="mc-label">Reserva de emergência</div>
+                <div class="goal-target mval" id="reserva-target">—</div>
+              </div>
+              <div class="goal-pct" id="reserva-pct">—</div>
+            </div>
+            <div class="goal-bar-track">
+              <div class="goal-bar-fill" id="reserva-bar-fill" style="width:0%"></div>
+            </div>
+            <div class="goal-foot">
+              <div class="goal-foot-item"><span>Hoje você tem</span><strong class="mval" id="reserva-current">—</strong></div>
+              <div class="goal-foot-item"><span>Falta</span><strong class="mval" id="reserva-falta">—</strong></div>
+            </div>
           </div>
         </div>
 
-
-        <!-- 4. ALOCAÇÃO SIMPLIFICADA + 6. SCORE -->
+        <!-- 3. ALOCAÇÃO + SCORE -->
         <div class="dash-pair">
-          <div class="alloc-section">
+          <div class="card alloc-section">
             <div class="section-title">Alocação</div>
             <div class="alloc-simple-bar" id="alloc-simple-bar">
               <div class="alloc-seg" id="alloc-seg-intl" style="background:var(--alloc-intl);flex:1"></div>
@@ -227,13 +273,13 @@
               <div class="alloc-seg" id="alloc-seg-btc" style="background:var(--alloc-btc);flex:0"></div>
             </div>
             <div class="alloc-legend">
-              <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-intl)"></div><span class="alloc-name">Exterior</span><span class="alloc-val" id="alloc-pct-intl">—%</span></div>
-              <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-br)"></div><span class="alloc-name">Brasil</span><span class="alloc-val" id="alloc-pct-br">—%</span></div>
-              <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-cash)"></div><span class="alloc-name">Caixa</span><span class="alloc-val" id="alloc-pct-cash">—%</span></div>
-              <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-btc)"></div><span class="alloc-name">Cripto</span><span class="alloc-val" id="alloc-pct-btc">—%</span></div>
+              <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-intl)"></div><span class="alloc-name">Exterior</span><span class="alloc-val" id="alloc-pct-intl">—</span></div>
+              <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-br)"></div><span class="alloc-name">Brasil</span><span class="alloc-val" id="alloc-pct-br">—</span></div>
+              <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-cash)"></div><span class="alloc-name">Caixa</span><span class="alloc-val" id="alloc-pct-cash">—</span></div>
+              <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-btc)"></div><span class="alloc-name">Cripto</span><span class="alloc-val" id="alloc-pct-btc">—</span></div>
             </div>
             <div class="alloc-ref">
-              <div class="mc-label" style="margin-bottom:0">Referência do plano — aportes</div>
+              <div class="mc-label" style="margin-bottom:0">Referência do plano de aportes</div>
               <div class="alloc-ref-bar">
                 <div id="alloc-ref-intl" style="background:var(--alloc-intl);flex:40"></div>
                 <div id="alloc-ref-br" style="background:var(--alloc-br);flex:60"></div>
@@ -242,73 +288,64 @@
             </div>
           </div>
 
-          <div class="score-card">
+          <div class="card score-card">
             <div class="section-title">WealthFlow Score</div>
             <div class="score-body">
               <div class="score-ring-wrap">
                 <svg viewBox="0 0 120 120" class="score-ring">
-                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--surf2)" stroke-width="10"/>
-                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--green)" stroke-width="10" stroke-linecap="round"
-                    stroke-dasharray="326.7" stroke-dashoffset="26.1" id="score-ring-fill" transform="rotate(-90 60 60)"/>
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--surf3)" stroke-width="9"/>
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round"
+                    stroke-dasharray="326.7" stroke-dashoffset="326.7" id="score-ring-fill" transform="rotate(-90 60 60)"/>
                 </svg>
-                <div class="score-ring-label"><span id="score-value">92</span><small>/100</small></div>
+                <div class="score-ring-label"><span id="score-value">—</span><small>/100</small></div>
               </div>
               <div class="score-bars">
-                <div class="score-bar-row"><span>Disciplina</span><div class="score-bar-track"><div class="score-bar-fill" id="score-bar-disciplina" style="width:1%"></div></div><b id="score-num-disciplina">—</b></div>
-                <div class="score-bar-row"><span>Diversificação</span><div class="score-bar-track"><div class="score-bar-fill" id="score-bar-diversificacao" style="width:1%"></div></div><b id="score-num-diversificacao">—</b></div>
-                <div class="score-bar-row"><span>Risco</span><div class="score-bar-track"><div class="score-bar-fill" id="score-bar-risco" style="width:1%"></div></div><b id="score-num-risco">—</b></div>
-                <div class="score-bar-row"><span>Progresso</span><div class="score-bar-track"><div class="score-bar-fill" id="score-bar-progress" style="width:1%"></div></div><b id="score-num-progresso">—</b></div>
+                <div class="score-bar-row"><span>Disciplina</span><div class="score-bar-track"><div class="score-bar-fill" id="score-bar-disciplina" style="width:0%"></div></div><b id="score-num-disciplina">—</b></div>
+                <div class="score-bar-row"><span>Diversificação</span><div class="score-bar-track"><div class="score-bar-fill" id="score-bar-diversificacao" style="width:0%"></div></div><b id="score-num-diversificacao">—</b></div>
+                <div class="score-bar-row"><span>Risco</span><div class="score-bar-track"><div class="score-bar-fill" id="score-bar-risco" style="width:0%"></div></div><b id="score-num-risco">—</b></div>
+                <div class="score-bar-row"><span>Progresso</span><div class="score-bar-track"><div class="score-bar-fill" id="score-bar-progress" style="width:0%"></div></div><b id="score-num-progresso">—</b></div>
               </div>
             </div>
-            <button class="score-ask-btn" onclick="askRiskAgentAboutScore()">🛡️ Pedir análise de risco ao Assistente</button>
+            <button class="btn btn-secondary btn-block score-ask-btn" onclick="askRiskAgentAboutScore()"><svg class="i"><use href="#i-sparkles"/></svg> Pedir análise de risco ao Assistente</button>
           </div>
         </div>
 
-        <!-- 5. ASSISTENTE — ATALHO -->
-        <div class="section-title">Assistente <span class="stag">tire suas dúvidas</span></div>
-        <div class="agent-mini-grid">
-          <div class="agent-mini" onclick="showPage('agentes', document.querySelectorAll('.nav-item')[2])">
-            <span class="agent-mini-dot green"></span>
-            <div><div class="agent-mini-name">✦ Assistente WealthFlow</div><div class="agent-mini-status">carteira · dividendos · fiscal · risco · conceitos</div></div>
-          </div>
-        </div>
-
-        <!-- 7. EVOLUÇÃO -->
-        <div class="evo-card">
-          <div class="flex-between stack-mobile" style="margin-bottom:13px">
+        <!-- 4. EVOLUÇÃO -->
+        <div class="card evo-card">
+          <div class="flex-between stack-mobile" style="margin-bottom:12px">
             <div class="section-title" style="margin:0">Evolução patrimonial <span class="stag" id="evo-tag">tendência ilustrativa</span></div>
-            <select class="evo-select" id="evo-select" onchange="onEvoChange()">
+            <select class="evo-select" id="evo-select" onchange="onEvoChange()" aria-label="Ativo do gráfico">
               <option value="total">Total (€)</option>
             </select>
           </div>
           <svg viewBox="0 0 560 140" class="evo-svg" id="evo-svg" preserveAspectRatio="none">
             <defs>
               <linearGradient id="evoFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#4F8EFF" stop-opacity="0.22"/>
+                <stop offset="0%" stop-color="#4F8EFF" stop-opacity="0.18"/>
                 <stop offset="100%" stop-color="#4F8EFF" stop-opacity="0"/>
               </linearGradient>
             </defs>
             <path id="evo-area" d="" fill="url(#evoFill)"/>
-            <path id="evo-line" d="" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path id="evo-line" d="" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
           </svg>
           <div class="evo-labels" id="evo-labels"></div>
-          <div class="evo-note">Histórico real ainda está sendo construído — esta curva é uma estimativa até hoje. Conforme você for registrando aportes mês a mês, ela passa a refletir valores reais.</div>
+          <div class="evo-note">Histórico real ainda está sendo construído — esta curva é uma estimativa até hoje.</div>
         </div>
 
-        <!-- 8. RESUMO DO MÊS ANTERIOR (extrato inteligente, gerado 1x/mês) -->
-        <div class="evo-card" id="month-summary-card" style="display:none;margin-top:16px">
+        <!-- 5. RESUMO DO MÊS ANTERIOR (extrato inteligente, gerado 1x/mês) -->
+        <div class="card evo-card" id="month-summary-card" style="display:none">
           <div class="section-title">Resumo do mês <span class="stag" id="ms-tag"></span></div>
-          <div id="ms-text" style="font-size:12.5px;color:var(--txt);line-height:1.7;margin-top:4px"></div>
+          <div id="ms-text" class="prose"></div>
         </div>
 
       </div>
 
       <!-- ── CARTEIRA ── -->
       <div class="page" id="page-carteira">
-        <div class="wallet-card">
-          <div class="flex-between stack-mobile" style="margin-bottom:13px">
-            <div class="section-title" style="margin:0">Sua carteira <span class="stag" id="wallet-total-tag">aportado vs hoje</span></div>
-            <div class="cur-toggle" id="curToggle">
+        <div class="card wallet-card">
+          <div class="flex-between stack-mobile" style="margin-bottom:14px">
+            <div class="section-title" style="margin:0">Sua carteira</div>
+            <div class="cur-toggle" id="curToggle" role="group" aria-label="Moeda de exibição">
               <button class="cur-btn" data-cur="nativa" onclick="setWalletCurrency('nativa')">Original</button>
               <button class="cur-btn" data-cur="EUR" onclick="setWalletCurrency('EUR')">€</button>
               <button class="cur-btn" data-cur="BRL" onclick="setWalletCurrency('BRL')">R$</button>
@@ -316,58 +353,60 @@
           </div>
           <div class="wallet-summary" id="wallet-summary"></div>
           <div class="wallet-list" id="wallet-list"></div>
-          <button class="score-ask-btn" id="analyzeBtn" onclick="analyzePortfolio()" style="margin-top:16px">🔍 Analisar carteira com IA</button>
+          <button class="btn btn-secondary btn-block" id="analyzeBtn" onclick="analyzePortfolio()" style="margin-top:16px"><svg class="i"><use href="#i-search"/></svg> Analisar carteira com IA</button>
         </div>
-        <div class="wallet-card" id="analysis-card" style="display:none">
+        <div class="card wallet-card" id="analysis-card" style="display:none">
           <div class="section-title">Análise da carteira <span class="stag" id="analysis-date"></span></div>
-          <div id="analysis-text" style="font-size:12.5px;color:var(--txt);line-height:1.75;margin-top:4px"></div>
+          <div id="analysis-text" class="prose"></div>
         </div>
-        <div class="wallet-card">
+        <div class="card wallet-card">
           <div class="section-title">Dividendos <span class="stag">renda passiva</span></div>
           <div class="div-stats" id="div-stats"></div>
-          <div class="evo-note" id="div-note" style="margin-top:14px"></div>
+          <div class="evo-note" id="div-note"></div>
         </div>
-        <div class="wallet-card">
+        <div class="card wallet-card">
           <div class="flex-between stack-mobile">
             <div class="section-title" style="margin:0">Conferir com a corretora <span class="stag" id="conf-tag">Nubank · Revolut</span></div>
-            <button class="backup-btn" id="conf-toggle" onclick="toggleConferencia()">Abrir conferência</button>
+            <button class="btn btn-ghost btn-sm" id="conf-toggle" onclick="toggleConferencia()">Abrir conferência</button>
           </div>
-          <div class="evo-note" style="border-top:none;padding-top:0;margin-top:10px">Digite o que aparece hoje no Nubank e no Revolut. Deixe em branco o que já bate. Cada correção vira um registro "🔧 Ajuste" no histórico — dá para desfazer excluindo ele.</div>
+          <div class="card-note">Digite o que aparece hoje no Nubank e no Revolut. Deixe em branco o que já bate. Cada correção vira um registro de "Ajuste" no histórico — dá para desfazer excluindo ele.</div>
           <div id="conf-body" hidden>
             <div class="conf-list" id="conf-list"></div>
-            <button class="submit-btn" id="conf-save" onclick="salvarConferencia()">✓ Salvar correções</button>
+            <button class="btn btn-primary btn-block" id="conf-save" onclick="salvarConferencia()">Salvar correções</button>
           </div>
         </div>
-        <div class="wallet-card">
+        <div class="card wallet-card">
           <div class="section-title">Exit Tax irlandês <span class="stag">deemed disposal</span></div>
-          <div id="tax-body" class="evo-note" style="border-top:none;padding-top:0;margin-top:4px">Calculando…</div>
+          <div id="tax-body" class="card-note">Calculando…</div>
         </div>
       </div>
 
-      <!-- ── AGENTES ── -->
+      <!-- ── ASSISTENTE ── -->
       <div class="page" id="page-agentes">
         <div class="api-notice" id="apiNotice" style="display:none">
-          ⚡ Para ativar os agentes, você precisa de uma chave API do Claude.<br>
-          1. Vai a <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → cria conta → API Keys → cria uma chave<br>
-          2. Vai em <strong>Configurar API</strong> no menu lateral e cola a chave lá.
+          <svg class="i" width="18" height="18"><use href="#i-key"/></svg>
+          <div>
+            <strong>Conecte uma IA para usar o Assistente.</strong><br>
+            O Google Gemini é gratuito: crie a chave em <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> e cole em <a href="#" onclick="showPage('config');return false">Chaves de IA</a>.
+          </div>
         </div>
         <div class="agents-grid">
           <div class="chat-panel">
             <div class="chat-head" id="chatHead">
-              <div class="ch-av" style="background:var(--gdim)">✦</div>
-              <div><div class="ch-name">Assistente WealthFlow</div><div class="ch-desc">Carteira, dividendos, fiscal, risco ou qualquer dúvida</div></div>
-              <button class="chat-clear-btn" style="margin-left:auto" onclick="clearChat()" title="Limpar conversa" aria-label="Limpar conversa"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+              <div class="ch-av"><svg class="i" width="18" height="18"><use href="#i-sparkles"/></svg></div>
+              <div><div class="ch-name">Assistente WealthFlow</div><div class="ch-desc">Carteira, dividendos, impostos, risco ou qualquer dúvida</div></div>
+              <button class="chat-clear-btn" onclick="clearChat()" title="Limpar conversa" aria-label="Limpar conversa"><svg class="i" width="15" height="15"><use href="#i-trash"/></svg></button>
             </div>
             <div class="msgs" id="msgs"></div>
             <div class="quick" id="quickArea"></div>
             <div class="mode-row" id="modeArea"></div>
             <div class="input-row">
               <div class="input-wrap">
-                <textarea id="userInput" placeholder="Pergunte qualquer coisa..." rows="1"
+                <textarea id="userInput" placeholder="Pergunte qualquer coisa…" rows="1"
                   onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
                   oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
               </div>
-              <button class="sbtn" onclick="sendMsg()" id="sbtn">↑</button>
+              <button class="sbtn" onclick="sendMsg()" id="sbtn" aria-label="Enviar"><svg class="i" width="18" height="18"><use href="#i-arrow-up"/></svg></button>
             </div>
           </div>
         </div>
@@ -375,83 +414,90 @@
 
       <!-- ── APORTAR ── -->
       <div class="page" id="page-aportar">
-        <div class="form-section" style="margin-bottom:16px">
-          <div class="fs-title">Este mês</div>
-          <div class="fs-sub" id="guide-text">Carregando resumo…</div>
+        <div class="month-strip">
+          <svg class="i" width="16" height="16"><use href="#i-calendar"/></svg>
+          <div id="guide-text">Carregando resumo do mês…</div>
         </div>
         <div class="aporte-grid">
           <div class="form-section">
-            <div class="fs-title">Registrar Novo Aporte</div>
-            <div class="fs-sub">Registre o que você comprou para manter a carteira atualizada</div>
+            <div class="fs-title">Novo aporte</div>
+            <div class="fs-sub">Registre o que você comprou para manter a carteira atualizada.</div>
 
             <div class="form-row">
-              <div class="form-label">Ativo</div>
+              <label class="form-label" for="f-ativo">Ativo</label>
               <select class="form-select" id="f-ativo" onchange="onAtivoChange()">
-                <option value="MXRF11">🏢 MXRF11 — FII Maxi Renda</option>
-                <option value="HGLG11">🏭 HGLG11 — FII Logística</option>
-                <option value="KNRI11">🏛️ KNRI11 — FII Híbrido</option>
-                <option value="IPCA+">📈 Tesouro IPCA+</option>
-                <option value="Selic">💵 Tesouro Selic</option>
-                <option value="Caixinha">💰 Caixinha — reserva p/ próximo aporte</option>
-                <option value="VWCE">🌍 VWCE — ETF Global</option>
-                <option value="EUNA">🔒 EUNA — ETF Bonds</option>
-                <option value="Bitcoin">₿ Bitcoin (informal)</option>
-                <option value="Dividendo">💚 Dividendo recebido</option>
-                <option value="Reserva">🛟 Reserva de Emergência</option>
+                <optgroup label="Brasil">
+                  <option value="MXRF11">MXRF11 — FII Maxi Renda</option>
+                  <option value="HGLG11">HGLG11 — FII Logística</option>
+                  <option value="KNRI11">KNRI11 — FII Híbrido</option>
+                  <option value="IPCA+">Tesouro IPCA+</option>
+                </optgroup>
+                <optgroup label="Internacional">
+                  <option value="VWCE">VWCE — ETF Global</option>
+                  <option value="EUNA">EUNA — ETF de Títulos</option>
+                </optgroup>
+                <optgroup label="Outros">
+                  <option value="Caixinha">Caixinha — reserva p/ próximo aporte</option>
+                  <option value="Bitcoin">Bitcoin (informal)</option>
+                </optgroup>
+                <optgroup label="Movimentações">
+                  <option value="Dividendo">Dividendo recebido</option>
+                  <option value="Reserva">Reserva de emergência</option>
+                </optgroup>
               </select>
             </div>
             <div class="form-row" id="row-tipo-reserva" style="display:none">
-              <div class="form-label">Tipo de movimento</div>
+              <label class="form-label" for="f-tipo-reserva">Tipo de movimento</label>
               <select class="form-select" id="f-tipo-reserva">
-                <option value="deposito">➕ Depósito na reserva</option>
-                <option value="retirada">➖ Retirada da reserva</option>
+                <option value="deposito">Depósito na reserva</option>
+                <option value="retirada">Retirada da reserva</option>
               </select>
             </div>
-            <div class="form-row">
-              <div class="form-label">Valor investido</div>
-              <input class="form-input" id="f-valor" type="text" inputmode="decimal" placeholder="ex: 80,67">
-            </div>
-            <div class="form-row">
-              <div class="form-label">Moeda</div>
-              <select class="form-select" id="f-moeda">
-                <option value="BRL">🇧🇷 Reais (R$)</option>
-                <option value="EUR">🇮🇪 Euros (€)</option>
-              </select>
+            <div class="form-row form-row-split">
+              <div>
+                <label class="form-label" for="f-valor">Valor</label>
+                <input class="form-input" id="f-valor" type="text" inputmode="decimal" placeholder="ex: 80,67">
+              </div>
+              <div>
+                <label class="form-label" for="f-moeda">Moeda</label>
+                <select class="form-select" id="f-moeda">
+                  <option value="BRL">R$ Real</option>
+                  <option value="EUR">€ Euro</option>
+                </select>
+              </div>
             </div>
             <div class="form-row" id="row-usar-caixinha" style="display:none">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
-                <input type="checkbox" id="f-usar-caixinha" style="accent-color:var(--green);width:16px;height:16px">
-                <span>💰 Pagar com a Caixinha (saldo: R$<span id="f-caixinha-saldo">0,00</span>)</span>
+              <label class="check-row">
+                <input type="checkbox" id="f-usar-caixinha">
+                <span>Pagar com a Caixinha <span class="muted">(saldo: R$<span id="f-caixinha-saldo">0,00</span>)</span></span>
               </label>
             </div>
-            <div class="form-row">
-              <div class="form-label">Quantidade (cotas/unidades) — <span id="f-qtd-req">obrigatório</span></div>
-              <input class="form-input" id="f-qtd" type="number" step="0.001" placeholder="ex: 8">
+            <div class="form-row form-row-2">
+              <div>
+                <label class="form-label" for="f-qtd">Quantidade <span class="form-hint" id="f-qtd-req">obrigatório</span></label>
+                <input class="form-input" id="f-qtd" type="number" step="0.001" placeholder="ex: 8">
+              </div>
+              <div>
+                <label class="form-label" for="f-preco">Preço por cota <span class="form-hint">opcional</span></label>
+                <input class="form-input" id="f-preco" type="number" step="0.01" placeholder="ex: 9,98">
+              </div>
             </div>
             <div class="form-row">
-              <div class="form-label">Preço por cota — opcional</div>
-              <input class="form-input" id="f-preco" type="number" step="0.01" placeholder="ex: 9.98">
+              <label class="form-label" for="f-nota">Nota <span class="form-hint">opcional</span></label>
+              <input class="form-input" id="f-nota" type="text" placeholder="ex: aporte de outubro">
             </div>
-            <div class="form-row">
-              <div class="form-label">Nota — opcional</div>
-              <input class="form-input" id="f-nota" type="text" placeholder="ex: aporte do mês de junho">
-            </div>
-            <button class="submit-btn" id="aporteSubmitBtn" onclick="registrarAporte()">✓ Registrar Aporte</button>
+            <button class="btn btn-primary btn-block btn-lg" id="aporteSubmitBtn" onclick="registrarAporte()">Registrar aporte</button>
           </div>
 
           <div class="form-section">
             <div class="flex-between stack-mobile">
               <div>
-                <div class="fs-title">Histórico de Aportes</div>
-                <div class="fs-sub">Todos os seus registros salvos no Firebase</div>
+                <div class="fs-title">Histórico</div>
+                <div class="fs-sub">Todos os seus registros, do mais recente ao mais antigo.</div>
               </div>
-              <select class="evo-select" id="historico-filter" onchange="onHistoricoFilterChange()">
-                <option value="total">Geral</option>
+              <select class="evo-select" id="historico-filter" onchange="onHistoricoFilterChange()" aria-label="Filtrar histórico">
+                <option value="total">Todos os ativos</option>
               </select>
-            </div>
-            <div class="backup-row">
-              <button class="backup-btn" onclick="exportarCSV()" title="Abre no Excel ou Google Sheets">⬇ Planilha (CSV)</button>
-              <button class="backup-btn" onclick="exportarBackupJSON()" title="Perfil, carteira e todos os aportes">⬇ Backup completo (JSON)</button>
             </div>
             <div id="historicoList">
               <div class="skeleton-history-item"><div class="skeleton-bar"></div><div class="skeleton-bar"></div></div>
@@ -467,58 +513,60 @@
         <div class="alerts-list" id="alertsList"></div>
       </div>
 
-      <!-- ── CONFIG ── -->
+      <!-- ── CHAVES DE IA ── -->
       <div class="page" id="page-config">
-        <div style="max-width:500px;display:flex;flex-direction:column;gap:20px">
+        <div class="settings-grid">
           <div class="form-section">
-            <div class="fs-title">Google Gemini <span class="pill-tag gold">Gratuito</span> <span id="gemini-status"></span></div>
-            <div class="fs-sub">Tier gratuito generoso — sem custo. Crie em <a href="https://aistudio.google.com" target="_blank" style="color:var(--green)">aistudio.google.com</a> → Get API Key.</div>
+            <div class="fs-title">Google Gemini <span class="pill-tag">Gratuito</span> <span id="gemini-status"></span></div>
+            <div class="fs-sub">Recomendado — o plano gratuito é suficiente. Crie a chave em <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> → Get API Key.</div>
             <div class="form-row">
-              <div class="form-label">Chave Gemini</div>
-              <input class="form-input" id="geminiKeyInput" type="password" placeholder="AIzaSy..." autocomplete="off">
+              <label class="form-label" for="geminiKeyInput">Chave Gemini</label>
+              <input class="form-input" id="geminiKeyInput" type="password" placeholder="AIzaSy…" autocomplete="off">
             </div>
-            <button class="submit-btn" onclick="saveGeminiKey()">✓ Usar Gemini (gratuito)</button>
+            <button class="btn btn-primary btn-block" onclick="saveGeminiKey()">Usar Gemini</button>
           </div>
           <div class="form-section">
             <div class="fs-title">Anthropic Claude <span id="anthropic-status"></span></div>
-            <div class="fs-sub">Pago por uso. Crie em <a href="https://console.anthropic.com" target="_blank" style="color:var(--green)">console.anthropic.com</a>.</div>
+            <div class="fs-sub">Pago por uso. Crie a chave em <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>.</div>
             <div class="form-row">
-              <div class="form-label">Chave Anthropic</div>
-              <input class="form-input" id="apiKeyInput" type="password" placeholder="sk-ant-api03-..." autocomplete="off">
+              <label class="form-label" for="apiKeyInput">Chave Anthropic</label>
+              <input class="form-input" id="apiKeyInput" type="password" placeholder="sk-ant-api03-…" autocomplete="off">
             </div>
-            <button class="submit-btn" style="background:var(--surf2);border:1px solid var(--bdr2)" onclick="saveApiKey()">✓ Usar Anthropic</button>
+            <button class="btn btn-secondary btn-block" onclick="saveApiKey()">Usar Claude</button>
           </div>
         </div>
       </div>
 
       <!-- ── PERFIL ── -->
       <div class="page" id="page-perfil">
-        <div style="max-width:560px;display:flex;flex-direction:column;gap:20px">
+        <div class="settings-grid">
 
           <div class="form-section">
             <div class="fs-title">Quem sou</div>
-            <div class="form-row">
-              <div class="form-label">Nome</div>
-              <input class="form-input" id="pf-nome" type="text">
+            <div class="form-row form-row-2">
+              <div>
+                <label class="form-label" for="pf-nome">Nome</label>
+                <input class="form-input" id="pf-nome" type="text">
+              </div>
+              <div>
+                <label class="form-label" for="pf-idade">Idade</label>
+                <input class="form-input" id="pf-idade" type="number">
+              </div>
             </div>
             <div class="form-row">
-              <div class="form-label">Idade</div>
-              <input class="form-input" id="pf-idade" type="number">
-            </div>
-            <div class="form-row">
-              <div class="form-label">País onde mora</div>
+              <label class="form-label" for="pf-pais">País onde mora</label>
               <input class="form-input" id="pf-pais" type="text">
             </div>
             <div class="form-row">
-              <div class="form-label">Cidadania / situação fiscal</div>
+              <label class="form-label" for="pf-cidadania">Cidadania / situação fiscal</label>
               <input class="form-input" id="pf-cidadania" type="text">
             </div>
             <div class="form-row">
-              <div class="form-label">Horizonte até voltar ao Brasil</div>
+              <label class="form-label" for="pf-horizonte">Horizonte até voltar ao Brasil</label>
               <input class="form-input" id="pf-horizonte" type="text" placeholder="ex: 10-12 anos">
             </div>
             <div class="form-row">
-              <div class="form-label">Perfil de risco</div>
+              <label class="form-label" for="pf-risco">Perfil de risco</label>
               <input class="form-input" id="pf-risco" type="text">
             </div>
           </div>
@@ -526,62 +574,78 @@
           <div class="form-section">
             <div class="fs-title">Minhas metas</div>
             <div class="form-row">
-              <div class="form-label">Renda passiva alvo (R$/mês, valores de hoje)</div>
+              <label class="form-label" for="pf-renda">Renda passiva alvo (R$/mês, valores de hoje)</label>
               <input class="form-input" id="pf-renda" type="text" inputmode="decimal">
             </div>
-            <div class="form-row">
-              <div class="form-label">Ano-alvo</div>
-              <input class="form-input" id="pf-ano" type="number">
+            <div class="form-row form-row-2">
+              <div>
+                <label class="form-label" for="pf-ano">Ano-alvo</label>
+                <input class="form-input" id="pf-ano" type="number">
+              </div>
+              <div>
+                <label class="form-label" for="pf-meta-app">Meta intermediária (R$)</label>
+                <input class="form-input" id="pf-meta-app" type="text" inputmode="decimal">
+              </div>
             </div>
             <div class="form-row">
-              <div class="form-label">Meta intermediária do app (R$)</div>
-              <input class="form-input" id="pf-meta-app" type="text" inputmode="decimal">
+              <label class="form-label" for="pf-reserva-meta">Meta da reserva de emergência (€)</label>
+              <input class="form-input" id="pf-reserva-meta" type="number" step="500">
+              <div class="form-help">Define só a meta. Para depositar ou retirar da reserva, use Registrar aporte.</div>
             </div>
           </div>
 
           <div class="form-section">
             <div class="fs-title">Meu plano de aportes</div>
-            <div class="form-row">
-              <div class="form-label">Aporte mensal total (€)</div>
-              <input class="form-input" id="pf-aporte-total" type="number" step="1">
+            <div class="form-row form-row-2">
+              <div>
+                <label class="form-label" for="pf-aporte-br">Parte Brasil (€)</label>
+                <input class="form-input" id="pf-aporte-br" type="number" step="1" oninput="atualizarTotalAporte()">
+              </div>
+              <div>
+                <label class="form-label" for="pf-aporte-intl">Parte Internacional (€)</label>
+                <input class="form-input" id="pf-aporte-intl" type="number" step="1" oninput="atualizarTotalAporte()">
+              </div>
             </div>
             <div class="form-row">
-              <div class="form-label">Parte Brasil (€)</div>
-              <input class="form-input" id="pf-aporte-br" type="number" step="1">
+              <label class="form-label" for="pf-aporte-total">Aporte mensal total (€)</label>
+              <input class="form-input" id="pf-aporte-total" type="number" readonly tabindex="-1">
+              <div class="form-help">Calculado: Brasil + Internacional.</div>
             </div>
-            <div class="form-row">
-              <div class="form-label">Parte Internacional (€)</div>
-              <input class="form-input" id="pf-aporte-intl" type="number" step="1">
-            </div>
-            <div class="form-row">
-              <div class="form-label">Dia do aporte</div>
-              <input class="form-input" id="pf-dia" type="text" placeholder="ex: 28/29">
-            </div>
-            <div class="form-row">
-              <div class="form-label">Bitcoin informal mensal (€)</div>
-              <input class="form-input" id="pf-btc" type="number" step="1">
-            </div>
-          </div>
-
-          <div class="form-section">
-            <div class="fs-title">🛟 Reserva de emergência</div>
-            <div class="fs-sub">Isto define só a META — para adicionar ou retirar dinheiro da reserva, use Registrar Aporte.</div>
-            <div class="form-row">
-              <div class="form-label">Meta (€)</div>
-              <input class="form-input" id="pf-reserva-meta" type="number" step="500">
+            <div class="form-row form-row-2">
+              <div>
+                <label class="form-label" for="pf-dia">Dia do aporte</label>
+                <input class="form-input" id="pf-dia" type="text" placeholder="ex: 28/29">
+              </div>
+              <div>
+                <label class="form-label" for="pf-btc">Bitcoin mensal (€)</label>
+                <input class="form-input" id="pf-btc" type="number" step="1">
+              </div>
             </div>
           </div>
 
-          <button class="submit-btn" onclick="salvarPerfil()">✓ Salvar Perfil</button>
+          <div class="settings-save">
+            <button class="btn btn-primary btn-block btn-lg" onclick="salvarPerfil()">Salvar perfil e plano</button>
+          </div>
+
+          <div class="settings-divider">Este aparelho e seus dados</div>
 
           <div class="form-section">
-            <div class="fs-title">🔔 Notificações no celular</div>
+            <div class="fs-title">Notificações no celular</div>
             <div class="fs-sub">Aviso no dia do aporte (se ainda não houver aporte no mês) e quando MXRF11, HGLG11 ou KNRI11 anunciarem dividendo. Ative em cada aparelho.</div>
-            <div class="fs-sub" id="push-status" style="color:var(--txt)">Verificando…</div>
+            <div class="status-line" id="push-status">Verificando…</div>
             <div class="hi-edit-actions">
-              <button class="api-save" id="push-ativar" onclick="ativarNotificacoes()">Ativar neste aparelho</button>
-              <button class="api-save ghost" id="push-teste" onclick="testarNotificacao()" hidden>Enviar teste</button>
-              <button class="api-save ghost" id="push-desativar" onclick="desativarNotificacoes()" hidden>Desativar</button>
+              <button class="btn btn-primary" id="push-ativar" onclick="ativarNotificacoes()">Ativar neste aparelho</button>
+              <button class="btn btn-ghost" id="push-teste" onclick="testarNotificacao()" hidden>Enviar teste</button>
+              <button class="btn btn-ghost" id="push-desativar" onclick="desativarNotificacoes()" hidden>Desativar</button>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="fs-title">Exportar dados</div>
+            <div class="fs-sub">Uma cópia de tudo que está registrado, para guardar ou abrir no Excel.</div>
+            <div class="hi-edit-actions">
+              <button class="btn btn-ghost" onclick="exportarCSV()" title="Abre no Excel ou Google Sheets"><svg class="i"><use href="#i-download"/></svg> Planilha (CSV)</button>
+              <button class="btn btn-ghost" onclick="exportarBackupJSON()" title="Perfil, carteira e todos os aportes"><svg class="i"><use href="#i-download"/></svg> Backup completo (JSON)</button>
             </div>
           </div>
         </div>
@@ -590,32 +654,27 @@
     </div><!-- /content -->
   </div><!-- /main -->
 
-  <!-- BOTTOM NAV (mobile) -->
+  <!-- BOTTOM NAV (celular) -->
   <nav class="bottom-nav">
-    <button class="bnav-item active" data-page="dashboard" onclick="showPage('dashboard', document.querySelectorAll('.nav-item')[0])">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="5" height="9"/><rect x="10" y="7" width="5" height="14"/><rect x="17" y="3" width="5" height="18"/></svg>
-      Dashboard
+    <button class="bnav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+      <svg class="i" width="22" height="22"><use href="#i-home"/></svg>
+      Início
     </button>
-    <button class="bnav-item" data-page="carteira" onclick="showPage('carteira', document.querySelectorAll('.nav-item')[1])">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+    <button class="bnav-item" data-page="carteira" onclick="showPage('carteira')">
+      <svg class="i" width="22" height="22"><use href="#i-wallet"/></svg>
       Carteira
     </button>
-    <button class="bnav-item" data-page="agentes" onclick="showPage('agentes', document.querySelectorAll('.nav-item')[2])">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg>
-      Assistente
-    </button>
-    <button class="bnav-item" data-page="aportar" onclick="showPage('aportar', document.querySelectorAll('.nav-item')[3])">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+    <button class="bnav-item bnav-primary" data-page="aportar" onclick="showPage('aportar')" aria-label="Registrar aporte">
+      <span class="bnav-fab"><svg class="i" width="22" height="22"><use href="#i-plus"/></svg></span>
       Aportar
     </button>
-    <button class="bnav-item" data-page="alertas" onclick="showPage('alertas', document.querySelectorAll('.nav-item')[4])">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
-      Alertas
-      <span class="bnav-badge" id="alertCountMobile">2</span>
+    <button class="bnav-item" data-page="agentes" onclick="showPage('agentes')">
+      <svg class="i" width="22" height="22"><use href="#i-sparkles"/></svg>
+      Assistente
     </button>
     <button class="bnav-item" data-page="menu" onclick="openSidebar()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      Menu
+      <svg class="i" width="22" height="22"><use href="#i-menu"/></svg>
+      Mais
     </button>
   </nav>
 </div><!-- /shell -->

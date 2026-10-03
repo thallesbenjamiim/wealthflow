@@ -83,10 +83,31 @@ async function renderAporteGuide() {
   textEl.innerHTML = `Você aportou <strong>€${fmtNum(totalEur)}</strong> este mês — <strong>${brPct.toFixed(0)}% Brasil</strong> / <strong>${intlPct.toFixed(0)}% Internacional</strong> (referência 60/40).`;
 }
 
+// Tesouro Selic não faz parte do plano: só aparece no formulário se já existir saldo nele
+function garantirOpcaoSelic() {
+  const sel = document.getElementById('f-ativo');
+  if (!sel) return;
+  const existe = sel.querySelector('option[value="Selic"]');
+  if ((portfolioData.selic || 0) > 0 && !existe) {
+    const opt = document.createElement('option');
+    opt.value = 'Selic'; opt.textContent = 'Tesouro Selic';
+    sel.querySelector('optgroup[label="Brasil"]')?.appendChild(opt);
+  }
+}
+
+// Ao trocar o ativo, a moeda acompanha a moeda do ativo (VWCE → €, MXRF11 → R$...).
+// Continua dando para mudar à mão depois, se a compra foi feita na outra moeda.
+let _ultimoAtivoForm = null;
 function onAtivoChange() {
+  garantirOpcaoSelic();
   const ativo = document.getElementById('f-ativo').value;
+  if (ativo !== _ultimoAtivoForm) {
+    _ultimoAtivoForm = ativo;
+    const moedaSel = document.getElementById('f-moeda');
+    if (moedaSel && ASSET_CURRENCY[ativo]) moedaSel.value = ASSET_CURRENCY[ativo];
+  }
   const el = document.getElementById('f-qtd-req');
-  if (el) el.textContent = COTA_ASSETS.includes(ativo) ? 'obrigatório' : 'opcional';
+  if (el) el.textContent = COTA_ASSETS.includes(ativo) ? 'obrigatória' : 'opcional';
 
   const row = document.getElementById('row-usar-caixinha');
   if (row) {
@@ -125,7 +146,7 @@ async function registrarAporte() {
     const precoRef = portfolioData[ativo.toLowerCase() + '_preco'] || 0;
     const sym = nativoBRL ? 'R$' : '€';
     if (precoRef > 0 && (precoAporte > precoRef * 1.5 || precoAporte < precoRef / 1.5)) {
-      const ok = confirm(`O preço por cota deste aporte (${sym}${fmtNum(precoAporte)}) está muito longe do preço atual do ${ativo} (${sym}${fmtNum(precoRef)}).\n\nConfira o valor e a quantidade digitados. Registrar mesmo assim?`);
+      const ok = await confirmDialog(`O preço por cota deste aporte (${sym}${fmtNum(precoAporte)}) está muito longe do preço atual do ${ativo} (${sym}${fmtNum(precoRef)}).\n\nConfira o valor e a quantidade digitados.`, { titulo: 'Preço fora do esperado', ok: 'Registrar mesmo assim' });
       if (!ok) return;
     }
   }
@@ -379,7 +400,7 @@ async function loadPortfolio() {
   } catch(e) {
     console.error('Erro ao carregar portfólio:', e);
     const g = document.getElementById('hero-growth');
-    if (g) { g.textContent = '⚠️ Não foi possível carregar sua carteira — verifique a conexão e recarregue'; g.style.color = 'var(--amber)'; }
+    if (g) { g.textContent = 'Não foi possível carregar sua carteira — verifique a conexão e recarregue'; g.style.color = 'var(--amber)'; }
     showToast('❌ Erro ao carregar sua carteira do Firebase');
   }
 }
@@ -390,7 +411,7 @@ function populateHistoricoFilter(allDocs) {
   const sel = document.getElementById('historico-filter');
   if (!sel) return;
   const current = sel.value || historicoFilter;
-  sel.innerHTML = '<option value="total">Geral</option>';
+  sel.innerHTML = '<option value="total">Todos os ativos</option>';
   const assets = [...new Set(allDocs.map(d => d.ativo))].sort();
   assets.forEach(a => {
     const opt = document.createElement('option');
@@ -433,7 +454,7 @@ function descreverRegistro(d) {
     const ROTULO = { ipca_mercado: 'valor de mercado', caixinha: 'saldo', reserva: 'saldo', bitcoin: 'BTC' };
     const r = d.campo?.endsWith('_cotas') ? 'cotas' : (ROTULO[d.campo] || d.campo);
     const fmt = v => d.campo?.endsWith('_cotas') || d.campo === 'bitcoin' ? fmtNum(v, d.campo === 'bitcoin' ? 8 : 4) : fmtNum(v);
-    return `🔧 Ajuste ${d.ativo} · ${r}: ${d.anterior != null ? fmt(d.anterior) : '—'} → ${fmt(d.novo)}`;
+    return `Ajuste ${d.ativo} · ${r}: ${d.anterior != null ? fmt(d.anterior) : '—'} → ${fmt(d.novo)}`;
   }
   const extra = d.ativo === 'Reserva' ? (d.tipo === 'retirada' ? ' · retirada' : ' · depósito') : '';
   return `${d.ativo}${extra}${d.qtd ? ' · ' + d.qtd + (d.ativo === 'Bitcoin' ? ' BTC' : ' cotas') + (d.qtdEstimada ? ' (estimado)' : '') : ''}${d.viaCaixinha ? ' · pago c/ Caixinha' : ''}`;
@@ -445,13 +466,13 @@ async function loadHistorico() {
   try {
     allDocs = await fetchHistoricoDocs();
   } catch (e) {
-    list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">Erro ao carregar histórico.</div>';
+    list.innerHTML = '<div class="empty-state">Erro ao carregar histórico.</div>';
     return;
   }
   _historicoDocs = allDocs;
   try {
     if (allDocs.length === 0) {
-      list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">Nenhum aporte registrado ainda.</div>';
+      list.innerHTML = '<div class="empty-state">Nenhum aporte registrado ainda.</div>';
       populateHistoricoFilter([]);
       return;
     }
@@ -459,32 +480,42 @@ async function loadHistorico() {
 
     const filtered = historicoFilter === 'total' ? allDocs : allDocs.filter(d => d.ativo === historicoFilter);
     if (filtered.length === 0) {
-      list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">Nenhum aporte de ' + escapeHtml(historicoFilter) + ' ainda.</div>';
+      list.innerHTML = '<div class="empty-state">Nenhum aporte de ' + escapeHtml(historicoFilter) + ' ainda.</div>';
       return;
     }
 
+    let mesAnterior = null;
     list.innerHTML = filtered.map(data => {
-      const date = new Date(data.data).toLocaleDateString('pt-BR');
+      const dt = new Date(data.data);
+      const date = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+      const mes = monthKeyOf(data.data);
+      let cabecalhoMes = '';
+      if (mes !== mesAnterior) {
+        mesAnterior = mes;
+        const [a, m] = mes.split('-').map(Number);
+        const doMes = filtered.filter(x => monthKeyOf(x.data) === mes).length;
+        cabecalhoMes = `<div class="hist-month"><span>${new Date(a, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span><span>${doMes} registro${doMes > 1 ? 's' : ''}</span></div>`;
+      }
       const sym = data.moeda === 'EUR' ? '€' : 'R$';
       const ajuste = data.tipo === 'ajuste';
       const id = escapeHtml(data._id);
-      return `<div class="history-item" id="hist-${id}">
+      return cabecalhoMes + `<div class="history-item" id="hist-${id}">
         <div class="hi-left">
-          <div class="hi-asset">${escapeHtml(descreverRegistro(data))}</div>
+          <div class="hi-asset">${ajuste ? icon('wrench') : ''}${escapeHtml(descreverRegistro(data))}</div>
           <div class="hi-date">${date}${data.nota ? ' · ' + escapeHtml(data.nota) : ''}</div>
         </div>
         <div class="hi-right">
           ${ajuste ? '' : `<div class="hi-val mval">${sym}${fmtNum(parseFloat(data.valor))}</div>`}
           <div class="hi-actions">
-            ${ajuste ? '' : `<button class="hi-btn" title="Editar" aria-label="Editar" onclick="editarAporte('${id}')">✎</button>`}
-            <button class="hi-btn danger" title="Excluir" aria-label="Excluir" onclick="excluirAporte('${id}')">🗑</button>
+            ${ajuste ? '' : `<button class="hi-btn" title="Editar" aria-label="Editar" onclick="editarAporte('${id}')">${icon('pencil')}</button>`}
+            <button class="hi-btn danger" title="Excluir" aria-label="Excluir" onclick="excluirAporte('${id}')">${icon('trash')}</button>
           </div>
         </div>
       </div>`;
     }).join('');
   } catch(e) {
     console.error(e);
-    list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">Erro ao carregar histórico.</div>';
+    list.innerHTML = '<div class="empty-state">Erro ao carregar histórico.</div>';
   }
 }
 
@@ -505,7 +536,7 @@ async function excluirAporte(id) {
   const valorTxt = d.tipo === 'ajuste' ? '' : ` de ${d.moeda === 'EUR' ? '€' : 'R$'}${fmtNum(parseFloat(d.valor))}`;
   let aviso = '';
   if (d.ativo === 'Bitcoin' && d.tipo !== 'ajuste' && !(parseFloat(d.qtd) > 0)) aviso = '\n\nEste registro antigo não tem a quantidade de BTC: só o custo será desfeito. Confira a quantidade em "Conferir com a corretora" depois.';
-  if (!confirm(`Excluir ${d.tipo === 'ajuste' ? 'o ajuste' : 'o aporte'} de ${d.ativo}${valorTxt} (${quando})?\n\nA carteira será recalculada como se ele nunca tivesse existido.${aviso}`)) return;
+  if (!await confirmDialog(`A carteira será recalculada como se ele nunca tivesse existido.${aviso}`, { titulo: `Excluir ${d.tipo === 'ajuste' ? 'o ajuste' : 'o aporte'} de ${d.ativo}${valorTxt} (${quando})?`, ok: 'Excluir', perigo: true })) return;
 
   try {
     if (TEST_MODE) {
@@ -551,8 +582,8 @@ function editarAporte(id) {
         <label class="full">Nota<input class="form-input" id="e-nota-${id}" type="text" value="${escapeHtml(d.nota || '')}"></label>
       </div>
       <div class="hi-edit-actions">
-        <button class="api-save" onclick="salvarEdicaoAporte('${escapeHtml(id)}')">✓ Salvar</button>
-        <button class="api-save ghost" onclick="loadHistorico()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="salvarEdicaoAporte('${escapeHtml(id)}')">Salvar</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadHistorico()">Cancelar</button>
       </div>
     </div>`;
   maskThousandsInput(document.getElementById('e-valor-' + id), 2);

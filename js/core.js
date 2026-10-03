@@ -12,7 +12,7 @@ if (TEST_MODE) {
   document.title = '[TESTE] ' + document.title;
   const b = document.createElement('div');
   b.className = 'test-mode-badge';
-  b.textContent = '🧪 MODO TESTE — nada será salvo';
+  b.innerHTML = '<svg class="i"><use href="#i-flask"/></svg> Modo teste — nada é salvo';
   document.body.appendChild(b);
 }
 
@@ -28,15 +28,45 @@ let activeProvider = localStorage.getItem('wf_active_provider') || 'gemini';
 // ─────────────────────────────────────────
 let valuesHidden = localStorage.getItem('wf_values_hidden') === '1';
 
-const EYE_ICON = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/>';
-const EYE_OFF_ICON = '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 11 8 11 8a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 1 12s4 8 11 8a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>';
+// Ícone do conjunto do app (sprite no index.html) — use no lugar de emojis
+function icon(name, size) {
+  const s = size ? ` width="${size}" height="${size}" style="width:${size}px;height:${size}px"` : '';
+  return `<svg class="i"${s} aria-hidden="true"><use href="#i-${name}"/></svg>`;
+}
+
+// Janela de confirmação do app (no lugar do confirm() do navegador). Devolve uma Promise<boolean>.
+function confirmDialog(texto, { titulo = 'Confirmar', ok = 'Confirmar', perigo = false } = {}) {
+  const modal = document.getElementById('modal');
+  if (!modal) return Promise.resolve(confirm(texto));
+  document.getElementById('modal-title').textContent = titulo;
+  document.getElementById('modal-text').textContent = texto;
+  const btnOk = document.getElementById('modal-ok');
+  const btnCancel = document.getElementById('modal-cancel');
+  btnOk.textContent = ok;
+  btnOk.className = 'btn ' + (perigo ? 'btn-danger' : 'btn-primary');
+  modal.hidden = false;
+  btnOk.focus();
+  return new Promise(resolve => {
+    const fechar = r => {
+      modal.hidden = true;
+      btnOk.onclick = btnCancel.onclick = modal.onclick = null;
+      document.removeEventListener('keydown', tecla);
+      resolve(r);
+    };
+    const tecla = e => { if (e.key === 'Escape') fechar(false); };
+    btnOk.onclick = () => fechar(true);
+    btnCancel.onclick = () => fechar(false);
+    modal.onclick = e => { if (e.target === modal) fechar(false); };
+    document.addEventListener('keydown', tecla);
+  });
+}
 
 function applyValuesVisibility() {
   document.body.classList.toggle('values-hidden', valuesHidden);
   const btn = document.getElementById('valueToggleBtn');
   const icon = document.getElementById('eyeIcon');
   if (btn) btn.classList.toggle('active', valuesHidden);
-  if (icon) icon.innerHTML = valuesHidden ? EYE_OFF_ICON : EYE_ICON;
+  if (icon) icon.setAttribute('href', valuesHidden ? '#i-eye-off' : '#i-eye');
   if (btn) btn.title = valuesHidden ? 'Mostrar valores' : 'Ocultar valores';
 }
 
@@ -135,12 +165,18 @@ function preencherPerfil() {
   setMaskedValue(document.getElementById('pf-renda'), profileData.rendaPassivaAlvo, 0);
   document.getElementById('pf-ano').value = profileData.anoAlvo;
   setMaskedValue(document.getElementById('pf-meta-app'), profileData.metaIntermediariaBRL, 0);
-  document.getElementById('pf-aporte-total').value = profileData.aporteMensalEur;
+  document.getElementById('pf-aporte-total').value = (profileData.aporteBrEur || 0) + (profileData.aporteIntlEur || 0);
   document.getElementById('pf-aporte-br').value = profileData.aporteBrEur;
   document.getElementById('pf-aporte-intl').value = profileData.aporteIntlEur;
   document.getElementById('pf-dia').value = profileData.diaAporte;
   document.getElementById('pf-btc').value = profileData.bitcoinMensalEur;
   document.getElementById('pf-reserva-meta').value = profileData.reservaMetaEur;
+}
+
+// O total do plano é sempre Brasil + Internacional (não é digitado à parte, para nunca divergir)
+function atualizarTotalAporte() {
+  const v = id => parseFloat(document.getElementById(id).value) || 0;
+  document.getElementById('pf-aporte-total').value = v('pf-aporte-br') + v('pf-aporte-intl');
 }
 
 async function salvarPerfil() {
@@ -159,13 +195,13 @@ async function salvarPerfil() {
     rendaPassivaAlvo: numMasked('pf-renda', profileData.rendaPassivaAlvo),
     anoAlvo: num('pf-ano', profileData.anoAlvo),
     metaIntermediariaBRL: numMasked('pf-meta-app', profileData.metaIntermediariaBRL),
-    aporteMensalEur: num('pf-aporte-total', profileData.aporteMensalEur),
     aporteBrEur: num('pf-aporte-br', profileData.aporteBrEur),
     aporteIntlEur: num('pf-aporte-intl', profileData.aporteIntlEur),
     diaAporte: txt('pf-dia', profileData.diaAporte),
     bitcoinMensalEur: num('pf-btc', profileData.bitcoinMensalEur),
     reservaMetaEur: num('pf-reserva-meta', profileData.reservaMetaEur)
   };
+  profileData.aporteMensalEur = (profileData.aporteBrEur || 0) + (profileData.aporteIntlEur || 0);
 
   try {
     await saveProfile();
@@ -207,7 +243,6 @@ GATILHOS: Selic <10% → migrar aporte renda fixa p/ FIIs e internacional; Selic
 // ─────────────────────────────────────────
 // ASSISTENTE ÚNICO (v2) — substitui os 5 agentes
 // ─────────────────────────────────────────
-const ASSISTANT = { name: 'Assistente WealthFlow', icon: '✦', color: 'var(--gdim)' };
 
 const getAssistantSystem = () => `Você é o ASSISTENTE do WealthFlow, a carteira digital inteligente do ${profileData.nome}. Você cobre todos os assuntos num só lugar: alocação e rebalanceamento, dividendos e reinvestimento, projeções de longo prazo, questões fiscais (Brasil + Irlanda) e gestão de risco — além de dúvidas conceituais sobre investimentos.
 
@@ -222,9 +257,9 @@ COMO RESPONDER:
 - SEMPRE em português do Brasil.`;
 
 const MODES = {
-  risco:  { label: '🛡️ Risco',       system: 'PARA ESTA RESPOSTA: adote o olhar de um GESTOR DE RISCO conservador — proteção patrimonial antes de retorno; foque concentração, equilíbrio Brasil/Internacional e exposição cambial estrutural.' },
-  fiscal: { label: '⚖️ Fiscal',      system: 'PARA ESTA RESPOSTA: adote o olhar de um CONTADOR FISCAL Brasil+Irlanda — Exit Tax 38%, deemed disposal 8 anos após cada compra, Revenue (Form 11) e Receita Federal. Linguagem de "possível obrigação"; recomende validação com contador.' },
-  longo:  { label: '🔭 Longo prazo', system: 'PARA ESTA RESPOSTA: adote o olhar de um PLANEJADOR DE LONGO PRAZO — projeções realistas até 2046 (cenário conservador e otimista) e disciplina emocional: quando o mercado cai, o plano não muda.' }
+  risco:  { label: 'Risco', icon: 'shield',       system: 'PARA ESTA RESPOSTA: adote o olhar de um GESTOR DE RISCO conservador — proteção patrimonial antes de retorno; foque concentração, equilíbrio Brasil/Internacional e exposição cambial estrutural.' },
+  fiscal: { label: 'Fiscal', icon: 'scale',      system: 'PARA ESTA RESPOSTA: adote o olhar de um CONTADOR FISCAL Brasil+Irlanda — Exit Tax 38%, deemed disposal 8 anos após cada compra, Revenue (Form 11) e Receita Federal. Linguagem de "possível obrigação"; recomende validação com contador.' },
+  longo:  { label: 'Longo prazo', icon: 'hourglass', system: 'PARA ESTA RESPOSTA: adote o olhar de um PLANEJADOR DE LONGO PRAZO — projeções realistas até 2046 (cenário conservador e otimista) e disciplina emocional: quando o mercado cai, o plano não muda.' }
 };
 let chatMode = null;
 
@@ -235,29 +270,34 @@ const QUICK_QUESTIONS = [
   'O que é deemed disposal?'
 ];
 
-const getWelcome = () => `Olá ${profileData.nome}! Sou o <strong>assistente do WealthFlow</strong> — pergunte qualquer coisa: carteira, dividendos, projeções, impostos ou conceitos de investimento.<br><br>Hoje o câmbio está em <strong id="w0-cambio">—</strong> e a Selic em <strong id="w0-selic">—</strong> — os €${profileData.aporteBrEur} do lado Brasil valem <strong id="w0-brl">—</strong>.<br><br>Dica: os botões acima do campo de texto dão um tom específico à resposta (risco, fiscal ou longo prazo).`;
+const getWelcome = () => `Olá ${profileData.nome}! Sou o <strong>assistente do WealthFlow</strong> — pergunte qualquer coisa: carteira, dividendos, projeções, impostos ou conceitos de investimento.<br><br>Hoje o câmbio está em <strong id="w0-cambio">—</strong> e a Selic em <strong id="w0-selic">—</strong> — os €${profileData.aporteBrEur} do lado Brasil valem <strong id="w0-brl">—</strong>.`;
 
 // ─────────────────────────────────────────
 // NAVIGATION
 // ─────────────────────────────────────────
 const pageTitles = {
-  dashboard: ['Dashboard', 'Sua situação em 1 olhar'],
-  carteira: ['Carteira', 'Detalhe de tudo que você já aportou'],
-  agentes: ['Assistente', 'Seu copiloto financeiro — pergunte qualquer coisa'],
-  aportar: ['Registrar Aporte', 'Atualize sua carteira após cada compra'],
-  alertas: ['Alertas', 'Gatilhos e notificações do seu plano'],
-  config: ['Configurar API', 'Chave API para ativar os agentes'],
-  perfil: ['Perfil', 'Seus dados, metas e plano de aportes']
+  dashboard: ['Início', 'Sua situação em um olhar'],
+  carteira: ['Carteira', 'Tudo o que você tem, quanto vale e quanto rendeu'],
+  agentes: ['Assistente', 'Pergunte sobre sua carteira, impostos ou investimentos'],
+  aportar: ['Registrar aporte', 'Atualize a carteira depois de cada compra'],
+  alertas: ['Alertas', 'Gatilhos do seu plano e avisos importantes'],
+  config: ['Chaves de IA', 'Conecte o Gemini ou o Claude para ativar o Assistente'],
+  perfil: ['Perfil e plano', 'Seus dados, metas e plano de aportes']
 };
 
-function showPage(id, el) {
+// 2º parâmetro (elemento do menu) é ignorado: o item ativo é achado pelo data-page.
+// Mantido só para não quebrar chamadas antigas do tipo showPage('x', el).
+function showPage(id) {
+  if (!pageTitles[id]) id = 'dashboard';
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  if (el) el.classList.add('active');
+  document.querySelectorAll('.nav-item, .bnav-item').forEach(n => n.classList.toggle('active', n.dataset.page === id));
   document.getElementById('pageTitle').textContent = pageTitles[id][0];
   document.getElementById('pageSub').textContent = pageTitles[id][1];
-  document.querySelectorAll('.bnav-item').forEach(b => b.classList.toggle('active', b.dataset.page === id));
+  const mt = document.getElementById('mobilePageTitle');
+  if (mt) mt.textContent = pageTitles[id][0];
+  const content = document.querySelector('.content');
+  if (content) content.scrollTop = 0;
   if (id === 'agentes') initAgents();
   if (id === 'aportar') { loadHistorico(); renderAporteGuide(); }
   if (id === 'alertas') renderAlertas();
@@ -279,4 +319,3 @@ function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebarOverlay').classList.remove('open');
 }
-

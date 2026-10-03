@@ -175,11 +175,6 @@ async function checkProxy() {
       if (d.ok === true) { proxyAvailable = true; proxyBase = base; break; }
     } catch(e) {}
   }
-  const ind = document.getElementById('proxy-indicator');
-  if (ind) {
-    ind.textContent = proxyAvailable ? '🌐 Internet ativa' : '';
-    ind.style.color = 'var(--green)';
-  }
 }
 
 async function init() {
@@ -199,7 +194,7 @@ async function init() {
   // Notificação tocada (ex.: ?p=aportar) abre direto na página certa
   const paginaInicial = new URLSearchParams(location.search).get('p');
   if (paginaInicial && pageTitles[paginaInicial]) {
-    showPage(paginaInicial, document.querySelector(`.nav-item[onclick*="'${paginaInicial}'"]`));
+    showPage(paginaInicial);
   }
   // Inteligência embutida (fase 3): geradas 1x/dia e 1x/mês, com cache — custo mínimo
   loadDailyInsight();
