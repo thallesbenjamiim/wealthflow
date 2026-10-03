@@ -755,7 +755,8 @@ textarea::placeholder { color: var(--muted2); }
   }
   .bnav-item {
     flex: 1;
-    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    /* Conteúdo alinhado por baixo: os textos ficam na mesma linha mesmo com o botão Aportar mais alto */
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px;
     background: none; border: none; padding: 4px 0;
     color: var(--muted); font-size: 11px; font-weight: 500;
     cursor: pointer; position: relative;
@@ -764,7 +765,7 @@ textarea::placeholder { color: var(--muted2); }
   }
   .bnav-item.active { color: var(--txt); }
   .bnav-item.active .i { color: var(--accent); }
-  .bnav-fab { width: 40px; height: 30px; border-radius: 10px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; margin: -4px 0; }
+  .bnav-fab { width: 40px; height: 30px; border-radius: 10px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; }
   .bnav-primary .bnav-fab .i { color: #fff; }
   .bnav-primary.active .bnav-fab { background: var(--accent2); }
 }

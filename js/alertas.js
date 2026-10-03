@@ -137,24 +137,17 @@ async function renderAlertas() {
     alerts.push({ type: 'blue', icon: 'info', title: 'Selic do dia indisponível', desc: `O Banco Central não respondeu — o app está usando a estimativa ${selicLabel()} e os gatilhos de Selic ficam pausados até o dado real voltar.` });
   }
 
-  if (portfolioData.dividendos > 0) {
-    const pagantes = [['MXRF11', portfolioData.mxrf11_cotas], ['HGLG11', portfolioData.hglg11_cotas], ['KNRI11', portfolioData.knri11_cotas]]
-      .filter(([, c]) => (c || 0) > 0).map(([n]) => n);
-    const quem = pagantes.length ? `${pagantes.join(', ')} gerando renda passiva mensal.` : '';
-    alerts.push({ type: 'green', icon: 'coins', title: 'Dividendos ativos', desc: `Total recebido: R$${fmtNum(portfolioData.dividendos)}. ${quem}` });
-  }
-
-  if (portfolioData.hglg11_cotas && portfolioData.hglg11_cotas > 0) {
-    alerts.push({ type: 'green', icon: 'warehouse', title: 'HGLG11 ativo na carteira', desc: `${fmtNum(portfolioData.hglg11_cotas, 0)} cotas de FII de logística.` });
-  } else {
+  // Status da carteira (FII já comprado, total de dividendos) fica na Carteira — aqui só o que pede atenção.
+  // "Próximo objetivo" aparece apenas para um FII acompanhado que ainda não foi comprado.
+  if (!(portfolioData.hglg11_cotas > 0)) {
     alerts.push({ type: 'blue', icon: 'target', title: 'Próximo objetivo: HGLG11', desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
   }
-
-  if (portfolioData.knri11_cotas && portfolioData.knri11_cotas > 0) {
-    alerts.push({ type: 'green', icon: 'landmark', title: 'KNRI11 ativo na carteira', desc: `${fmtNum(portfolioData.knri11_cotas, 0)} cotas de FII híbrido.` });
-  } else {
+  if (!(portfolioData.knri11_cotas > 0)) {
     alerts.push({ type: 'blue', icon: 'target', title: 'Próximo objetivo: KNRI11', desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
   }
+
+  // Sem nenhum informativo, não deixa o título "Informativos" sozinho no fim da lista
+  if (alerts.length && alerts[alerts.length - 1].type === 'divider') alerts.pop();
 
   const cabecalho = actionableCount > 0
     ? `<div class="alert-section">Pedem sua atenção <span class="count">${actionableCount}</span></div>`
