@@ -802,9 +802,9 @@ textarea::placeholder { color: var(--muted2); }
 .wallet-icon-reserva { background: rgba(122,176,255,.14); box-shadow: inset 0 0 0 1px rgba(122,176,255,.28); }
 .wallet-name { font-size: 13px; font-weight: 600; color: var(--txt); }
 .wallet-type { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
-.wallet-right { text-align: right; flex-shrink: 0; }
+.wallet-right { text-align: right; flex-shrink: 1; min-width: 0; }
 .wallet-val { font-size: 13px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--txt); }
-.wallet-meta { font-size: 10.5px; color: var(--muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+.wallet-meta { font-size: 10.5px; color: var(--muted); margin-top: 2px; font-family: 'DM Mono', monospace; overflow-wrap: anywhere; }
 .wallet-pl { font-size: 10.5px; margin-top: 2px; font-family: 'DM Mono', monospace; font-weight: 600; }
 .pl-pos { color: var(--green); }
 .pl-neg { color: var(--red); }

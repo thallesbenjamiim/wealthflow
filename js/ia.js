@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────
 
 // 💡 Insight do dia — 1 chamada de IA por dia, com cache no aparelho
+const INSIGHT_VERSAO = 2; // mude ao alterar o prompt para invalidar o cache dos aparelhos
 async function loadDailyInsight() {
   const card = document.getElementById('insight-card');
   const txt = document.getElementById('insight-text');
@@ -16,13 +17,15 @@ async function loadDailyInsight() {
   const KEY = 'wf_daily_insight';
   try {
     const c = JSON.parse(localStorage.getItem(KEY));
-    if (c && c.date === today && c.text) { txt.textContent = c.text; card.style.display = 'flex'; return; }
+    // O cache vale só para o mesmo dia, a mesma versão do prompt e a mesma Selic — se os
+    // indicadores mudarem (ex.: Selic estimada → real), o insight é refeito
+    if (c && c.date === today && c.text && c.v === INSIGHT_VERSAO && c.selic === selicLabel()) { txt.textContent = c.text; card.style.display = 'flex'; return; }
   } catch {}
 
   try {
-    const prompt = 'Gere UM insight útil de HOJE para o investidor, com base no perfil e nos indicadores atuais. Máximo 35 palavras, texto corrido, direto, sem saudação e sem repetir números óbvios da carteira. Temas possíveis: câmbio da semana, dividendo esperado, proximidade do dia de aporte (dia ' + profileData.diaAporte + '), equilíbrio da carteira.';
+    const prompt = 'Gere UM insight útil de HOJE para o investidor, com base no perfil e nos indicadores atuais. Máximo 35 palavras, texto corrido, direto, sem saudação e sem repetir números óbvios da carteira. Temas possíveis: câmbio da semana, dividendo esperado, proximidade do dia de aporte (dia ' + profileData.diaAporte + '), equilíbrio da carteira. É uma OBSERVAÇÃO, não uma recomendação: NUNCA diga em qual ativo ou lado (Brasil/Internacional) aportar, nem use "priorize", "compre" ou "invista em". Use exatamente os indicadores do perfil (não invente Selic, câmbio ou IPCA).';
     const insight = await callAI(getAssistantSystem() + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 120);
-    localStorage.setItem(KEY, JSON.stringify({ date: today, text: insight }));
+    localStorage.setItem(KEY, JSON.stringify({ date: today, text: insight, v: INSIGHT_VERSAO, selic: selicLabel() }));
     txt.textContent = insight;
     card.style.display = 'flex';
   } catch (e) { card.style.display = 'none'; }

@@ -427,7 +427,7 @@ async function renderWallet(rate) {
     icon: '📈', name: 'Tesouro IPCA+', type: 'Renda Fixa · Nubank', cat: 'br', val: showVal(ipcaValor(), 'BRL'),
     meta: ipcaMercado
       ? 'valor de mercado' + (portfolioData.ipca_mercado_data ? ' de ' + new Date(portfolioData.ipca_mercado_data).toLocaleDateString('pt-BR') : '')
-      : 'valor aplicado — informe o de mercado em "Conferir com a corretora"',
+      : 'valor aplicado',
     pl: ipcaMercado ? plLine(portfolioData.ipca, ipcaValor(), 'R$') : null
   });
 
