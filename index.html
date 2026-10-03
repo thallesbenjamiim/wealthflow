@@ -1591,8 +1591,8 @@ async function salvarPerfil() {
 // ─────────────────────────────────────────
 function getProfile() {
   const cambio = 'R$' + fmtNum(getRate());
-  const selic = fmtNum(marketRates.selic ?? 14.25) + '%' + (marketRates.selicEstimada ? ' (ESTIMATIVA — dado do dia indisponível; não tire conclusões de gatilho com ela)' : '');
-  const ipca = fmtNum(marketRates.ipca ?? 4.72) + '%' + (marketRates.ipcaEstimado ? ' (ESTIMATIVA)' : '');
+  const selic = fmtNum(marketRates.selic ?? 13.75) + '%' + (marketRates.selicEstimada ? ' (ESTIMATIVA — dado do dia indisponível; não tire conclusões de gatilho com ela)' : '');
+  const ipca = fmtNum(marketRates.ipca ?? 4.22) + '%' + (marketRates.ipcaEstimado ? ' (ESTIMATIVA)' : '');
   const fx = v => (v || 0).toFixed(2);
   const btcEur = btcPriceEur ? (portfolioData.bitcoin * btcPriceEur).toFixed(0) : (portfolioData.bitcoin_invested_eur || 0);
   const patrimonioAlvo = (profileData.rendaPassivaAlvo * 650 / 1000000).toFixed(1);
@@ -1711,10 +1711,9 @@ async function fetchCambio() {
 }
 
 async function fetchSelic() {
-  // FALLBACK usado só quando o proxy está offline (o BCB bloqueia CORS direto do browser).
-  // Com o proxy ativo, a Selic real vem do Banco Central (SGS 432) em loadMarketData.
-  // O "≈" na tela avisa que o número é uma estimativa fixa, não o dado do dia.
-  const SELIC_FALLBACK = 14.25;
+  // FALLBACK usado só quando o proxy não traz a Selic (BrasilAPI e BCB fora do ar, ou sem proxy).
+  // Valor de referência de out/2026 — o "≈" na tela avisa que é estimativa, não o dado do dia.
+  const SELIC_FALLBACK = 13.75;
   marketRates.selic = SELIC_FALLBACK;
   marketRates.selicEstimada = true;
   ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) { e.textContent = '≈' + fmtNum(SELIC_FALLBACK) + '%'; e.title = 'Estimativa — Banco Central indisponível agora'; } });
@@ -1722,8 +1721,8 @@ async function fetchSelic() {
 }
 
 async function fetchIPCA() {
-  // FALLBACK usado só quando o proxy está offline — com proxy, vem do BCB (SGS 13522).
-  const IPCA_FALLBACK = 4.72;
+  // FALLBACK usado só quando o proxy não traz o IPCA 12m (ref. out/2026).
+  const IPCA_FALLBACK = 4.22;
   marketRates.ipca = IPCA_FALLBACK;
   marketRates.ipcaEstimado = true;
   const e = document.getElementById('pill-ipca');
@@ -1734,7 +1733,7 @@ async function fetchIPCA() {
 
 // Selic formatada para textos: com "~" e aviso quando é a estimativa fixa
 function selicLabel() {
-  return (marketRates.selicEstimada ? '≈' : '') + fmtNum(marketRates.selic ?? 14.25) + '%';
+  return (marketRates.selicEstimada ? '≈' : '') + fmtNum(marketRates.selic ?? 13.75) + '%';
 }
 
 let btcPriceEur = null; // cache em memória — evita repetir a chamada à API a cada render
@@ -1794,11 +1793,11 @@ async function loadMarketData() {
         ['pill-cambio','sb-cambio'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = 'R$' + fmtNum(marketRates.eurbrl); });
       }
       applyLivePrices(md);
-      // Selic e IPCA reais do Banco Central via proxy — fallback fixo se faltarem
+      // Selic e IPCA reais (BrasilAPI/Banco Central) via proxy — fallback fixo se faltarem
       if (md.selic) {
         marketRates.selic = parseFloat(md.selic);
         marketRates.selicEstimada = false;
-        ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) { e.textContent = fmtNum(marketRates.selic) + '%'; e.title = 'Banco Central (SGS 432)'; } });
+        ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) { e.textContent = fmtNum(marketRates.selic) + '%'; e.title = 'Dado do dia (BrasilAPI/Banco Central)'; } });
       }
       else await fetchSelic();
       if (md.ipca12m) {
@@ -1806,7 +1805,7 @@ async function loadMarketData() {
         marketRates.ipcaEstimado = false;
         const e = document.getElementById('pill-ipca');
         e.textContent = fmtNum(marketRates.ipca) + '%';
-        e.title = 'Banco Central (SGS 13522)';
+        e.title = 'Dado do dia (BrasilAPI/Banco Central)';
       }
       else await fetchIPCA();
       // Câmbio: se o proxy não trouxe, usa a fonte direta (awesomeapi tem CORS liberado)
@@ -2599,7 +2598,7 @@ async function renderAlertas() {
   const hoje = new Date();
   const diaHoje = hoje.getDate();
   const mesKey = currentMonthKey();
-  const selicVal = marketRates.selic ?? 14.25;
+  const selicVal = marketRates.selic ?? 13.75;
   const rate = getRate();
   const alerts = [];
   let actionableCount = 0; // só conta alertas que exigem ação REAL do investidor

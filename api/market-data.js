@@ -4,7 +4,7 @@
 async function yahooQuote(symbol) {
   const r = await fetch(
     `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`,
-    { headers: { 'User-Agent': 'WealthFlow/1.0' } }
+    { headers: { 'User-Agent': 'WealthFlow/1.0' }, signal: AbortSignal.timeout(5000) }
   );
   if (!r.ok) return null;
   const d = await r.json();
@@ -21,16 +21,36 @@ async function yahooQuote(symbol) {
 
 async function fetchJson(url) {
   try {
-    const r = await fetch(url, { headers: { 'User-Agent': 'WealthFlow/1.0' } });
+    // Limite de tempo: uma fonte travada não pode segurar a resposta inteira
+    const r = await fetch(url, { headers: { 'User-Agent': 'WealthFlow/1.0' }, signal: AbortSignal.timeout(5000) });
     return r.ok ? await r.json() : null;
   } catch (e) { return null; }
+}
+
+// Taxas do Brasil. A API do Banco Central (SGS) recusa servidores de nuvem, inclusive
+// no Vercel em São Paulo — a BrasilAPI republica os mesmos dados do BCB e responde.
+// O SGS fica como segunda opção. Retorna { selic, ipca12m } (podem vir null).
+async function brazilRates() {
+  const taxas = await fetchJson('https://brasilapi.com.br/api/taxas/v1');
+  const pick = nome => taxas?.find?.(t => (t.nome || '').toLowerCase() === nome)?.valor;
+  let selic = pick('selic'), ipca12m = pick('ipca');
+  if (selic == null || ipca12m == null) {
+    // Banco Central (SGS): 432 = Selic meta, 13522 = IPCA acumulado 12 meses
+    const [s, i] = await Promise.all([
+      selic == null ? fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json') : null,
+      ipca12m == null ? fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json') : null
+    ]);
+    if (selic == null && s?.[0]?.valor) selic = s[0].valor;
+    if (ipca12m == null && i?.[0]?.valor) ipca12m = i[0].valor;
+  }
+  return { selic: selic != null ? parseFloat(selic) : null, ipca12m: ipca12m != null ? parseFloat(ipca12m) : null };
 }
 
 // Último dividendo por cota realmente pago (FIIs da B3 — só Brasil, ETFs Acc não distribuem).
 async function yahooLastDividend(symbol) {
   const r = await fetch(
     `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1mo&range=3mo&events=div`,
-    { headers: { 'User-Agent': 'WealthFlow/1.0' } }
+    { headers: { 'User-Agent': 'WealthFlow/1.0' }, signal: AbortSignal.timeout(5000) }
   );
   if (!r.ok) return null;
   const d = await r.json();
@@ -44,7 +64,7 @@ async function yahooLastDividend(symbol) {
 module.exports = async (req, res) => {
   const out = {};
 
-  const [vwce, euna, mxrf11, hglg11, knri11, mxrf11Div, hglg11Div, knri11Div, cambio, selic, ipca] = await Promise.all([
+  const [vwce, euna, mxrf11, hglg11, knri11, mxrf11Div, hglg11Div, knri11Div, cambio, rates] = await Promise.all([
     yahooQuote('VWCE.AS').catch(() => null),
     // EUNA.DE (Xetra) — o EUNA.AS de Amsterdã é outra classe do fundo (~€49) e distorceria a carteira 10x
     yahooQuote('EUNA.DE').catch(() => null),
@@ -55,9 +75,7 @@ module.exports = async (req, res) => {
     yahooLastDividend('HGLG11.SA').catch(() => null),
     yahooLastDividend('KNRI11.SA').catch(() => null),
     fetchJson('https://api.exchangerate-api.com/v4/latest/EUR'),
-    // Banco Central (SGS): 432 = Selic meta, 13522 = IPCA acumulado 12 meses
-    fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json'),
-    fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json')
+    brazilRates().catch(() => ({}))
   ]);
 
   if (vwce)   out.vwce = vwce;
@@ -69,8 +87,8 @@ module.exports = async (req, res) => {
   if (hglg11Div) out.hglg11Dividend = hglg11Div;
   if (knri11Div) out.knri11Dividend = knri11Div;
   if (cambio?.rates?.BRL) out.eurbrl = cambio.rates.BRL.toFixed(4);
-  if (selic?.[0]?.valor) out.selic = parseFloat(selic[0].valor).toFixed(2);
-  if (ipca?.[0]?.valor) out.ipca12m = parseFloat(ipca[0].valor).toFixed(2);
+  if (Number.isFinite(rates.selic)) out.selic = rates.selic.toFixed(2);
+  if (Number.isFinite(rates.ipca12m)) out.ipca12m = rates.ipca12m.toFixed(2);
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   // Cache de 5 min na CDN do Vercel — as fontes não mudam mais rápido que isso
