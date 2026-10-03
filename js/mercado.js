@@ -81,7 +81,7 @@ async function fetchBTCPriceEUR() {
 // sem quantidade de cotas — avisa em vez de "sumir" com o dinheiro silenciosamente.
 function applyLivePrices(md) {
   const desatualizados = [];
-  [['mxrf11','MXRF11'], ['hglg11','HGLG11'], ['knri11','KNRI11'], ['vwce','VWCE'], ['euna','EUNA']].forEach(([k, name]) => {
+  [['mxrf11','MXRF11'], ['hglg11','HGLG11'], ['knri11','KNRI11'], ['bova11','BOVA11'], ['vwce','VWCE'], ['euna','EUNA']].forEach(([k, name]) => {
     const q = md[k];
     const cotas = portfolioData[k + '_cotas'];
     if (!q?.price || !cotas) return;

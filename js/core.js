@@ -96,6 +96,7 @@ let portfolioData = {
   mxrf11: 79.84, mxrf11_cotas: 8, mxrf11_preco: 9.98,
   hglg11: 0, hglg11_cotas: 0, hglg11_preco: 0,
   knri11: 0, knri11_cotas: 0, knri11_preco: 0,
+  bova11: 0, bova11_cotas: 0, bova11_preco: 0,
   ipca: 118.47,
   selic: 0, caixinha: 152.63,
   vwce: 25.28, vwce_cotas: 0.1528491, vwce_preco: 165.39,
@@ -229,7 +230,7 @@ function getProfile() {
   return `PERFIL — ${profileData.nome}, ${profileData.idade} anos, morando em ${profileData.pais} (${profileData.cidadania}), volta ao Brasil em ~${profileData.horizonteRetorno}. ${profileData.perfilRisco}.
 HOJE (${new Date().toLocaleDateString('pt-BR')}): EUR/BRL ${cambio} · Selic ${selic} · IPCA 12m ${ipca}.
 CARTEIRA ATUAL:
-- Brasil (Nubank): MXRF11 R$${fx(portfolioData.mxrf11)} (${portfolioData.mxrf11_cotas || 0} cotas, último dividendo R$${divPerShare.mxrf11}/cota/mês) · HGLG11 R$${fx(portfolioData.hglg11)} (${portfolioData.hglg11_cotas || 0} cotas, FII logística, último dividendo R$${divPerShare.hglg11}/cota/mês) · KNRI11 R$${fx(portfolioData.knri11)} (${portfolioData.knri11_cotas || 0} cotas, FII híbrido, último dividendo R$${divPerShare.knri11}/cota/mês) · Tesouro IPCA+ R$${fx(ipcaValor())}${portfolioData.ipca_mercado != null ? ` (valor de mercado; aplicado R$${fx(portfolioData.ipca)})` : " (valor aplicado)"} · Caixinha CDI R$${fx(portfolioData.caixinha)} (liquidez temporária entre aportes) · Dividendos recebidos R$${fx(portfolioData.dividendos)}
+- Brasil (Nubank): MXRF11 R$${fx(portfolioData.mxrf11)} (${portfolioData.mxrf11_cotas || 0} cotas, último dividendo R$${divPerShare.mxrf11}/cota/mês) · HGLG11 R$${fx(portfolioData.hglg11)} (${portfolioData.hglg11_cotas || 0} cotas, FII logística, último dividendo R$${divPerShare.hglg11}/cota/mês) · KNRI11 R$${fx(portfolioData.knri11)} (${portfolioData.knri11_cotas || 0} cotas, FII híbrido, último dividendo R$${divPerShare.knri11}/cota/mês)${(portfolioData.bova11_cotas || 0) > 0 ? ` · BOVA11 R$${fx(portfolioData.bova11)} (${portfolioData.bova11_cotas} cotas, ETF iShares Ibovespa, taxa 0,10% a.a., reinveste os dividendos — não distribui)` : ''} · Tesouro IPCA+ R$${fx(ipcaValor())}${portfolioData.ipca_mercado != null ? ` (valor de mercado; aplicado R$${fx(portfolioData.ipca)})` : " (valor aplicado)"} · Caixinha CDI R$${fx(portfolioData.caixinha)} (liquidez temporária entre aportes) · Dividendos recebidos R$${fx(portfolioData.dividendos)}
 - Internacional (Revolut): VWCE €${fx(portfolioData.vwce)} · EUNA €${fx(portfolioData.euna)} (ambos Acc — sem imposto anual de dividendos)
 - Bitcoin informal (fora do plano): ${portfolioData.bitcoin || 0} BTC (~€${btcEur})
 - Reserva de emergência (fora do plano de investimento, intocável): €${fx(portfolioData.reserva)} de uma meta de €${profileData.reservaMetaEur}

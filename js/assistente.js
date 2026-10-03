@@ -35,6 +35,7 @@ function populateEvoFromPortfolio() {
     { value: 'MXRF11',   label: 'MXRF11',       active: (portfolioData.mxrf11 || 0) > 0 || (portfolioData.mxrf11_cotas || 0) > 0 },
     { value: 'HGLG11',   label: 'HGLG11',       active: (portfolioData.hglg11 || 0) > 0 || (portfolioData.hglg11_cotas || 0) > 0 },
     { value: 'KNRI11',   label: 'KNRI11',       active: (portfolioData.knri11 || 0) > 0 || (portfolioData.knri11_cotas || 0) > 0 },
+    { value: 'BOVA11',   label: 'BOVA11',       active: (portfolioData.bova11 || 0) > 0 || (portfolioData.bova11_cotas || 0) > 0 },
     { value: 'IPCA+',    label: 'IPCA+',        active: (portfolioData.ipca || 0) > 0 },
     { value: 'Selic',    label: 'Selic',        active: (portfolioData.selic || 0) > 0 },
     { value: 'Caixinha', label: 'Caixinha CDI', active: (portfolioData.caixinha || 0) > 0 },
@@ -72,6 +73,7 @@ const _EVO_ASSET = {
   'MXRF11':   { get: () => portfolioData.mxrf11 || 0,              sym: 'R$' },
   'HGLG11':   { get: () => portfolioData.hglg11 || 0,              sym: 'R$' },
   'KNRI11':   { get: () => portfolioData.knri11 || 0,              sym: 'R$' },
+  'BOVA11':   { get: () => portfolioData.bova11 || 0,              sym: 'R$' },
   'IPCA+':    { get: () => ipcaValor(),               sym: 'R$' },
   'Selic':    { get: () => portfolioData.selic || 0,               sym: 'R$' },
   'Caixinha': { get: () => portfolioData.caixinha || 0,            sym: 'R$' },
@@ -129,7 +131,7 @@ function renderEvoForAsset(ativo, docs) {
   if (tagEl)  tagEl.textContent  = isReal ? 'dados reais' : 'tendência ilustrativa';
   // Valor de mercado de hoje como trecho tracejado — só para posições de investimento
   // (Caixinha, Dividendo e afins não têm "valor de mercado" diferente do registrado)
-  const MERCADO = ['MXRF11', 'HGLG11', 'KNRI11', 'VWCE', 'EUNA', 'Bitcoin'];
+  const MERCADO = ['MXRF11', 'HGLG11', 'KNRI11', 'BOVA11', 'VWCE', 'EUNA', 'Bitcoin'];
   const nowVal = isReal && MERCADO.includes(ativo) && info ? info.get() : null;
 
   if (noteEl) noteEl.textContent = isReal

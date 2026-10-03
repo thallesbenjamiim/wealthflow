@@ -18,7 +18,7 @@ async function renderAlertas() {
   // ─── GATILHOS ACIONÁVEIS (definidos na Constituição do WealthFlow) ───
 
   // Gatilho de desequilíbrio Brasil/Internacional — mesma faixa 15%-75% usada no badge do Dashboard
-  const brInvestedEur = (portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + (portfolioData.knri11 || 0) + ipcaValor() + portfolioData.selic) / rate;
+  const brInvestedEur = (portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + (portfolioData.knri11 || 0) + (portfolioData.bova11 || 0) + ipcaValor() + portfolioData.selic) / rate;
   const cashEur = portfolioData.caixinha / rate;
   const intlEur = portfolioData.vwce + portfolioData.euna;
   // Usa a cotação ao vivo do BTC quando já buscada nesta sessão — igual ao Dashboard
@@ -39,6 +39,7 @@ async function renderAlertas() {
     { name: 'MXRF11', eur: portfolioData.mxrf11 / rate },
     { name: 'HGLG11', eur: (portfolioData.hglg11 || 0) / rate },
     { name: 'KNRI11', eur: (portfolioData.knri11 || 0) / rate },
+    { name: 'BOVA11', eur: (portfolioData.bova11 || 0) / rate },
     { name: 'Tesouro IPCA+', eur: ipcaValor() / rate },
     { name: 'Tesouro Selic + Caixinha', eur: (portfolioData.selic + portfolioData.caixinha) / rate },
     { name: 'VWCE', eur: portfolioData.vwce },
