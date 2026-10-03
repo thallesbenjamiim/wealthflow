@@ -81,7 +81,7 @@ async function fetchBTCPriceEUR() {
 // sem quantidade de cotas — avisa em vez de "sumir" com o dinheiro silenciosamente.
 function applyLivePrices(md) {
   const desatualizados = [];
-  [['mxrf11','MXRF11'], ['hglg11','HGLG11'], ['knri11','KNRI11'], ['bova11','BOVA11'], ['vwce','VWCE'], ['euna','EUNA']].forEach(([k, name]) => {
+  ATIVOS.map(a => [a.key, a.id]).forEach(([k, name]) => {
     const q = md[k];
     const cotas = portfolioData[k + '_cotas'];
     if (!q?.price || !cotas) return;
@@ -94,10 +94,11 @@ function applyLivePrices(md) {
     window._cotasWarned = true;
     showToast('⚠️ ' + desatualizados.join(' e ') + ' com aportes sem quantidade de cotas — registre as cotas que aparecem na corretora para o valor ao vivo ficar completo.');
   }
-  // Último dividendo por cota realmente pago (Brasil apenas — MXRF11/HGLG11/KNRI11)
-  if (md.mxrf11Dividend?.amount) { divPerShare.mxrf11 = md.mxrf11Dividend.amount; divPerShare.mxrf11Date = md.mxrf11Dividend.date; }
-  if (md.hglg11Dividend?.amount) { divPerShare.hglg11 = md.hglg11Dividend.amount; divPerShare.hglg11Date = md.hglg11Dividend.date; }
-  if (md.knri11Dividend?.amount) { divPerShare.knri11 = md.knri11Dividend.amount; divPerShare.knri11Date = md.knri11Dividend.date; }
+  // Último dividendo por cota realmente pago (ativos da lista única que distribuem — os FIIs)
+  ATIVOS_DIVIDENDOS.forEach(a => {
+    const div = md[a.key + 'Dividend'];
+    if (div?.amount) { divPerShare[a.key] = div.amount; divPerShare[a.key + 'Date'] = div.date; }
+  });
 }
 
 async function loadMarketData() {

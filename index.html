@@ -426,17 +426,11 @@
             <div class="form-row">
               <label class="form-label" for="f-ativo">Ativo</label>
               <select class="form-select" id="f-ativo" onchange="onAtivoChange()">
+                <!-- Os FIIs e ETFs entram aqui a partir de js/ativos.js -->
                 <optgroup label="Brasil">
-                  <option value="MXRF11">MXRF11 — FII Maxi Renda</option>
-                  <option value="HGLG11">HGLG11 — FII Logística</option>
-                  <option value="KNRI11">KNRI11 — FII Híbrido</option>
-                  <option value="BOVA11">BOVA11 — ETF Ibovespa</option>
                   <option value="IPCA+">Tesouro IPCA+</option>
                 </optgroup>
-                <optgroup label="Internacional">
-                  <option value="VWCE">VWCE — ETF Global</option>
-                  <option value="EUNA">EUNA — ETF de Títulos</option>
-                </optgroup>
+                <optgroup label="Internacional"></optgroup>
                 <optgroup label="Outros">
                   <option value="Caixinha">Caixinha — reserva p/ próximo aporte</option>
                   <option value="Bitcoin">Bitcoin (informal)</option>
@@ -680,6 +674,7 @@
   </nav>
 </div><!-- /shell -->
 
+<script src="js/ativos.js"></script>
 <script src="js/core.js"></script>
 <script src="js/mercado.js"></script>
 <script src="js/carteira.js"></script>

@@ -31,16 +31,14 @@ function populateEvoFromPortfolio() {
   const current = sel.value;
   sel.innerHTML = '<option value="total">Total (€)</option>';
 
+  const temPosicao = a => (portfolioData[a.key] || 0) > 0 || (portfolioData[a.key + '_cotas'] || 0) > 0;
+  const daLista = lista => lista.map(a => ({ value: a.id, label: a.id, active: temPosicao(a) }));
   const candidates = [
-    { value: 'MXRF11',   label: 'MXRF11',       active: (portfolioData.mxrf11 || 0) > 0 || (portfolioData.mxrf11_cotas || 0) > 0 },
-    { value: 'HGLG11',   label: 'HGLG11',       active: (portfolioData.hglg11 || 0) > 0 || (portfolioData.hglg11_cotas || 0) > 0 },
-    { value: 'KNRI11',   label: 'KNRI11',       active: (portfolioData.knri11 || 0) > 0 || (portfolioData.knri11_cotas || 0) > 0 },
-    { value: 'BOVA11',   label: 'BOVA11',       active: (portfolioData.bova11 || 0) > 0 || (portfolioData.bova11_cotas || 0) > 0 },
+    ...daLista(ATIVOS_BR),
     { value: 'IPCA+',    label: 'IPCA+',        active: (portfolioData.ipca || 0) > 0 },
     { value: 'Selic',    label: 'Selic',        active: (portfolioData.selic || 0) > 0 },
     { value: 'Caixinha', label: 'Caixinha CDI', active: (portfolioData.caixinha || 0) > 0 },
-    { value: 'VWCE',     label: 'VWCE',         active: (portfolioData.vwce || 0) > 0 || (portfolioData.vwce_cotas || 0) > 0 },
-    { value: 'EUNA',     label: 'EUNA',         active: (portfolioData.euna || 0) > 0 || (portfolioData.euna_cotas || 0) > 0 },
+    ...daLista(ATIVOS_INTL),
     { value: 'Bitcoin',  label: 'Bitcoin',      active: (portfolioData.bitcoin || 0) > 0 || (portfolioData.bitcoin_invested_eur || 0) > 0 },
   ];
 
@@ -70,15 +68,10 @@ function populateEvoDropdown(docs) {
 }
 
 const _EVO_ASSET = {
-  'MXRF11':   { get: () => portfolioData.mxrf11 || 0,              sym: 'R$' },
-  'HGLG11':   { get: () => portfolioData.hglg11 || 0,              sym: 'R$' },
-  'KNRI11':   { get: () => portfolioData.knri11 || 0,              sym: 'R$' },
-  'BOVA11':   { get: () => portfolioData.bova11 || 0,              sym: 'R$' },
+  ...Object.fromEntries(ATIVOS.map(a => [a.id, { get: () => portfolioData[a.key] || 0, sym: a.moeda === 'BRL' ? 'R$' : '€' }])),
   'IPCA+':    { get: () => ipcaValor(),               sym: 'R$' },
   'Selic':    { get: () => portfolioData.selic || 0,               sym: 'R$' },
   'Caixinha': { get: () => portfolioData.caixinha || 0,            sym: 'R$' },
-  'VWCE':     { get: () => portfolioData.vwce || 0,                sym: '€'  },
-  'EUNA':     { get: () => portfolioData.euna || 0,                sym: '€'  },
   'Bitcoin':  { get: () => btcPriceEur ? (portfolioData.bitcoin || 0) * btcPriceEur : (portfolioData.bitcoin_invested_eur || 0), sym: '€' },
 };
 
@@ -131,7 +124,7 @@ function renderEvoForAsset(ativo, docs) {
   if (tagEl)  tagEl.textContent  = isReal ? 'dados reais' : 'tendência ilustrativa';
   // Valor de mercado de hoje como trecho tracejado — só para posições de investimento
   // (Caixinha, Dividendo e afins não têm "valor de mercado" diferente do registrado)
-  const MERCADO = ['MXRF11', 'HGLG11', 'KNRI11', 'BOVA11', 'VWCE', 'EUNA', 'Bitcoin'];
+  const MERCADO = [...ATIVOS.map(a => a.id), 'Bitcoin'];
   const nowVal = isReal && MERCADO.includes(ativo) && info ? info.get() : null;
 
   if (noteEl) noteEl.textContent = isReal

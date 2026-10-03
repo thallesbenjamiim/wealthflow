@@ -1,6 +1,9 @@
 // Função serverless do Vercel — mesma lógica do server.js local (getMarketData),
 // para o app ter cotações completas no celular e em qualquer lugar, sem PC ligado.
 
+// Lista única de ativos — o mesmo arquivo que o app usa no navegador
+const { ATIVOS, ATIVOS_DIVIDENDOS } = require('../js/ativos.js');
+
 async function yahooQuote(symbol) {
   const r = await fetch(
     `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`,
@@ -64,31 +67,16 @@ async function yahooLastDividend(symbol) {
 async function getMarketData() {
   const out = {};
 
-  const [vwce, euna, mxrf11, hglg11, knri11, bova11, mxrf11Div, hglg11Div, knri11Div, cambio, rates] = await Promise.all([
-    yahooQuote('VWCE.AS').catch(() => null),
-    // EUNA.DE (Xetra) — o EUNA.AS de Amsterdã é outra classe do fundo (~€49) e distorceria a carteira 10x
-    yahooQuote('EUNA.DE').catch(() => null),
-    yahooQuote('MXRF11.SA').catch(() => null),
-    yahooQuote('HGLG11.SA').catch(() => null),
-    yahooQuote('KNRI11.SA').catch(() => null),
-    // BOVA11 — ETF iShares Ibovespa (B3, em reais); reinveste os dividendos, então não há dividendo a buscar
-    yahooQuote('BOVA11.SA').catch(() => null),
-    yahooLastDividend('MXRF11.SA').catch(() => null),
-    yahooLastDividend('HGLG11.SA').catch(() => null),
-    yahooLastDividend('KNRI11.SA').catch(() => null),
+  // Cotação de todos os ativos da lista única + último dividendo dos que distribuem
+  const [cotacoes, dividendos, cambio, rates] = await Promise.all([
+    Promise.all(ATIVOS.map(a => yahooQuote(a.yahoo).catch(() => null))),
+    Promise.all(ATIVOS_DIVIDENDOS.map(a => yahooLastDividend(a.yahoo).catch(() => null))),
     fetchJson('https://api.exchangerate-api.com/v4/latest/EUR'),
     brazilRates().catch(() => ({}))
   ]);
 
-  if (vwce)   out.vwce = vwce;
-  if (euna)   out.euna = euna;
-  if (mxrf11) out.mxrf11 = mxrf11;
-  if (hglg11) out.hglg11 = hglg11;
-  if (knri11) out.knri11 = knri11;
-  if (bova11) out.bova11 = bova11;
-  if (mxrf11Div) out.mxrf11Dividend = mxrf11Div;
-  if (hglg11Div) out.hglg11Dividend = hglg11Div;
-  if (knri11Div) out.knri11Dividend = knri11Div;
+  ATIVOS.forEach((a, i) => { if (cotacoes[i]) out[a.key] = cotacoes[i]; });
+  ATIVOS_DIVIDENDOS.forEach((a, i) => { if (dividendos[i]) out[a.key + 'Dividend'] = dividendos[i]; });
   if (cambio?.rates?.BRL) out.eurbrl = cambio.rates.BRL.toFixed(4);
   if (Number.isFinite(rates.selic)) out.selic = rates.selic.toFixed(2);
   if (Number.isFinite(rates.ipca12m)) out.ipca12m = rates.ipca12m.toFixed(2);

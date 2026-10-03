@@ -125,7 +125,7 @@ function maskThousandsInput(el, decimals = 0) {
 // ─────────────────────────────────────────
 // RENTABILIDADE REAL — custo de aquisição a partir dos aportes registrados
 // ─────────────────────────────────────────
-const ASSET_CURRENCY = { 'MXRF11':'BRL', 'HGLG11':'BRL', 'KNRI11':'BRL', 'BOVA11':'BRL', 'IPCA+':'BRL', 'Selic':'BRL', 'Caixinha':'BRL', 'Dividendo':'BRL', 'VWCE':'EUR', 'EUNA':'EUR', 'Bitcoin':'EUR', 'Reserva':'EUR' };
+const ASSET_CURRENCY = { ...Object.fromEntries(ATIVOS.map(a => [a.id, a.moeda])), 'IPCA+':'BRL', 'Selic':'BRL', 'Caixinha':'BRL', 'Dividendo':'BRL', 'Bitcoin':'EUR', 'Reserva':'EUR' };
 
 // Soma o valor aportado por ativo, na moeda nativa de cada um
 function computeInvested(docs, rate) {
@@ -166,10 +166,10 @@ let scoreAtual = null;
 async function updateDashboard(cambio) {
   if (!portfolioLoaded) return;
   const rate = parseFloat(cambio) || 6.0;
-  const brInvested = portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + (portfolioData.knri11 || 0) + (portfolioData.bova11 || 0) + ipcaValor() + portfolioData.selic;
+  const brInvested = somaAtivos(ATIVOS_BR) + ipcaValor() + portfolioData.selic;
   const cashEur = portfolioData.caixinha / rate;
   const brInvestedEur = brInvested / rate;
-  const intlEur = portfolioData.vwce + portfolioData.euna;
+  const intlEur = somaAtivos(ATIVOS_INTL);
   const btcPrice = await fetchBTCPriceEUR();
   const btcValueEur = btcPrice ? portfolioData.bitcoin * btcPrice : (portfolioData.bitcoin_invested_eur || 0);
   const totalEur = brInvestedEur + intlEur + cashEur + btcValueEur;
@@ -279,14 +279,10 @@ async function updateDashboard(cambio) {
   // ── 6. SCORE — calculado a partir dos seus dados reais ──
   // Cada posição convertida para EUR, para medir concentração e diversificação de verdade
   const positions = [
-    { name: 'mxrf11', eur: portfolioData.mxrf11 / rate },
-    { name: 'hglg11', eur: (portfolioData.hglg11 || 0) / rate },
-    { name: 'knri11', eur: (portfolioData.knri11 || 0) / rate },
-    { name: 'bova11', eur: (portfolioData.bova11 || 0) / rate },
+    ...ATIVOS_BR.map(a => ({ name: a.key, eur: (portfolioData[a.key] || 0) / rate })),
     { name: 'ipca', eur: ipcaValor() / rate },
     { name: 'selic', eur: (portfolioData.selic + portfolioData.caixinha) / rate },
-    { name: 'vwce', eur: portfolioData.vwce },
-    { name: 'euna', eur: portfolioData.euna },
+    ...ATIVOS_INTL.map(a => ({ name: a.key, eur: portfolioData[a.key] || 0 })),
     { name: 'bitcoin', eur: btcValueEur }
   ];
   const positionsTotal = positions.reduce((s, p) => s + p.eur, 0) || 1;
@@ -301,18 +297,22 @@ async function updateDashboard(cambio) {
 
   // Cada item do Score guarda os motivos que tiraram pontos — a explicação aparece em Alertas,
   // não no Início, para a tela principal não ficar carregada.
-  const NOMES = { mxrf11: 'MXRF11', hglg11: 'HGLG11', knri11: 'KNRI11', bova11: 'BOVA11', ipca: 'Tesouro IPCA+', selic: 'Caixinha/Tesouro Selic', vwce: 'VWCE', euna: 'EUNA', bitcoin: 'Bitcoin' };
+  const NOMES = { ...Object.fromEntries(ATIVOS.map(a => [a.key, a.id])), ipca: 'Tesouro IPCA+', selic: 'Caixinha/Tesouro Selic', bitcoin: 'Bitcoin' };
   const pctTxt = v => v.toFixed(0) + '%';
 
   // Diversificação: as 4 classes que o plano quer ter — FIIs, renda fixa Brasil (IPCA+),
   // ações globais (VWCE) e títulos internacionais (EUNA). Tesouro Selic não conta (fora do plano).
   // Uma classe só vale com pelo menos 3% da carteira: R$1 num ativo não diversifica nada.
   const pesoDe = eur => (eur / positionsTotal) * 100;
+  // Peso (em % da carteira) de uma classe da lista única, convertendo para € pela moeda de cada ativo
+  const pesoClasse = classe => pesoDe(ATIVOS.filter(a => a.classe === classe)
+    .reduce((s, a) => s + (a.moeda === 'BRL' ? (portfolioData[a.key] || 0) / rate : (portfolioData[a.key] || 0)), 0));
+  const idsDa = classe => ATIVOS.filter(a => a.classe === classe).map(a => a.id).join('/');
   const classes = [
-    { nome: 'FIIs', peso: pesoDe(portfolioData.mxrf11 / rate + (portfolioData.hglg11 || 0) / rate + (portfolioData.knri11 || 0) / rate) },
+    { nome: 'FIIs', peso: pesoClasse('fii') },
     { nome: 'renda fixa Brasil (IPCA+)', peso: pesoDe(ipcaValor() / rate) },
-    { nome: 'ações globais (VWCE)', peso: pesoDe(portfolioData.vwce) },
-    { nome: 'títulos internacionais (EUNA)', peso: pesoDe(portfolioData.euna) }
+    { nome: `ações globais (${idsDa('acoes-global')})`, peso: pesoClasse('acoes-global') },
+    { nome: `títulos internacionais (${idsDa('titulos-intl')})`, peso: pesoClasse('titulos-intl') }
   ];
   const faltando = classes.filter(c => c.peso < 3);
   const diversificacaoScore = Math.round(((classes.length - faltando.length) / classes.length) * 100);
@@ -428,56 +428,24 @@ async function renderWallet(rate) {
   };
   const pm = (invested, cotas) => (invested > 0 && cotas > 0) ? invested / cotas : null;
 
-  const mxrfVal = portfolioData.mxrf11_cotas
-    ? (portfolioData.mxrf11_cotas * portfolioData.mxrf11_preco)
-    : portfolioData.mxrf11;
-  const mxrfPm = pm(inv['MXRF11'], portfolioData.mxrf11_cotas);
-  items.push({
-    icon: 'building', name: 'MXRF11', type: 'FII de papel · Nubank', cat: 'br', eur: mxrfVal / rate,
-    val: showVal(mxrfVal, 'BRL'),
-    meta: portfolioData.mxrf11_cotas ? fmtNum(portfolioData.mxrf11_cotas, 0) + ' cotas · R$' + fmtNum(portfolioData.mxrf11_preco) + (mxrfPm ? ' · PM R$' + fmtNum(mxrfPm) : '') : '',
-    pl: plLine(inv['MXRF11'], mxrfVal, 'R$')
-  });
-
-  if ((portfolioData.hglg11_cotas && portfolioData.hglg11_cotas > 0) || portfolioData.hglg11 > 0) {
-    const hglgVal = portfolioData.hglg11_cotas
-      ? (portfolioData.hglg11_cotas * portfolioData.hglg11_preco)
-      : portfolioData.hglg11;
-    const hglgPm = pm(inv['HGLG11'], portfolioData.hglg11_cotas);
-    items.push({
-      icon: 'warehouse', name: 'HGLG11', type: 'FII de logística · Nubank', cat: 'br', eur: hglgVal / rate,
-      val: showVal(hglgVal, 'BRL'),
-      meta: portfolioData.hglg11_cotas ? fmtNum(portfolioData.hglg11_cotas, 0) + ' cotas · R$' + fmtNum(portfolioData.hglg11_preco) + (hglgPm ? ' · PM R$' + fmtNum(hglgPm) : '') : '',
-      pl: plLine(inv['HGLG11'], hglgVal, 'R$')
-    });
-  }
-
-  if ((portfolioData.knri11_cotas && portfolioData.knri11_cotas > 0) || portfolioData.knri11 > 0) {
-    const knriVal = portfolioData.knri11_cotas
-      ? (portfolioData.knri11_cotas * portfolioData.knri11_preco)
-      : portfolioData.knri11;
-    const knriPm = pm(inv['KNRI11'], portfolioData.knri11_cotas);
-    items.push({
-      icon: 'landmark', name: 'KNRI11', type: 'FII híbrido · Nubank', cat: 'br', eur: knriVal / rate,
-      val: showVal(knriVal, 'BRL'),
-      meta: portfolioData.knri11_cotas ? fmtNum(portfolioData.knri11_cotas, 0) + ' cotas · R$' + fmtNum(portfolioData.knri11_preco) + (knriPm ? ' · PM R$' + fmtNum(knriPm) : '') : '',
-      pl: plLine(inv['KNRI11'], knriVal, 'R$')
-    });
-  }
-
-  // BOVA11 — ETF do Ibovespa (iShares, B3). Reinveste os dividendos, por isso não entra no painel de dividendos
-  if ((portfolioData.bova11_cotas || 0) > 0 || (portfolioData.bova11 || 0) > 0) {
-    const bovaVal = portfolioData.bova11_cotas
-      ? (portfolioData.bova11_cotas * portfolioData.bova11_preco)
-      : portfolioData.bova11;
-    const bovaPm = pm(inv['BOVA11'], portfolioData.bova11_cotas);
-    items.push({
-      icon: 'chart', name: 'BOVA11', type: 'ETF Ibovespa · Nubank', cat: 'br', eur: bovaVal / rate,
-      val: showVal(bovaVal, 'BRL'),
-      meta: portfolioData.bova11_cotas ? fmtNum(portfolioData.bova11_cotas, 0) + ' cotas · R$' + fmtNum(portfolioData.bova11_preco) + (bovaPm ? ' · PM R$' + fmtNum(bovaPm) : '') : '',
-      pl: plLine(inv['BOVA11'], bovaVal, 'R$')
-    });
-  }
+  // Ativos da lista única (FIIs e ETFs). Em reais o valor é cotas × preço; nos internacionais o valor
+  // guardado já vem atualizado pela cotação ao vivo. Só aparecem os que você tem.
+  const temPosicao = a => (portfolioData[a.key + '_cotas'] || 0) > 0 || (portfolioData[a.key] || 0) > 0;
+  const itemDaLista = a => {
+    const cotas = portfolioData[a.key + '_cotas'] || 0;
+    const preco = portfolioData[a.key + '_preco'] || 0;
+    const valor = a.moeda === 'BRL' && cotas ? cotas * preco : (portfolioData[a.key] || 0);
+    const sym = a.moeda === 'BRL' ? 'R$' : '€';
+    const precoMedio = pm(inv[a.id], cotas);
+    return {
+      icon: a.icone, name: a.id, type: a.tipo + ' · ' + a.corretora, cat: a.lado,
+      eur: a.moeda === 'BRL' ? valor / rate : valor,
+      val: showVal(valor, a.moeda),
+      meta: cotas ? fmtNum(cotas, a.decCotas) + ' cotas · ' + sym + fmtNum(preco) + (precoMedio ? ' · PM ' + sym + fmtNum(precoMedio) : '') : '',
+      pl: plLine(inv[a.id], valor, sym)
+    };
+  };
+  ATIVOS_BR.filter(temPosicao).forEach(a => items.push(itemDaLista(a)));
 
   const ipcaMercado = portfolioData.ipca_mercado != null;
   items.push({
@@ -495,20 +463,7 @@ async function renderWallet(rate) {
     items.push({ icon: 'coins', name: 'Caixinha CDI', type: 'Aguardando destino · Nubank', cat: 'cash', eur: portfolioData.caixinha / rate, val: showVal(portfolioData.caixinha, 'BRL'), meta: '' });
   }
 
-  const vwcePm = pm(inv['VWCE'], portfolioData.vwce_cotas);
-  items.push({
-    icon: 'globe', name: 'VWCE', type: 'ETF global (Acc) · Revolut', cat: 'intl', eur: portfolioData.vwce,
-    val: showVal(portfolioData.vwce, 'EUR'),
-    meta: portfolioData.vwce_cotas ? fmtNum(portfolioData.vwce_cotas, 4) + ' cotas · €' + fmtNum(portfolioData.vwce_preco || 0) + (vwcePm ? ' · PM €' + fmtNum(vwcePm) : '') : '',
-    pl: plLine(inv['VWCE'], portfolioData.vwce, '€')
-  });
-  const eunaPm = pm(inv['EUNA'], portfolioData.euna_cotas);
-  items.push({
-    icon: 'shield', name: 'EUNA', type: 'ETF de títulos (Acc) · Revolut', cat: 'intl', eur: portfolioData.euna,
-    val: showVal(portfolioData.euna, 'EUR'),
-    meta: portfolioData.euna_cotas ? fmtNum(portfolioData.euna_cotas, 4) + ' cotas · €' + fmtNum(portfolioData.euna_preco || 0) + (eunaPm ? ' · PM €' + fmtNum(eunaPm) : '') : '',
-    pl: plLine(inv['EUNA'], portfolioData.euna, '€')
-  });
+  ATIVOS_INTL.filter(temPosicao).forEach(a => items.push(itemDaLista(a)));
 
   if (portfolioData.bitcoin > 0 || portfolioData.bitcoin_invested_eur > 0) {
     const btcPrice = await fetchBTCPriceEUR();
@@ -565,8 +520,8 @@ async function renderWallet(rate) {
   if (summaryEl) {
     const btcPriceNow = await fetchBTCPriceEUR();
     const btcNow = btcPriceNow ? (portfolioData.bitcoin || 0) * btcPriceNow : (portfolioData.bitcoin_invested_eur || 0);
-    const currentTotal = (portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + (portfolioData.knri11 || 0) + (portfolioData.bova11 || 0) + ipcaValor() + portfolioData.selic + portfolioData.caixinha) / rate
-      + portfolioData.vwce + portfolioData.euna + btcNow;
+    const currentTotal = (somaAtivos(ATIVOS_BR) + ipcaValor() + portfolioData.selic + portfolioData.caixinha) / rate
+      + somaAtivos(ATIVOS_INTL) + btcNow;
     const investedTotal = totalInvestedEur(inv, rate);
     const diff = currentTotal - investedTotal;
     const pct = investedTotal > 0 ? (diff / investedTotal) * 100 : 0;
@@ -583,15 +538,13 @@ async function renderWallet(rate) {
     const mesAtual = currentMonthKey();
     const esteMes = (invDocs || []).filter(d => d.ativo === 'Dividendo' && monthKeyOf(d.data) === mesAtual).reduce((s, d) => s + (d.moeda === 'EUR' ? parseFloat(d.valor) * rate : parseFloat(d.valor)), 0);
 
-    // Estimativa real: último dividendo por cota de fato pago por cada FII (Brasil apenas — MXRF11/HGLG11/KNRI11)
-    const mxrfPorCota = divPerShare.mxrf11;
-    const hglgPorCota = divPerShare.hglg11;
-    const knriPorCota = divPerShare.knri11;
-    const estMxrf = (portfolioData.mxrf11_cotas || 0) * mxrfPorCota;
-    const estHglg = (portfolioData.hglg11_cotas || 0) * hglgPorCota;
-    const estKnri = (portfolioData.knri11_cotas || 0) * knriPorCota;
-    const estMensal = estMxrf + estHglg + estKnri;
-    const invFiis = (inv['MXRF11'] || 0) + (inv['HGLG11'] || 0) + (inv['KNRI11'] || 0);
+    // Estimativa real: último dividendo por cota de fato pago por cada ativo que distribui (FIIs do Brasil)
+    const estimativas = ATIVOS_DIVIDENDOS.map(a => {
+      const cotas = portfolioData[a.key + '_cotas'] || 0;
+      return { a, cotas, porCota: divPerShare[a.key], est: cotas * divPerShare[a.key] };
+    });
+    const estMensal = estimativas.reduce((s, e) => s + e.est, 0);
+    const invFiis = ATIVOS_DIVIDENDOS.reduce((s, a) => s + (inv[a.id] || 0), 0);
     const yoc = invFiis > 0 ? (estMensal * 12 / invFiis) * 100 : 0;
 
     divStats.innerHTML = `
@@ -601,10 +554,8 @@ async function renderWallet(rate) {
       <div class="ws-tile"><div class="ws-label">Yield on cost (a.a.)</div><div class="ws-value mval">${yoc.toFixed(1).replace('.', ',')}%</div></div>`;
     const divNote = document.getElementById('div-note');
     if (divNote) {
-      const partes = [];
-      if (portfolioData.mxrf11_cotas > 0) partes.push(`MXRF11: R$${fmtNum(mxrfPorCota)}/cota × ${fmtNum(portfolioData.mxrf11_cotas, 0)} = R$${fmtNum(estMxrf)}`);
-      if (portfolioData.hglg11_cotas > 0) partes.push(`HGLG11: R$${fmtNum(hglgPorCota)}/cota × ${fmtNum(portfolioData.hglg11_cotas, 0)} = R$${fmtNum(estHglg)}`);
-      if (portfolioData.knri11_cotas > 0) partes.push(`KNRI11: R$${fmtNum(knriPorCota)}/cota × ${fmtNum(portfolioData.knri11_cotas, 0)} = R$${fmtNum(estKnri)}`);
+      const partes = estimativas.filter(e => e.cotas > 0)
+        .map(e => `${e.a.id}: R$${fmtNum(e.porCota)}/cota × ${fmtNum(e.cotas, 0)} = R$${fmtNum(e.est)}`);
       divNote.textContent = (partes.length ? partes.join(' · ') + '. ' : '') + 'Baseado no último dividendo real pago por cada FII (Yahoo Finance/B3), só Brasil — VWCE e EUNA são Acc e não distribuem. Registre cada dividendo recebido em "Registrar Aporte" → Dividendo para o total real crescer.';
     }
   }
@@ -619,19 +570,17 @@ async function renderWallet(rate) {
 // CONFERIR COM A CORRETORA — corrige a carteira pelo que o Nubank/Revolut mostram
 // ─────────────────────────────────────────
 function conferenciaItens() {
+  const daLista = lista => lista.map(a => ({ ativo: a.id, campo: a.key + '_cotas', nome: a.id, sub: 'cotas · ' + a.corretora, dec: a.decConf, un: 'cotas' }));
   const itens = [
-    { ativo: 'MXRF11', campo: 'mxrf11_cotas', nome: 'MXRF11', sub: 'cotas · Nubank', dec: 0, un: 'cotas' },
-    { ativo: 'HGLG11', campo: 'hglg11_cotas', nome: 'HGLG11', sub: 'cotas · Nubank', dec: 0, un: 'cotas' },
-    { ativo: 'KNRI11', campo: 'knri11_cotas', nome: 'KNRI11', sub: 'cotas · Nubank', dec: 0, un: 'cotas' },
-    { ativo: 'BOVA11', campo: 'bova11_cotas', nome: 'BOVA11', sub: 'cotas · Nubank', dec: 0, un: 'cotas' },
+    ...daLista(ATIVOS_BR),
     { ativo: 'IPCA+', campo: 'ipca_mercado', nome: 'Tesouro IPCA+', sub: 'valor atual (R$) · Nubank', dec: 2, un: 'R$', atual: () => ipcaValor() },
     { ativo: 'Caixinha', campo: 'caixinha', nome: 'Caixinha CDI', sub: 'saldo (R$) · Nubank', dec: 2, un: 'R$' },
-    { ativo: 'VWCE', campo: 'vwce_cotas', nome: 'VWCE', sub: 'cotas · Revolut', dec: 8, un: 'cotas' },
-    { ativo: 'EUNA', campo: 'euna_cotas', nome: 'EUNA', sub: 'cotas · Revolut', dec: 8, un: 'cotas' },
+    ...daLista(ATIVOS_INTL),
     { ativo: 'Bitcoin', campo: 'bitcoin', nome: 'Bitcoin', sub: 'quantidade (BTC) · Revolut', dec: 8, un: 'BTC' },
     { ativo: 'Reserva', campo: 'reserva', nome: 'Reserva de emergência', sub: 'saldo (€) · Revolut', dec: 2, un: '€' }
   ];
-  if ((portfolioData.selic || 0) > 0) itens.splice(4, 0, { ativo: 'Selic', campo: 'selic', nome: 'Tesouro Selic', sub: 'valor atual (R$)', dec: 2, un: 'R$' });
+  // Tesouro Selic (fora do plano) só aparece se houver saldo, logo depois do IPCA+
+  if ((portfolioData.selic || 0) > 0) itens.splice(itens.findIndex(i => i.ativo === 'IPCA+') + 1, 0, { ativo: 'Selic', campo: 'selic', nome: 'Tesouro Selic', sub: 'valor atual (R$)', dec: 2, un: 'R$' });
   return itens.map(it => ({ ...it, valorApp: it.atual ? it.atual() : (portfolioData[it.campo] || 0) }));
 }
 
@@ -694,7 +643,7 @@ async function salvarConferencia() {
   if (!await confirmDialog(resumo, { titulo: 'Corrigir a carteira com estes valores?', ok: 'Salvar correções' })) return;
 
   const agora = new Date();
-  const moedaDe = a => ['VWCE', 'EUNA', 'Bitcoin', 'Reserva'].includes(a) ? 'EUR' : 'BRL';
+  const moedaDe = a => ASSET_CURRENCY[a] || 'BRL';
   // Monta o ajuste a partir da carteira FRESCA (dentro da transação): o delta registrado
   // é exatamente o que foi aplicado, então excluir o ajuste depois desfaz certinho
   const montar = (p, m, i) => {
@@ -748,7 +697,7 @@ async function salvarConferencia() {
 // Estimativa, não aconselhamento: alíquota de 38% (2026) sobre o ganho presumido.
 // ─────────────────────────────────────────
 const EXIT_TAX_RATE = 0.38;
-const EXIT_TAX_RETORNO = { VWCE: { cons: 0.04, otim: 0.08 }, EUNA: { cons: 0.02, otim: 0.04 } };
+const EXIT_TAX_RETORNO = Object.fromEntries(ATIVOS.filter(a => a.exitTax).map(a => [a.id, a.exitTax]));
 let primeiroDeemedDisposal = null; // Date — usado nos Alertas e no perfil enviado à IA
 
 function dataLocalDe(dataStr) {
@@ -759,7 +708,7 @@ function dataLocalDe(dataStr) {
 
 function calcularLotesExitTax(docs, rate) {
   const lotes = [];
-  ['VWCE', 'EUNA'].forEach(ativo => {
+  Object.keys(EXIT_TAX_RETORNO).forEach(ativo => {
     const key = COTA_KEY[ativo];
     const preco = portfolioData[key + '_preco'] || 0;
     const valorAtual = portfolioData[key] || 0;

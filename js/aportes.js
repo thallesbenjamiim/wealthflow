@@ -46,9 +46,9 @@ async function seedMayAportes() {
 // ─────────────────────────────────────────
 // Ativos negociados em cotas: a carteira calcula o valor deles como cotas × preço,
 // então um aporte sem quantidade seria apagado na próxima atualização de mercado.
-const COTA_ASSETS = ['MXRF11', 'HGLG11', 'KNRI11', 'BOVA11', 'VWCE', 'EUNA'];
+const COTA_ASSETS = ATIVOS.map(a => a.id);
 // A Caixinha é a reserva para o lado Brasil do próximo aporte — qualquer um destes pode ser pago com ela
-const BR_ASSETS = ['MXRF11', 'HGLG11', 'KNRI11', 'BOVA11', 'IPCA+', 'Selic'];
+const BR_ASSETS = [...ATIVOS_BR.map(a => a.id), 'IPCA+', 'Selic'];
 
 
 // Resumo neutro do mês: quanto já foi aportado e como ficou dividido Brasil/Internacional —
@@ -60,7 +60,7 @@ async function renderAporteGuide() {
 
   const docs = await loadAportesForEvo().catch(() => []);
   const mesAtual = currentMonthKey();
-  const BR_NATIVE = ['MXRF11', 'HGLG11', 'KNRI11', 'BOVA11', 'IPCA+', 'Selic', 'Caixinha'];
+  const BR_NATIVE = [...ATIVOS_BR.map(a => a.id), 'IPCA+', 'Selic', 'Caixinha'];
   let brEur = 0, intlEur = 0;
   (docs || []).forEach(d => {
     if (d.ativo === 'Dividendo' || d.ativo === 'Reserva') return; // renda e reserva não são "aporte de investimento"
@@ -229,7 +229,7 @@ async function registrarAporte() {
 }
 
 // Chave da carteira para os ativos negociados em cotas
-const COTA_KEY = { MXRF11: 'mxrf11', HGLG11: 'hglg11', KNRI11: 'knri11', BOVA11: 'bova11', VWCE: 'vwce', EUNA: 'euna' };
+const COTA_KEY = Object.fromEntries(ATIVOS.map(a => [a.id, a.key]));
 
 // Aplica (sign = 1) ou DESFAZ (sign = -1) um registro do histórico na carteira p (muta p).
 // Recebe o próprio documento salvo no Firebase, então excluir/editar um aporte desfaz
@@ -258,7 +258,7 @@ function applyAporteToPortfolio(p, a, sign = 1) {
   // ETFs/Bitcoin em EUR). Se o valor foi informado na outra moeda, converte pelo câmbio do dia
   // do registro (registros antigos, sem câmbio salvo, usam o de hoje).
   const cambio = a.cambio || getRate();
-  const NATIVO_BRL = ['MXRF11', 'HGLG11', 'KNRI11', 'BOVA11', 'IPCA+', 'Selic', 'Caixinha', 'Dividendo'];
+  const NATIVO_BRL = [...ATIVOS.filter(x => x.moeda === 'BRL').map(x => x.id), 'IPCA+', 'Selic', 'Caixinha', 'Dividendo'];
   let v = parseFloat(valor) || 0;
   if (NATIVO_BRL.includes(ativo) && moeda === 'EUR') v *= cambio;
   if (!NATIVO_BRL.includes(ativo) && moeda === 'BRL') v /= cambio;

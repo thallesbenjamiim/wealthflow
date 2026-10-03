@@ -18,9 +18,9 @@ async function renderAlertas() {
   // ─── GATILHOS ACIONÁVEIS (definidos na Constituição do WealthFlow) ───
 
   // Gatilho de desequilíbrio Brasil/Internacional — mesma faixa 15%-75% usada no badge do Dashboard
-  const brInvestedEur = (portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + (portfolioData.knri11 || 0) + (portfolioData.bova11 || 0) + ipcaValor() + portfolioData.selic) / rate;
+  const brInvestedEur = (somaAtivos(ATIVOS_BR) + ipcaValor() + portfolioData.selic) / rate;
   const cashEur = portfolioData.caixinha / rate;
-  const intlEur = portfolioData.vwce + portfolioData.euna;
+  const intlEur = somaAtivos(ATIVOS_INTL);
   // Usa a cotação ao vivo do BTC quando já buscada nesta sessão — igual ao Dashboard
   const btcValueEur = btcPriceEur ? portfolioData.bitcoin * btcPriceEur : (portfolioData.bitcoin_invested_eur || 0);
   const totalEur = brInvestedEur + intlEur + cashEur + btcValueEur;
@@ -36,14 +36,10 @@ async function renderAlertas() {
 
   // Gatilho de concentração excessiva numa única posição — mesmo limiar de 30% usado no WealthFlow Score (Risco)
   const positions = [
-    { name: 'MXRF11', eur: portfolioData.mxrf11 / rate },
-    { name: 'HGLG11', eur: (portfolioData.hglg11 || 0) / rate },
-    { name: 'KNRI11', eur: (portfolioData.knri11 || 0) / rate },
-    { name: 'BOVA11', eur: (portfolioData.bova11 || 0) / rate },
+    ...ATIVOS_BR.map(a => ({ name: a.id, eur: (portfolioData[a.key] || 0) / rate })),
     { name: 'Tesouro IPCA+', eur: ipcaValor() / rate },
     { name: 'Tesouro Selic + Caixinha', eur: (portfolioData.selic + portfolioData.caixinha) / rate },
-    { name: 'VWCE', eur: portfolioData.vwce },
-    { name: 'EUNA', eur: portfolioData.euna },
+    ...ATIVOS_INTL.map(a => ({ name: a.id, eur: portfolioData[a.key] || 0 })),
     { name: 'Bitcoin', eur: btcValueEur }
   ];
   const positionsTotal = positions.reduce((s, p) => s + p.eur, 0) || 1;
@@ -68,7 +64,7 @@ async function renderAlertas() {
 
   // Caixinha parada há muito tempo sem destino definido
   if (portfolioData.caixinha > 150) {
-    alerts.push({ type: 'amber', icon: 'coins', title: 'Caixinha com saldo a decidir', desc: `R$${fmtNum(portfolioData.caixinha)} aguardando destino. Decida no próximo aporte (dia ${profileData.diaAporte}): HGLG11, KNRI11, MXRF11 ou IPCA+.`, action: true });
+    alerts.push({ type: 'amber', icon: 'coins', title: 'Caixinha com saldo a decidir', desc: `R$${fmtNum(portfolioData.caixinha)} aguardando destino. Decida no próximo aporte (dia ${profileData.diaAporte}): ${ATIVOS_BR.map(a => a.id).join(', ')} ou IPCA+.`, action: true });
     actionableCount++;
   }
 
@@ -87,7 +83,7 @@ async function renderAlertas() {
   let dispensado = null;
   try { dispensado = localStorage.getItem('wf_div_ok'); } catch {}
   if (diaHoje >= 11 && dispensado !== mesKey) {
-    const fiis = [['MXRF11', 'mxrf11'], ['HGLG11', 'hglg11'], ['KNRI11', 'knri11']]
+    const fiis = ATIVOS_DIVIDENDOS.map(a => [a.id, a.key])
       .map(([nome, k]) => ({ nome, cotas: portfolioData[k + '_cotas'] || 0, porCota: divPerShare[k] || 0 }))
       .filter(f => f.cotas > 0 && f.porCota > 0);
     const estimado = fiis.reduce((s, f) => s + f.cotas * f.porCota, 0);
@@ -162,12 +158,9 @@ async function renderAlertas() {
 
   // Status da carteira (FII já comprado, total de dividendos) fica na Carteira — aqui só o que pede atenção.
   // "Próximo objetivo" aparece apenas para um FII acompanhado que ainda não foi comprado.
-  if (!(portfolioData.hglg11_cotas > 0)) {
-    alerts.push({ type: 'blue', icon: 'target', title: 'Próximo objetivo: HGLG11', desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
-  }
-  if (!(portfolioData.knri11_cotas > 0)) {
-    alerts.push({ type: 'blue', icon: 'target', title: 'Próximo objetivo: KNRI11', desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
-  }
+  ATIVOS.filter(a => a.classe === 'fii' && !(portfolioData[a.key + '_cotas'] > 0)).forEach(a => {
+    alerts.push({ type: 'blue', icon: 'target', title: `Próximo objetivo: ${a.id}`, desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
+  });
 
   // Sem nenhum informativo, não deixa o título "Informativos" sozinho no fim da lista
   if (alerts.length && alerts[alerts.length - 1].type === 'divider') alerts.pop();

@@ -5,6 +5,7 @@
 const { getAdmin } = require('./_lib/admin');
 const { sendToAll, getSubs } = require('./_lib/push');
 const { getMarketData } = require('./market-data');
+const { ATIVOS_DIVIDENDOS } = require('../js/ativos.js');
 
 const TZ = 'Europe/Dublin';
 
@@ -62,7 +63,7 @@ module.exports = async (req, res) => {
   // ── Dividendos anunciados ──
   try {
     const md = await getMarketData();
-    [['mxrf11', 'MXRF11'], ['hglg11', 'HGLG11'], ['knri11', 'KNRI11']].forEach(([k, nome]) => {
+    ATIVOS_DIVIDENDOS.map(a => [a.key, a.id]).forEach(([k, nome]) => {
       const div = md[k + 'Dividend'];
       const cotas = pf[k + '_cotas'] || 0;
       if (!div?.amount || !div.date || !cotas) return;

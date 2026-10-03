@@ -107,6 +107,16 @@ let portfolioData = {
   reserva: 0
 };
 
+// Ativos da lista única que ainda não têm campos na carteira começam zerados
+ATIVOS.forEach(a => {
+  ['', '_cotas', '_preco'].forEach(suf => { if (portfolioData[a.key + suf] === undefined) portfolioData[a.key + suf] = 0; });
+});
+
+// Soma o valor (na moeda do ativo) de um grupo da lista única — ATIVOS_BR em R$, ATIVOS_INTL em €
+function somaAtivos(lista) {
+  return lista.reduce((s, a) => s + (portfolioData[a.key] || 0), 0);
+}
+
 // Quanto o Tesouro IPCA+ VALE: o valor de mercado informado na conferência com a corretora
 // (o Nubank mostra) quando existir; senão, o total aplicado. Não há fonte gratuita confiável
 // para a cotação do título, e o app não guarda a quantidade de títulos — por isso é manual.
@@ -116,7 +126,7 @@ function ipcaValor() {
 
 // Último dividendo real por cota (Brasil apenas) — atualizado por applyLivePrices() quando os
 // dados de mercado chegam; os valores abaixo são só o fallback caso a fonte esteja fora do ar.
-let divPerShare = { mxrf11: 0.10, hglg11: 1.10, knri11: 1.10, mxrf11Date: null, hglg11Date: null, knri11Date: null };
+let divPerShare = Object.fromEntries(ATIVOS_DIVIDENDOS.flatMap(a => [[a.key, a.divPadrao], [a.key + 'Date', null]]));
 
 // ─────────────────────────────────────────
 // PERFIL DO USUÁRIO — editável na página Perfil, persistido no Firebase
@@ -230,8 +240,8 @@ function getProfile() {
   return `PERFIL — ${profileData.nome}, ${profileData.idade} anos, morando em ${profileData.pais} (${profileData.cidadania}), volta ao Brasil em ~${profileData.horizonteRetorno}. ${profileData.perfilRisco}.
 HOJE (${new Date().toLocaleDateString('pt-BR')}): EUR/BRL ${cambio} · Selic ${selic} · IPCA 12m ${ipca}.
 CARTEIRA ATUAL:
-- Brasil (Nubank): MXRF11 R$${fx(portfolioData.mxrf11)} (${portfolioData.mxrf11_cotas || 0} cotas, último dividendo R$${divPerShare.mxrf11}/cota/mês) · HGLG11 R$${fx(portfolioData.hglg11)} (${portfolioData.hglg11_cotas || 0} cotas, FII logística, último dividendo R$${divPerShare.hglg11}/cota/mês) · KNRI11 R$${fx(portfolioData.knri11)} (${portfolioData.knri11_cotas || 0} cotas, FII híbrido, último dividendo R$${divPerShare.knri11}/cota/mês)${(portfolioData.bova11_cotas || 0) > 0 ? ` · BOVA11 R$${fx(portfolioData.bova11)} (${portfolioData.bova11_cotas} cotas, ETF iShares Ibovespa, taxa 0,10% a.a., reinveste os dividendos — não distribui)` : ''} · Tesouro IPCA+ R$${fx(ipcaValor())}${portfolioData.ipca_mercado != null ? ` (valor de mercado; aplicado R$${fx(portfolioData.ipca)})` : " (valor aplicado)"} · Caixinha CDI R$${fx(portfolioData.caixinha)} (liquidez temporária entre aportes) · Dividendos recebidos R$${fx(portfolioData.dividendos)}
-- Internacional (Revolut): VWCE €${fx(portfolioData.vwce)} · EUNA €${fx(portfolioData.euna)} (ambos Acc — sem imposto anual de dividendos)
+- Brasil (Nubank): ${ATIVOS_BR.filter(a => (portfolioData[a.key + '_cotas'] || 0) > 0 || (portfolioData[a.key] || 0) > 0).map(a => `${a.id} R$${fx(portfolioData[a.key])} (${portfolioData[a.key + '_cotas'] || 0} cotas${a.descricaoIA ? ', ' + a.descricaoIA : ''}${a.dividendos ? `, último dividendo R$${divPerShare[a.key]}/cota/mês` : ''})`).join(' · ')} · Tesouro IPCA+ R$${fx(ipcaValor())}${portfolioData.ipca_mercado != null ? ` (valor de mercado; aplicado R$${fx(portfolioData.ipca)})` : " (valor aplicado)"} · Caixinha CDI R$${fx(portfolioData.caixinha)} (liquidez temporária entre aportes) · Dividendos recebidos R$${fx(portfolioData.dividendos)}
+- Internacional (Revolut): ${ATIVOS_INTL.map(a => `${a.id} €${fx(portfolioData[a.key])}`).join(' · ')} (${ATIVOS_INTL.length === 2 ? 'ambos' : 'todos'} Acc — sem imposto anual de dividendos)
 - Bitcoin informal (fora do plano): ${portfolioData.bitcoin || 0} BTC (~€${btcEur})
 - Reserva de emergência (fora do plano de investimento, intocável): €${fx(portfolioData.reserva)} de uma meta de €${profileData.reservaMetaEur}
 META: renda passiva de R$${fmtNum(profileData.rendaPassivaAlvo, 0)}/mês em valores de hoje aos ${profileData.anoAlvo} — patrimônio-alvo ~R$${patrimonioAlvo} mi. Meta intermediária do app: R$${fmtNum(profileData.metaIntermediariaBRL, 0)}.
