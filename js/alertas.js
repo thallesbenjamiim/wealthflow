@@ -78,13 +78,44 @@ async function renderAlertas() {
     actionableCount++;
   }
 
+  // Dividendos do mês: os três FIIs pagam dia 14 ou 15 (confirmado pelo Thales). O aviso aparece
+  // do dia 11 em diante, com o total estimado (último dividendo por cota × cotas), e some quando
+  // os dividendos do mês forem registrados — se registrar só parte, mostra quanto ainda falta.
+  // O valor real costuma variar um pouco do estimado: o botão "Já registrei tudo" dispensa o aviso no mês
+  let divAlert = null;
+  let dispensado = null;
+  try { dispensado = localStorage.getItem('wf_div_ok'); } catch {}
+  if (diaHoje >= 11 && dispensado !== mesKey) {
+    const fiis = [['MXRF11', 'mxrf11'], ['HGLG11', 'hglg11'], ['KNRI11', 'knri11']]
+      .map(([nome, k]) => ({ nome, cotas: portfolioData[k + '_cotas'] || 0, porCota: divPerShare[k] || 0 }))
+      .filter(f => f.cotas > 0 && f.porCota > 0);
+    const estimado = fiis.reduce((s, f) => s + f.cotas * f.porCota, 0);
+    const registrado = (docs || [])
+      .filter(d => d.ativo === 'Dividendo' && monthKeyOf(d.data) === mesKey)
+      .reduce((s, d) => s + (parseFloat(d.valor) || 0) * (d.moeda === 'EUR' ? rate : 1), 0);
+    const falta = estimado - registrado;
+    if (estimado > 0 && falta > estimado * 0.05) {
+      const detalhe = fiis.map(f => `${f.nome}: R$${fmtNum(f.porCota)} × ${fmtNum(f.cotas, 0)} = R$${fmtNum(f.cotas * f.porCota)}`).join(' · ');
+      const antes = diaHoje < 14;
+      divAlert = {
+        type: 'green', icon: 'coins',
+        title: registrado > 0
+          ? `Dividendos do mês: faltam ~R$${fmtNum(falta)} para registrar`
+          : (antes ? `Dividendos caem dia 14–15: ~R$${fmtNum(estimado)}` : `Dividendos do mês: ~R$${fmtNum(estimado)} para registrar`),
+        desc: `${detalhe}.${registrado > 0 ? ` Já registrado: R$${fmtNum(registrado)}.` : ''} Estimativa pelo último dividendo pago por cada FII. Quando cair no Nubank, registre em Registrar aporte → Dividendo.`,
+        botao: registrado > 0 ? { texto: 'Já registrei tudo', acao: 'dispensarAvisoDividendos()' } : null
+      };
+    }
+  }
+
+  const contagemSino = actionableCount + (divAlert ? 1 : 0);
   const badgeDesk = document.getElementById('alertCount');
-  badgeDesk.textContent = actionableCount;
-  badgeDesk.hidden = actionableCount === 0;
+  badgeDesk.textContent = contagemSino;
+  badgeDesk.hidden = contagemSino === 0;
   const badgeMobile = document.getElementById('alertCountMobile');
   if (badgeMobile) {
-    badgeMobile.textContent = actionableCount;
-    badgeMobile.hidden = actionableCount === 0;
+    badgeMobile.textContent = contagemSino;
+    badgeMobile.hidden = contagemSino === 0;
   }
 
   // ─── SEPARADOR ───
@@ -96,6 +127,7 @@ async function renderAlertas() {
   }
 
   // ─── INFORMATIVOS (situação, sem exigir ação) ───
+  if (divAlert) alerts.push(divAlert);
   if (primeiroDeemedDisposal) {
     const anoDD = primeiroDeemedDisposal.getFullYear();
     alerts.push({ type: 'blue', icon: 'calendar', title: `Deemed disposal — ${primeiroDeemedDisposal.toLocaleDateString('pt-BR')}`, desc: `Exit Tax 38% sobre VWCE e EUNA, 8 anos após cada compra. A partir de ${anoDD - 1}, planejar liquidez — veja a estimativa em Carteira → Exit Tax.` });
@@ -124,15 +156,6 @@ async function renderAlertas() {
     alerts.push({ type: 'blue', icon: 'target', title: 'Próximo objetivo: KNRI11', desc: `Programado para o próximo aporte mensal (dia ${profileData.diaAporte}).` });
   }
 
-  // Janela típica de pagamento do MXRF11 (~dia 15) — informativo, só se ainda não registrou dividendo no mês
-  if (diaHoje >= 12 && diaHoje <= 18 && (portfolioData.mxrf11_cotas || 0) > 0) {
-    const jaRegistrou = (docs || []).some(d => d.ativo === 'Dividendo' && monthKeyOf(d.data) === mesKey);
-    if (!jaRegistrou) {
-      const est = portfolioData.mxrf11_cotas * divPerShare.mxrf11;
-      alerts.push({ type: 'blue', icon: 'coins', title: 'Dividendo do MXRF11 esperado', desc: `O MXRF11 costuma pagar nesta janela (~R$${fmtNum(est)} com suas ${fmtNum(portfolioData.mxrf11_cotas, 0)} cotas). Quando cair no Nubank, registre em Registrar Aporte → Dividendo.` });
-    }
-  }
-
   const cabecalho = actionableCount > 0
     ? `<div class="alert-section">Pedem sua atenção <span class="count">${actionableCount}</span></div>`
     : '';
@@ -140,10 +163,15 @@ async function renderAlertas() {
     if (a.type === 'divider') return `<div class="alert-section">${a.title}</div>`;
     return `<div class="alert-card ${a.type}${a.action ? ' action' : ''}">
       <div class="alert-icon">${icon(a.icon)}</div>
-      <div><div class="alert-title">${a.title}${a.action ? '<span class="alert-badge">Ação sugerida</span>' : ''}</div><div class="alert-desc">${a.desc}</div></div>
+      <div><div class="alert-title">${a.title}${a.action ? '<span class="alert-badge">Ação sugerida</span>' : ''}</div><div class="alert-desc">${a.desc}</div>${a.botao ? `<button class="btn btn-ghost btn-sm alert-btn" onclick="${a.botao.acao}">${a.botao.texto}</button>` : ''}</div>
     </div>`;
   }).join('');
 
   return actionableCount;
 }
 
+
+function dispensarAvisoDividendos() {
+  try { localStorage.setItem('wf_div_ok', currentMonthKey()); } catch {}
+  renderAlertas();
+}
