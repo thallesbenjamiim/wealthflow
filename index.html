@@ -19,8 +19,8 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, orderBy, query } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
-  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, orderBy, query, runTransaction } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+  import { getAuth, signInAnonymously, signInWithCustomToken, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCejJT1foVuX1bCiqK0PMiLLrK5pg6hwKA",
@@ -37,8 +37,8 @@
   const auth = getAuth(app);
   window._db = db;
   window._auth = auth;
-  window._dbFns = { doc, setDoc, getDoc, collection, getDocs, addDoc, orderBy, query };
-  window._authFns = { signInAnonymously, onAuthStateChanged };
+  window._dbFns = { doc, setDoc, getDoc, collection, getDocs, addDoc, orderBy, query, runTransaction };
+  window._authFns = { signInAnonymously, signInWithCustomToken, signOut, onAuthStateChanged };
   window._dbReady = true;
   window.dispatchEvent(new Event('dbready'));
 </script>
@@ -99,7 +99,7 @@ body::before {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 60% 50% at 10% -10%, rgba(74,222,138,.10) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 10% -10%, rgba(79,142,255,.10) 0%, transparent 55%),
     radial-gradient(ellipse 50% 40% at 100% 0%, rgba(232,199,122,.06) 0%, transparent 55%),
     radial-gradient(ellipse 60% 45% at 85% 110%, rgba(122,176,255,.07) 0%, transparent 55%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
@@ -179,7 +179,7 @@ body::before {
   margin-bottom: 3px;
 }
 .nav-item:hover { background: var(--surf2); color: var(--txt); transform: translateX(2px); }
-.nav-item.active { background: linear-gradient(100deg, var(--gdim), rgba(16,42,24,.4)); color: var(--green); box-shadow: inset 0 0 0 1px rgba(74,222,138,.25); }
+.nav-item.active { background: linear-gradient(100deg, var(--gdim), rgba(14,31,58,.4)); color: var(--green); box-shadow: inset 0 0 0 1px rgba(79,142,255,.25); }
 .nav-item .icon { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .nav-badge { margin-left: auto; background: var(--green); color: #060807; font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 10px; font-family: 'DM Mono', monospace; }
 
@@ -297,7 +297,7 @@ body::before {
   transition: all .2s var(--ease);
 }
 .agent-card:hover { border-color: var(--bdr2); background: var(--surf2); transform: translateX(2px); }
-.agent-card.active { border-color: rgba(74,222,138,.4); background: linear-gradient(120deg, var(--gdim), var(--surf) 80%); box-shadow: 0 0 0 1px rgba(74,222,138,.12) inset, var(--shadow-card); }
+.agent-card.active { border-color: rgba(79,142,255,.4); background: linear-gradient(120deg, var(--gdim), var(--surf) 80%); box-shadow: 0 0 0 1px rgba(79,142,255,.12) inset, var(--shadow-card); }
 
 .ac-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .ac-avatar { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
@@ -347,7 +347,7 @@ body::before {
 .mavatar { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
 .mbubble { padding: 12px 16px; border-radius: 13px; line-height: 1.65; font-size: 13.5px; }
 .msg.agent .mbubble { background: var(--surf2); border: 1px solid var(--bdr2); border-radius: 4px 13px 13px 13px; }
-.msg.user .mbubble { background: var(--gdim); border: 1px solid rgba(74,222,138,.26); border-radius: 13px 4px 13px 13px; }
+.msg.user .mbubble { background: var(--gdim); border: 1px solid rgba(79,142,255,.26); border-radius: 13px 4px 13px 13px; }
 .mmeta { font-size: 10px; color: var(--muted); margin-top: 5px; font-family: 'DM Mono', monospace; }
 .msg.user .mmeta { text-align: right; }
 .mbubble strong { color: var(--green); font-weight: 600; }
@@ -362,12 +362,12 @@ body::before {
 .mode-row { padding: 9px 19px 0; display: flex; gap: 7px; flex-wrap: wrap; flex-shrink: 0; border-top: 1px solid var(--bdr); }
 .qbtn.mode.active { background: var(--gdim); color: var(--green); border-color: rgba(74,142,255,.5); }
 .qbtn { padding: 6px 13px; border-radius: 999px; border: 1px solid var(--bdr2); background: transparent; color: var(--muted); font-size: 11px; font-weight: 500; cursor: pointer; transition: all .2s var(--ease); font-family: 'Instrument Sans', sans-serif; }
-.qbtn:hover { background: var(--surf2); color: var(--txt); border-color: rgba(74,222,138,.3); transform: translateY(-1px); }
+.qbtn:hover { background: var(--surf2); color: var(--txt); border-color: rgba(79,142,255,.3); transform: translateY(-1px); }
 
 .input-row { padding: 15px 19px; display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; border-top: 1px solid var(--bdr); }
 .input-wrap { flex: 1; }
 textarea { width: 100%; background: var(--surf2); border: 1px solid var(--bdr2); border-radius: 13px; padding: 12px 16px; color: var(--txt); font-family: 'Instrument Sans', sans-serif; font-size: 13.5px; resize: none; outline: none; line-height: 1.5; min-height: 44px; max-height: 100px; transition: border-color .2s var(--ease), box-shadow .2s var(--ease); }
-textarea:focus { border-color: rgba(74,222,138,.45); box-shadow: 0 0 0 4px var(--glow); }
+textarea:focus { border-color: rgba(79,142,255,.45); box-shadow: 0 0 0 4px var(--glow); }
 textarea::placeholder { color: var(--muted2); }
 .sbtn { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--green), var(--green2)); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; color: #060807; transition: all .18s var(--ease); flex-shrink: 0; }
 .sbtn:hover { transform: scale(1.07); box-shadow: 0 6px 18px -2px var(--glow); }
@@ -386,7 +386,7 @@ textarea::placeholder { color: var(--muted2); }
   padding: 11px 14px; color: var(--txt); font-family: 'DM Mono', monospace; font-size: 13px;
   outline: none; transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
 }
-.form-input:focus { border-color: rgba(74,222,138,.45); box-shadow: 0 0 0 4px var(--glow); }
+.form-input:focus { border-color: rgba(79,142,255,.45); box-shadow: 0 0 0 4px var(--glow); }
 .form-input::placeholder { color: var(--muted2); }
 
 .form-select {
@@ -394,7 +394,7 @@ textarea::placeholder { color: var(--muted2); }
   padding: 11px 14px; color: var(--txt); font-family: 'Instrument Sans', sans-serif; font-size: 13px;
   outline: none; cursor: pointer; transition: border-color .2s var(--ease);
 }
-.form-select:focus { border-color: rgba(74,222,138,.45); }
+.form-select:focus { border-color: rgba(79,142,255,.45); }
 
 .submit-btn {
   width: 100%; padding: 13px; border-radius: 12px; background: linear-gradient(135deg, var(--green), var(--green2)); border: none;
@@ -424,9 +424,9 @@ textarea::placeholder { color: var(--muted2); }
 }
 .api-notice a { color: var(--green); }
 .api-input { width: 100%; background: var(--surf); border: 1px solid var(--bdr2); border-radius: var(--r-sm); padding: 10px 14px; color: var(--txt); font-family: 'DM Mono', monospace; font-size: 12px; outline: none; margin-top: 10px; transition: border-color .2s var(--ease); }
-.api-input:focus { border-color: rgba(74,222,138,.45); }
-.api-save { margin-top: 10px; padding: 10px 18px; border-radius: var(--r-sm); background: var(--gdim); border: 1px solid rgba(74,222,138,.3); color: var(--green); font-size: 12px; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: all .2s var(--ease); width: 100%; font-weight: 600; }
-.api-save:hover { background: rgba(74,222,138,.18); }
+.api-input:focus { border-color: rgba(79,142,255,.45); }
+.api-save { margin-top: 10px; padding: 10px 18px; border-radius: var(--r-sm); background: var(--gdim); border: 1px solid rgba(79,142,255,.3); color: var(--green); font-size: 12px; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: all .2s var(--ease); width: 100%; font-weight: 600; }
+.api-save:hover { background: rgba(79,142,255,.18); }
 
 /* SCROLLBAR */
 ::-webkit-scrollbar { width: 4px; }
@@ -465,13 +465,13 @@ textarea::placeholder { color: var(--muted2); }
 .pill-tag.inactive-state { background: var(--surf2); color: var(--muted); }
 
 .badge { display: inline-block; padding: 4px 9px; border-radius: 999px; font-size: 10px; font-weight: 600; }
-.badge-green { background: var(--gdim); color: var(--green); border: 1px solid rgba(74,222,138,.25); }
+.badge-green { background: var(--gdim); color: var(--green); border: 1px solid rgba(79,142,255,.25); }
 .badge-amber { background: var(--adim); color: var(--amber); border: 1px solid rgba(240,176,87,.25); }
 .badge-blue { background: var(--bdim); color: var(--blue); border: 1px solid rgba(122,176,255,.25); }
 
 .toast {
   position: fixed; bottom: 24px; right: 24px;
-  background: var(--gdim); border: 1px solid rgba(74,222,138,.35); color: var(--green);
+  background: var(--gdim); border: 1px solid rgba(79,142,255,.35); color: var(--green);
   padding: 12px 19px; border-radius: var(--r-sm); font-size: 13px; font-weight: 600;
   opacity: 0; transform: translateY(12px); transition: all .35s var(--ease);
   z-index: 999; pointer-events: none;
@@ -507,7 +507,7 @@ textarea::placeholder { color: var(--muted2); }
   content: '';
   position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse 50% 40% at 50% 0%, rgba(74,222,138,.10) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 0%, rgba(79,142,255,.10) 0%, transparent 60%),
     radial-gradient(ellipse 40% 35% at 100% 100%, rgba(232,199,122,.06) 0%, transparent 60%);
   pointer-events: none;
 }
@@ -543,7 +543,7 @@ textarea::placeholder { color: var(--muted2); }
   display: flex !important; align-items: center; justify-content: center;
   padding: 0; margin: 0;
 }
-.pin-key:hover { background: var(--surf3); border-color: rgba(74,222,138,.35); transform: translateY(-1px); }
+.pin-key:hover { background: var(--surf3); border-color: rgba(79,142,255,.35); transform: translateY(-1px); }
 .pin-key:active { transform: scale(.92); background: var(--gdim); }
 .pin-key.empty { visibility: hidden; }
 .pin-error-msg { font-size: 12px; color: var(--red); height: 16px; position: relative; z-index: 1; }
@@ -658,7 +658,7 @@ textarea::placeholder { color: var(--muted2); }
 /* 1. HERO */
 .hero-card {
   background: linear-gradient(155deg, var(--gdim) 0%, var(--surf) 75%);
-  border: 1px solid rgba(74,222,138,.22);
+  border: 1px solid rgba(79,142,255,.22);
   border-radius: var(--r-lg);
   padding: 26px 28px;
   margin-bottom: 16px;
@@ -1475,6 +1475,7 @@ function saveHistories() {
   try { localStorage.setItem(CHAT_STORE_KEY, JSON.stringify(chatHistory)); } catch {}
 }
 let loading = false;
+const CHAT_CONTEXT_MSGS = 20; // quantas mensagens recentes vão como contexto para a IA
 let portfolioData = {
   mxrf11: 79.84, mxrf11_cotas: 8, mxrf11_preco: 9.98,
   hglg11: 0, hglg11_cotas: 0, hglg11_preco: 0,
@@ -1491,7 +1492,7 @@ let portfolioData = {
 
 // Último dividendo real por cota (Brasil apenas) — atualizado por applyLivePrices() quando os
 // dados de mercado chegam; os valores abaixo são só o fallback caso a fonte esteja fora do ar.
-let divPerShare = { mxrf11: 0.10, hglg11: 1.10, knri11: 0, mxrf11Date: null, hglg11Date: null, knri11Date: null };
+let divPerShare = { mxrf11: 0.10, hglg11: 1.10, knri11: 1.10, mxrf11Date: null, hglg11Date: null, knri11Date: null };
 
 // ─────────────────────────────────────────
 // PERFIL DO USUÁRIO — editável na página Perfil, persistido no Firebase
@@ -1590,8 +1591,8 @@ async function salvarPerfil() {
 // ─────────────────────────────────────────
 function getProfile() {
   const cambio = 'R$' + fmtNum(getRate());
-  const selic = fmtNum(marketRates.selic ?? 14.25) + '%';
-  const ipca = fmtNum(marketRates.ipca ?? 4.72) + '%';
+  const selic = fmtNum(marketRates.selic ?? 14.25) + '%' + (marketRates.selicEstimada ? ' (ESTIMATIVA — dado do dia indisponível; não tire conclusões de gatilho com ela)' : '');
+  const ipca = fmtNum(marketRates.ipca ?? 4.72) + '%' + (marketRates.ipcaEstimado ? ' (ESTIMATIVA)' : '');
   const fx = v => (v || 0).toFixed(2);
   const btcEur = btcPriceEur ? (portfolioData.bitcoin * btcPriceEur).toFixed(0) : (portfolioData.bitcoin_invested_eur || 0);
   const patrimonioAlvo = (profileData.rendaPassivaAlvo * 650 / 1000000).toFixed(1);
@@ -1691,7 +1692,8 @@ function closeSidebar() {
 // ─────────────────────────────────────────
 // Valores numéricos dos indicadores — fonte única para os cálculos.
 // Os pills mostram texto formatado pt-BR; nunca ler número de volta do textContent.
-let marketRates = { eurbrl: null, selic: null, ipca: null };
+let marketRates = { eurbrl: null, selic: null, ipca: null, selicEstimada: false, ipcaEstimado: false };
+let lastMarketData = null; // última resposta do /market-data — reaplicada quando a carteira é relida do Firebase
 function getRate() { return marketRates.eurbrl || 6; }
 
 async function fetchCambio() {
@@ -1711,9 +1713,11 @@ async function fetchCambio() {
 async function fetchSelic() {
   // FALLBACK usado só quando o proxy está offline (o BCB bloqueia CORS direto do browser).
   // Com o proxy ativo, a Selic real vem do Banco Central (SGS 432) em loadMarketData.
+  // O "≈" na tela avisa que o número é uma estimativa fixa, não o dado do dia.
   const SELIC_FALLBACK = 14.25;
   marketRates.selic = SELIC_FALLBACK;
-  ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = fmtNum(SELIC_FALLBACK) + '%'; });
+  marketRates.selicEstimada = true;
+  ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) { e.textContent = '≈' + fmtNum(SELIC_FALLBACK) + '%'; e.title = 'Estimativa — Banco Central indisponível agora'; } });
   return SELIC_FALLBACK;
 }
 
@@ -1721,8 +1725,16 @@ async function fetchIPCA() {
   // FALLBACK usado só quando o proxy está offline — com proxy, vem do BCB (SGS 13522).
   const IPCA_FALLBACK = 4.72;
   marketRates.ipca = IPCA_FALLBACK;
-  document.getElementById('pill-ipca').textContent = fmtNum(IPCA_FALLBACK) + '%';
+  marketRates.ipcaEstimado = true;
+  const e = document.getElementById('pill-ipca');
+  e.textContent = '≈' + fmtNum(IPCA_FALLBACK) + '%';
+  e.title = 'Estimativa — Banco Central indisponível agora';
   return IPCA_FALLBACK;
+}
+
+// Selic formatada para textos: com "~" e aviso quando é a estimativa fixa
+function selicLabel() {
+  return (marketRates.selicEstimada ? '≈' : '') + fmtNum(marketRates.selic ?? 14.25) + '%';
 }
 
 let btcPriceEur = null; // cache em memória — evita repetir a chamada à API a cada render
@@ -1776,15 +1788,26 @@ async function loadMarketData() {
     // Proxy ativo: busca tudo server-side, sem CORS
     try {
       const md = await fetch(proxyBase + '/market-data').then(r => r.json());
+      lastMarketData = md;
       if (md.eurbrl) {
         marketRates.eurbrl = parseFloat(md.eurbrl);
         ['pill-cambio','sb-cambio'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = 'R$' + fmtNum(marketRates.eurbrl); });
       }
       applyLivePrices(md);
       // Selic e IPCA reais do Banco Central via proxy — fallback fixo se faltarem
-      if (md.selic) { marketRates.selic = parseFloat(md.selic); ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = fmtNum(marketRates.selic) + '%'; }); }
+      if (md.selic) {
+        marketRates.selic = parseFloat(md.selic);
+        marketRates.selicEstimada = false;
+        ['pill-selic','sb-selic'].forEach(id => { const e = document.getElementById(id); if (e) { e.textContent = fmtNum(marketRates.selic) + '%'; e.title = 'Banco Central (SGS 432)'; } });
+      }
       else await fetchSelic();
-      if (md.ipca12m) { marketRates.ipca = parseFloat(md.ipca12m); document.getElementById('pill-ipca').textContent = fmtNum(marketRates.ipca) + '%'; }
+      if (md.ipca12m) {
+        marketRates.ipca = parseFloat(md.ipca12m);
+        marketRates.ipcaEstimado = false;
+        const e = document.getElementById('pill-ipca');
+        e.textContent = fmtNum(marketRates.ipca) + '%';
+        e.title = 'Banco Central (SGS 13522)';
+      }
       else await fetchIPCA();
       // Câmbio: se o proxy não trouxe, usa a fonte direta (awesomeapi tem CORS liberado)
       if (!md.eurbrl) await fetchCambio();
@@ -1806,7 +1829,7 @@ async function loadMarketData() {
   const w0s = document.getElementById('w0-selic');
   const w0b = document.getElementById('w0-brl');
   if (w0c) w0c.textContent = 'R$' + fmtNum(rate);
-  if (w0s) w0s.textContent = fmtNum(marketRates.selic ?? 14.25) + '%';
+  if (w0s) w0s.textContent = selicLabel();
   if (w0b) w0b.textContent = 'R$' + fmtNum(profileData.aporteBrEur * rate, 0);
 
   updateDashboard(rate);
@@ -1817,7 +1840,6 @@ async function loadMarketData() {
 // ─────────────────────────────────────────
 // Derivados do profileData — recalculados por refreshDerivedFromProfile() após editar o Perfil
 let GOAL_TARGET_BRL = profileData.metaIntermediariaBRL;
-const GOAL_START_YEAR = 2026;
 let MONTHLY_APORTE_EUR = profileData.aporteMensalEur; // aporte oficial mensal (BR + INTL)
 
 function refreshDerivedFromProfile() {
@@ -1880,6 +1902,23 @@ function fmtNum(value, decimals = 2) {
   return (value || 0).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
+// Mês ("AAAA-MM") de um aporte no fuso LOCAL. Aportes novos guardam data ISO em UTC
+// (um aporte às 00:30 do dia 1º seria do mês anterior em UTC); os antigos guardam só
+// "AAAA-MM-DD", que já é a data local e não pode passar por new Date (seria lida como UTC).
+function monthKeyOf(dataStr) {
+  const s = String(dataStr || '');
+  if (!s) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s) || /^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(s)) return s.slice(0, 7); // sem fuso = já é local
+  const d = new Date(s);
+  if (isNaN(d)) return s.slice(0, 7);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function currentMonthKey(offset = 0) {
+  const n = new Date();
+  const d = new Date(n.getFullYear(), n.getMonth() + offset, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 // Converte texto digitado no padrão pt-BR ("1.234,56") de volta para número puro.
 function parsePtBrNumber(str) {
   if (!str) return NaN;
@@ -1939,17 +1978,24 @@ function computeInvested(docs, rate) {
 }
 
 // Total tirado do bolso, em €: soma dos ativos (a Caixinha entra pelo SALDO atual —
-// o que saiu dela virou aporte em outro ativo e já está contado lá)
+// o que saiu dela virou aporte em outro ativo e já está contado lá) MENOS os dividendos
+// recebidos: dividendo reinvestido é dinheiro que a carteira gerou, não que saiu do bolso.
+// (Se o dividendo não foi reinvestido, a conta dá no mesmo: valor + dividendos − aportado.)
 function totalInvestedEur(inv, rate) {
   let total = 0;
   Object.entries(inv).forEach(([ativo, v]) => {
     if (ativo === 'Caixinha' || ativo === 'Reserva') return;
     total += ASSET_CURRENCY[ativo] === 'BRL' ? v / rate : v;
   });
-  return total + (portfolioData.caixinha || 0) / rate;
+  return total + (portfolioData.caixinha || 0) / rate - (portfolioData.dividendos || 0) / rate;
 }
 
+// Só vira true quando a carteira real do Firebase chegou — antes disso o dashboard não
+// renderiza, para nunca mostrar os valores de exemplo do código como se fossem seus.
+let portfolioLoaded = false;
+
 async function updateDashboard(cambio) {
+  if (!portfolioLoaded) return;
   const rate = parseFloat(cambio) || 6.0;
   const brInvested = portfolioData.mxrf11 + (portfolioData.hglg11 || 0) + (portfolioData.knri11 || 0) + portfolioData.ipca + portfolioData.selic;
   const cashEur = portfolioData.caixinha / rate;
@@ -1983,7 +2029,8 @@ async function updateDashboard(cambio) {
     if (investedEur > 1) {
       const diff = totalEur - investedEur;
       const diffPct = (diff / investedEur) * 100;
-      growthEl.textContent = `${diff >= 0 ? '▲ +' : '▼ −'}€${fmtNum(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(diffPct).toFixed(1)}%) vs €${fmtNum(investedEur, 0)} aportados`;
+      growthEl.textContent = `${diff >= 0 ? '▲ +' : '▼ −'}€${fmtNum(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(diffPct).toFixed(1).replace(".", ",")}%) vs €${fmtNum(investedEur, 0)} do seu bolso`;
+      growthEl.title = 'Inclui dividendos recebidos — reinvestidos ou não';
       growthEl.style.color = diff >= 0 ? 'var(--green)' : 'var(--red)';
     } else {
       growthEl.textContent = totalEur > 0 ? '+ R$' + fmtNum(portfolioData.dividendos) + ' em dividendos' : 'iniciando';
@@ -2008,7 +2055,9 @@ async function updateDashboard(cambio) {
     bal = bal * (1 + monthlyReturn) + MONTHLY_APORTE_EUR;
     months++;
   }
-  const projYear = GOAL_START_YEAR + Math.ceil(months / 12);
+  // Ano em que a meta é atingida = hoje + N meses (não um ano-base fixo)
+  const hojeD = new Date();
+  const projYear = new Date(hojeD.getFullYear(), hojeD.getMonth() + months, 1).getFullYear();
   document.getElementById('goal-year').textContent = months >= 12 * 60 ? '60+ anos' : projYear;
 
   // ── 3b. RESERVA DE EMERGÊNCIA (independente da meta de R$1.000.000) ──
@@ -2072,8 +2121,10 @@ async function updateDashboard(cambio) {
     statusText.textContent = 'Concentração alta — veja Alertas';
   }
 
-  // Diversificação: quantas categorias diferentes de ativo você já tem (de 7 possíveis)
-  const diversificacaoScore = Math.round(Math.min(100, (activeCount / 7) * 100));
+  // Diversificação: quantas posições de investimento você já tem, de todas as possíveis.
+  // Dinheiro parado na Caixinha não é diversificação — só o Tesouro Selic conta nessa linha.
+  const investCount = positions.filter(p => (p.name === 'selic' ? portfolioData.selic : p.eur) > 0).length;
+  const diversificacaoScore = Math.round(Math.min(100, (investCount / positions.length) * 100));
 
   // Risco: começa em 100 e desconta fatores reais — concentração numa única posição,
   // cripto acima de 5% da carteira e desvio estrutural da referência 60/40
@@ -2085,16 +2136,14 @@ async function updateDashboard(cambio) {
 
   // Disciplina: consistência REAL de aportes — meses fechados com registro (janela de 3),
   // dividendos reinvestindo e pouco dinheiro parado. Pular um mês agora derruba o número.
-  const firstMonth = (invDocs || []).map(d => (d.data || '').slice(0, 7)).filter(Boolean).sort()[0] || null;
+  const firstMonth = (invDocs || []).map(d => monthKeyOf(d.data)).filter(Boolean).sort()[0] || null;
   let mesesAvaliados = 0, mesesComAporte = 0;
   if (firstMonth) {
-    const nowD = new Date();
     for (let i = 1; i <= 3; i++) {
-      const dM = new Date(nowD.getFullYear(), nowD.getMonth() - i, 1);
-      const key = `${dM.getFullYear()}-${String(dM.getMonth() + 1).padStart(2, '0')}`;
+      const key = currentMonthKey(-i);
       if (key < firstMonth) break; // não penaliza meses antes do app existir
       mesesAvaliados++;
-      if ((invDocs || []).some(dc => (dc.data || '').startsWith(key) && dc.ativo !== 'Dividendo' && dc.ativo !== 'Reserva')) mesesComAporte++;
+      if ((invDocs || []).some(dc => monthKeyOf(dc.data) === key && dc.ativo !== 'Dividendo' && dc.ativo !== 'Reserva')) mesesComAporte++;
     }
   }
   const aderencia = mesesAvaliados > 0 ? mesesComAporte / mesesAvaliados : 0.5; // sem mês fechado ainda: neutro
@@ -2165,7 +2214,7 @@ async function renderWallet(rate) {
     if (!invested || invested <= 0 || !current) return null;
     const diff = current - invested;
     const pct = (diff / invested) * 100;
-    return { txt: `${diff >= 0 ? '▲ +' : '▼ −'}${sym}${fmtNum(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)`, cls: diff >= 0 ? 'pl-pos' : 'pl-neg' };
+    return { txt: `${diff >= 0 ? '▲ +' : '▼ −'}${sym}${fmtNum(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1).replace(".", ",")}%)`, cls: diff >= 0 ? 'pl-pos' : 'pl-neg' };
   };
   const pm = (invested, cotas) => (invested > 0 && cotas > 0) ? invested / cotas : null;
 
@@ -2275,20 +2324,16 @@ async function renderWallet(rate) {
     const pct = investedTotal > 0 ? (diff / investedTotal) * 100 : 0;
     const sumVal = v => walletCurrency === 'BRL' ? 'R$' + fmtNum(v * rate) : '€' + fmtNum(v);
     summaryEl.innerHTML = `
-      <div class="ws-tile"><div class="ws-label">Você aportou</div><div class="ws-value mval">${sumVal(investedTotal)}</div></div>
+      <div class="ws-tile"><div class="ws-label">Do seu bolso</div><div class="ws-value mval">${sumVal(investedTotal)}</div></div>
       <div class="ws-tile"><div class="ws-label">Vale hoje</div><div class="ws-value mval">${sumVal(currentTotal)}</div></div>
-      <div class="ws-tile"><div class="ws-label">Resultado</div><div class="ws-value mval ${diff >= 0 ? 'pl-pos' : 'pl-neg'}">${diff >= 0 ? '+' : '−'}${sumVal(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)</div></div>`;
+      <div class="ws-tile"><div class="ws-label">Resultado</div><div class="ws-value mval ${diff >= 0 ? 'pl-pos' : 'pl-neg'}">${diff >= 0 ? '+' : '−'}${sumVal(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1).replace(".", ",")}%)</div></div>`;
   }
 
   // ── Painel de dividendos ──
   const divStats = document.getElementById('div-stats');
   if (divStats) {
-    const now = new Date();
-    const esteMes = (invDocs || []).filter(d => {
-      if (d.ativo !== 'Dividendo') return false;
-      const dt = new Date(d.data);
-      return dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth();
-    }).reduce((s, d) => s + (d.moeda === 'EUR' ? parseFloat(d.valor) * rate : parseFloat(d.valor)), 0);
+    const mesAtual = currentMonthKey();
+    const esteMes = (invDocs || []).filter(d => d.ativo === 'Dividendo' && monthKeyOf(d.data) === mesAtual).reduce((s, d) => s + (d.moeda === 'EUR' ? parseFloat(d.valor) * rate : parseFloat(d.valor)), 0);
 
     // Estimativa real: último dividendo por cota de fato pago por cada FII (Brasil apenas — MXRF11/HGLG11/KNRI11)
     const mxrfPorCota = divPerShare.mxrf11;
@@ -2317,26 +2362,54 @@ async function renderWallet(rate) {
   }
 }
 
-function _drawEvoChart(points, months, sym) {
+// points/months: a série principal (linha cheia). nowValue (opcional): valor de mercado de hoje,
+// desenhado como um trecho tracejado à parte — assim a linha nunca mistura "aportado" com "vale hoje".
+function _drawEvoChart(points, months, sym, nowValue = null) {
   const width = 560, height = 120, pad = 10;
-  const min = Math.min(...points), max = Math.max(...points, min + 1);
+  const hasNow = nowValue !== null && nowValue !== undefined;
+  const all = hasNow ? [...points, nowValue] : points;
+  const slots = all.length;
+  const min = Math.min(...all), max = Math.max(...all, min + 1);
   const range = max - min || 1;
-  const coords = points.map((v, i) => ({
-    x: pad + (i / (points.length - 1)) * (width - pad * 2),
+  const coords = all.map((v, i) => ({
+    x: pad + (i / (slots - 1)) * (width - pad * 2),
     y: height - pad - ((v - min) / range) * (height - pad * 2),
   }));
-  const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ');
-  const areaPath = `${linePath} L${coords[coords.length-1].x.toFixed(1)} ${height-pad} L${coords[0].x.toFixed(1)} ${height-pad} Z`;
+  const main = coords.slice(0, points.length);
+  const linePath = main.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ');
+  const areaPath = `${linePath} L${main[main.length-1].x.toFixed(1)} ${height-pad} L${main[0].x.toFixed(1)} ${height-pad} Z`;
   document.getElementById('evo-line')?.setAttribute('d', linePath);
   document.getElementById('evo-area')?.setAttribute('d', areaPath);
+
+  // Trecho tracejado até o valor de mercado de hoje (criado sob demanda dentro do SVG)
+  const svg = document.getElementById('evo-svg');
+  let nowLine = document.getElementById('evo-now-line');
+  if (svg && !nowLine) {
+    nowLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    nowLine.id = 'evo-now-line';
+    nowLine.setAttribute('fill', 'none');
+    nowLine.setAttribute('stroke', 'var(--gold)');
+    nowLine.setAttribute('stroke-width', '2.5');
+    nowLine.setAttribute('stroke-dasharray', '6 5');
+    nowLine.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(nowLine);
+  }
+  if (nowLine) {
+    const a = main[main.length - 1], b = coords[coords.length - 1];
+    nowLine.setAttribute('d', hasNow ? `M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1)} ${b.y.toFixed(1)}` : '');
+  }
+
   const labelsEl = document.getElementById('evo-labels');
   if (labelsEl) {
-    labelsEl.style.gridTemplateColumns = `repeat(${points.length}, 1fr)`;
-    labelsEl.innerHTML = points.map((v, i) => `
+    labelsEl.style.gridTemplateColumns = `repeat(${slots}, 1fr)`;
+    labelsEl.innerHTML = all.map((v, i) => {
+      const isNow = hasNow && i === slots - 1;
+      return `
       <div class="evo-label-item">
-        <div class="evo-label-month">${months[i]}</div>
-        <div class="evo-label-value mval">${sym}${fmtNum(v, 0)}</div>
-      </div>`).join('');
+        <div class="evo-label-month"${isNow ? ' style="color:var(--gold)"' : ''}>${isNow ? 'vale hoje' : months[i]}</div>
+        <div class="evo-label-value mval"${isNow ? ' style="color:var(--gold)"' : ''}>${sym}${fmtNum(v, 0)}</div>
+      </div>`;
+    }).join('');
   }
 }
 
@@ -2349,18 +2422,24 @@ async function renderEvolution(currentTotal) {
   const docs = await loadAportesForEvo();
 
   if (docs && docs.length > 0) {
-    // Dados reais: agrupa aportes por mês convertendo tudo para €
+    // Dados reais: dinheiro do bolso acumulado mês a mês, em €.
+    // - Caixinha fica fora do histórico: o que entra nela vira aporte em outro ativo depois
+    //   (contar os dois seria dobrar); o saldo atual entra no mês corrente via totalInvestedEur.
+    // - Reserva de emergência não é investimento.
+    // - Dividendo registrado é dinheiro gerado pela carteira: desconta (igual ao hero).
     const rate = getRate();
     const byMonth = {};
     docs.forEach(d => {
-      const dt = new Date(d.data);
-      const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
-      const valEur = d.moeda === 'EUR' ? parseFloat(d.valor) : parseFloat(d.valor) / rate;
-      byMonth[key] = (byMonth[key] || 0) + valEur;
+      if (d.ativo === 'Caixinha' || d.ativo === 'Reserva') return;
+      const key = monthKeyOf(d.data);
+      if (!key) return;
+      const v = parseFloat(d.valor) || 0;
+      const valEur = d.moeda === 'EUR' ? v : v / rate;
+      byMonth[key] = (byMonth[key] || 0) + (d.ativo === 'Dividendo' ? -valEur : valEur);
     });
 
-    const now = new Date();
-    const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const currentKey = currentMonthKey();
+    if (!(currentKey in byMonth)) byMonth[currentKey] = 0;
 
     const sortedKeys = Object.keys(byMonth).sort();
     let cumulative = 0;
@@ -2368,20 +2447,16 @@ async function renderEvolution(currentTotal) {
     sortedKeys.forEach(key => {
       cumulative += byMonth[key];
       months.push(monthNames[parseInt(key.split('-')[1]) - 1]);
-      points.push(key === currentKey ? currentTotal : cumulative);
+      points.push(cumulative);
     });
-
-    // Mês atual sem aportes registrados ainda → adiciona valor corrente
-    if (!byMonth[currentKey]) {
-      months.push(monthNames[now.getMonth()]);
-      points.push(currentTotal);
-    }
+    // Mês atual: usa exatamente o mesmo "do seu bolso" do hero (inclui saldo da Caixinha)
+    points[points.length - 1] = totalInvestedEur(computeInvested(docs, rate), rate);
 
     if (points.length === 1) { months.unshift('início'); points.unshift(0); }
 
     if (tagEl)  tagEl.textContent  = 'dados reais';
-    if (noteEl) noteEl.textContent = 'Evolução do patrimônio total com base nos aportes registrados.';
-    _drawEvoChart(points, months, '€');
+    if (noteEl) noteEl.textContent = 'Linha cheia: dinheiro do seu bolso acumulado mês a mês. Tracejado dourado: quanto a carteira vale hoje a preço de mercado. Valores em reais convertidos pelo câmbio de hoje.';
+    _drawEvoChart(points, months, '€', currentTotal);
     return;
   }
 
@@ -2417,7 +2492,7 @@ async function loadDailyInsight() {
   } catch {}
 
   try {
-    const prompt = 'Gere UM insight útil de HOJE para o investidor, com base no perfil e nos indicadores atuais. Máximo 35 palavras, texto corrido, direto, sem saudação e sem repetir números óbvios da carteira. Temas possíveis: câmbio da semana, dividendo esperado, proximidade do dia de aporte (28/29), equilíbrio da carteira.';
+    const prompt = 'Gere UM insight útil de HOJE para o investidor, com base no perfil e nos indicadores atuais. Máximo 35 palavras, texto corrido, direto, sem saudação e sem repetir números óbvios da carteira. Temas possíveis: câmbio da semana, dividendo esperado, proximidade do dia de aporte (dia ' + profileData.diaAporte + '), equilíbrio da carteira.';
     const insight = await callAI(getAssistantSystem() + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 120);
     localStorage.setItem(KEY, JSON.stringify({ date: today, text: insight }));
     txt.textContent = insight;
@@ -2439,7 +2514,7 @@ async function loadMonthlySummary() {
 
   const show = text => {
     document.getElementById('ms-tag').textContent = monthLabel;
-    document.getElementById('ms-text').innerHTML = text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    document.getElementById('ms-text').innerHTML = mdLite(text);
     card.style.display = '';
   };
 
@@ -2449,12 +2524,12 @@ async function loadMonthlySummary() {
   } catch {}
 
   const docs = await loadAportesForEvo();
-  const monthDocs = (docs || []).filter(d => (d.data || '').startsWith(prevKey));
+  const monthDocs = (docs || []).filter(d => monthKeyOf(d.data) === prevKey);
   if (monthDocs.length === 0) return; // sem movimentos no mês anterior — nada a resumir
 
   const linhas = monthDocs.map(d => `${d.ativo} ${d.moeda === 'EUR' ? '€' : 'R$'}${d.valor}${d.qtd ? ' (' + d.qtd + ' cotas)' : ''}`).join('; ');
   try {
-    const prompt = `Resuma o mês de ${monthLabel} do investidor em UM parágrafo de no máximo 70 palavras, tom de extrato inteligente: o que foi aportado (${linhas}), dividendos se houve, e se ficou aderente ao plano de €100/mês na referência 60/40. Texto corrido, sem listas, sem saudação.`;
+    const prompt = `Resuma o mês de ${monthLabel} do investidor em UM parágrafo de no máximo 70 palavras, tom de extrato inteligente: o que foi aportado (${linhas}), dividendos se houve, e se ficou aderente ao plano de €${profileData.aporteMensalEur}/mês (€${profileData.aporteBrEur} Brasil + €${profileData.aporteIntlEur} Internacional). Texto corrido, sem listas, sem saudação.`;
     const text = await callAI(getAssistantSystem() + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 200);
     localStorage.setItem(KEY, JSON.stringify({ month: prevKey, text }));
     show(text);
@@ -2476,7 +2551,7 @@ async function analyzePortfolio() {
   try {
     const prompt = 'Faça uma ANÁLISE COMPLETA da carteira: proporção Brasil/Internacional vs referência 60/40, concentração por ativo, rentabilidade vs aportado, riscos relevantes, aderência ao plano e sugestão concreta para o próximo aporte. Aqui você PODE se aprofundar: até ~250 palavras, em parágrafos curtos, sem títulos e sem listas com asteriscos.';
     const text = await callAI(getAssistantSystem() + '\n\n' + getProfile(), [{ role: 'user', content: prompt }], 900);
-    txtEl.innerHTML = text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    txtEl.innerHTML = mdLite(text);
     document.getElementById('analysis-date').textContent = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     card.style.display = '';
     localStorage.setItem('wf_last_analysis', JSON.stringify({ ts: Date.now(), text }));
@@ -2494,7 +2569,7 @@ function restoreLastAnalysis() {
   try {
     const c = JSON.parse(localStorage.getItem('wf_last_analysis'));
     if (!c || !c.text) return;
-    document.getElementById('analysis-text').innerHTML = c.text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    document.getElementById('analysis-text').innerHTML = mdLite(c.text);
     document.getElementById('analysis-date').textContent = new Date(c.ts).toLocaleDateString('pt-BR');
     document.getElementById('analysis-card').style.display = '';
   } catch {}
@@ -2523,7 +2598,7 @@ async function renderAlertas() {
   const docs = await loadAportesForEvo().catch(() => []);
   const hoje = new Date();
   const diaHoje = hoje.getDate();
-  const mesKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  const mesKey = currentMonthKey();
   const selicVal = marketRates.selic ?? 14.25;
   const rate = getRate();
   const alerts = [];
@@ -2568,23 +2643,25 @@ async function renderAlertas() {
     actionableCount++;
   }
 
-  // Gatilho Selic — o único gatilho automático real que temos hoje
-  if (selicVal < 7) {
-    alerts.push({ type: 'red', icon: '🚨', title: 'AÇÃO SUGERIDA: Selic abaixo de 7%', desc: 'Realocar 10% do Brasil para Internacional (60/40 → 50/50 gradual). Pergunte ao Assistente (modo 🛡️ Risco) antes de agir.', action: true });
+  // Gatilho Selic — só avalia com o dado real do Banco Central; a estimativa fixa nunca dispara gatilho
+  if (marketRates.selicEstimada) {
+    // informativo, adicionado abaixo junto dos demais
+  } else if (selicVal < 7) {
+    alerts.push({ type: 'red', icon: '🚨', title: 'AÇÃO SUGERIDA: Selic abaixo de 7%', desc: 'Realocar gradualmente do Brasil para Internacional (5-10% por vez, 60/40 → 50/50). Pergunte ao Assistente (modo 🛡️ Risco) antes de agir.', action: true });
     actionableCount++;
   } else if (selicVal < 10) {
-    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Selic abaixo de 10%', desc: 'Migrar aporte de renda fixa para IPCA+ longo prazo. Pergunte ao Assistente antes de agir.', action: true });
+    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Selic abaixo de 10%', desc: 'Migrar o aporte de renda fixa para FIIs e Internacional. Pergunte ao Assistente antes de agir.', action: true });
     actionableCount++;
   }
 
   // Caixinha parada há muito tempo sem destino definido
   if (portfolioData.caixinha > 150) {
-    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Caixinha com saldo a decidir', desc: `R$${fmtNum(portfolioData.caixinha)} aguardando destino. Decida no próximo aporte (28/29): HGLG11, KNRI11, MXRF11 ou IPCA+.`, action: true });
+    alerts.push({ type: 'amber', icon: '🔔', title: 'AÇÃO SUGERIDA: Caixinha com saldo a decidir', desc: `R$${fmtNum(portfolioData.caixinha)} aguardando destino. Decida no próximo aporte (dia ${profileData.diaAporte}): HGLG11, KNRI11, MXRF11 ou IPCA+.`, action: true });
     actionableCount++;
   }
 
-  // Lembrete do aporte mensal (dia 28/29) — só se ainda não aportou este mês
-  const aportouEsteMes = (docs || []).some(d => (d.data || '').startsWith(mesKey) && d.ativo !== 'Dividendo');
+  // Lembrete do aporte mensal — só se ainda não aportou este mês (Caixinha/Reserva não são aporte de investimento)
+  const aportouEsteMes = (docs || []).some(d => monthKeyOf(d.data) === mesKey && !['Dividendo', 'Reserva', 'Caixinha'].includes(d.ativo));
   if (diaHoje >= 26 && !aportouEsteMes) {
     alerts.push({ type: 'amber', icon: '📅', title: 'AÇÃO SUGERIDA: Aporte do mês chegando', desc: `O aporte de €${profileData.aporteMensalEur} é sempre dia ${profileData.diaAporte} e ainda não há registro em ${hoje.toLocaleDateString('pt-BR', { month: 'long' })}.`, action: true });
     actionableCount++;
@@ -2610,8 +2687,15 @@ async function renderAlertas() {
   alerts.push({ type: 'green', icon: '✅', title: 'Dupla residência fiscal confirmada', desc: 'Brasil e Irlanda — situação regularizada.' });
   alerts.push({ type: 'blue', icon: '📅', title: 'Deemed disposal — 2033', desc: 'Exit Tax 38% sobre VWCE e EUNA. A partir de 2032, planejar liquidez para pagar.' });
 
+  if (marketRates.selicEstimada) {
+    alerts.push({ type: 'blue', icon: '📡', title: 'Selic do dia indisponível', desc: `O Banco Central não respondeu — o app está usando a estimativa ${selicLabel()} e os gatilhos de Selic ficam pausados até o dado real voltar.` });
+  }
+
   if (portfolioData.dividendos > 0) {
-    alerts.push({ type: 'green', icon: '💚', title: 'Dividendos ativos', desc: `Total recebido: R$${fmtNum(portfolioData.dividendos)}. MXRF11 gerando renda passiva mensal.` });
+    const pagantes = [['MXRF11', portfolioData.mxrf11_cotas], ['HGLG11', portfolioData.hglg11_cotas], ['KNRI11', portfolioData.knri11_cotas]]
+      .filter(([, c]) => (c || 0) > 0).map(([n]) => n);
+    const quem = pagantes.length ? `${pagantes.join(', ')} gerando renda passiva mensal.` : '';
+    alerts.push({ type: 'green', icon: '💚', title: 'Dividendos ativos', desc: `Total recebido: R$${fmtNum(portfolioData.dividendos)}. ${quem}` });
   }
 
   if (portfolioData.hglg11_cotas && portfolioData.hglg11_cotas > 0) {
@@ -2628,7 +2712,7 @@ async function renderAlertas() {
 
   // Janela típica de pagamento do MXRF11 (~dia 15) — informativo, só se ainda não registrou dividendo no mês
   if (diaHoje >= 12 && diaHoje <= 18 && (portfolioData.mxrf11_cotas || 0) > 0) {
-    const jaRegistrou = (docs || []).some(d => d.ativo === 'Dividendo' && (d.data || '').startsWith(mesKey));
+    const jaRegistrou = (docs || []).some(d => d.ativo === 'Dividendo' && monthKeyOf(d.data) === mesKey);
     if (!jaRegistrou) {
       const est = portfolioData.mxrf11_cotas * divPerShare.mxrf11;
       alerts.push({ type: 'blue', icon: '💰', title: 'Dividendo do MXRF11 esperado', desc: `O MXRF11 costuma pagar nesta janela (~R$${fmtNum(est)} com suas ${fmtNum(portfolioData.mxrf11_cotas, 0)} cotas). Quando cair no Nubank, registre em Registrar Aporte → Dividendo.` });
@@ -2706,13 +2790,12 @@ async function renderAporteGuide() {
   const rate = getRate();
 
   const docs = await loadAportesForEvo().catch(() => []);
-  const now = new Date();
+  const mesAtual = currentMonthKey();
   const BR_NATIVE = ['MXRF11', 'HGLG11', 'KNRI11', 'IPCA+', 'Selic', 'Caixinha'];
   let brEur = 0, intlEur = 0;
   (docs || []).forEach(d => {
     if (d.ativo === 'Dividendo' || d.ativo === 'Reserva') return; // renda e reserva não são "aporte de investimento"
-    const dt = new Date(d.data);
-    if (dt.getFullYear() !== now.getFullYear() || dt.getMonth() !== now.getMonth()) return;
+    if (monthKeyOf(d.data) !== mesAtual) return;
     const v = parseFloat(d.valor) || 0;
     const nativoBRL = BR_NATIVE.includes(d.ativo);
     const valorEur = nativoBRL
@@ -2808,84 +2891,22 @@ async function registrarAporte() {
     }
     _evoAportes = null; // invalida o cache para o gráfico de evolução refletir este aporte
 
-    // Conversão de moeda: cada ativo tem moeda nativa (FIIs/Tesouro/Caixinha/Dividendo em BRL,
-    // ETFs/Bitcoin em EUR). Se o valor foi informado na outra moeda, converte pelo câmbio do dia
-    // para os cálculos da carteira — o registro no histórico mantém a moeda original.
-    const cambioDia = getRate();
-    const NATIVO_BRL = ['MXRF11', 'HGLG11', 'KNRI11', 'IPCA+', 'Selic', 'Caixinha', 'Dividendo'];
-    let valorNativo = valor;
-    if (NATIVO_BRL.includes(ativo) && moeda === 'EUR') valorNativo = valor * cambioDia;
-    if (!NATIVO_BRL.includes(ativo) && moeda === 'BRL') valorNativo = valor / cambioDia;
-
-    // Update cotas and preco in portfolioData
-    // Preço por cota é opcional: se não informado, é derivado de valor/qtd (o app faz a conta).
-    if (qtd && parseFloat(qtd) > 0) {
-      const qtdNum = parseFloat(qtd);
-      const precoEfetivo = preco ? parseFloat(preco) : (valorNativo / qtdNum);
-      if (ativo === 'MXRF11') {
-        portfolioData.mxrf11_cotas = (portfolioData.mxrf11_cotas || 0) + qtdNum;
-        portfolioData.mxrf11_preco = precoEfetivo;
-        portfolioData.mxrf11 = portfolioData.mxrf11_cotas * portfolioData.mxrf11_preco;
-      }
-      if (ativo === 'HGLG11') {
-        portfolioData.hglg11_cotas = (portfolioData.hglg11_cotas || 0) + qtdNum;
-        portfolioData.hglg11_preco = precoEfetivo;
-        portfolioData.hglg11 = portfolioData.hglg11_cotas * portfolioData.hglg11_preco;
-      }
-      if (ativo === 'KNRI11') {
-        portfolioData.knri11_cotas = (portfolioData.knri11_cotas || 0) + qtdNum;
-        portfolioData.knri11_preco = precoEfetivo;
-        portfolioData.knri11 = portfolioData.knri11_cotas * portfolioData.knri11_preco;
-      }
-      if (ativo === 'VWCE') {
-        portfolioData.vwce_cotas = (portfolioData.vwce_cotas || 0) + qtdNum;
-        portfolioData.vwce_preco = precoEfetivo;
-        portfolioData.vwce = portfolioData.vwce_cotas * portfolioData.vwce_preco;
-      }
-      if (ativo === 'EUNA') {
-        portfolioData.euna_cotas = (portfolioData.euna_cotas || 0) + qtdNum;
-        portfolioData.euna_preco = precoEfetivo;
-        portfolioData.euna = portfolioData.euna_cotas * portfolioData.euna_preco;
-      }
+    const usarCaixinha = !!document.getElementById('f-usar-caixinha')?.checked && BR_ASSETS.includes(ativo);
+    // Bitcoin sem quantidade: a cotação é buscada ANTES (a transação do Firebase não pode esperar rede externa)
+    let btcPrice = null;
+    if (ativo === 'Bitcoin' && !(parseFloat(qtd) > 0)) {
+      btcPrice = await fetchBTCPriceEUR();
+      if (!btcPrice) showToast('⚠️ CoinGecko indisponível — preencha o campo "Quantidade" com os BTC recebidos no Revolut para registrar corretamente.');
     }
-    // Pagar com a Caixinha — só quando o checkbox do formulário estiver marcado
-    // (para ativos BR, valorNativo já está em BRL)
-    if (document.getElementById('f-usar-caixinha')?.checked && BR_ASSETS.includes(ativo)) {
-      portfolioData.caixinha = Math.max(0, portfolioData.caixinha - valorNativo);
-    }
+    const delta = { ativo, valor, moeda, qtd, preco, tipoReserva, usarCaixinha, cambioDia: getRate(), btcPrice };
 
-    // Bitcoin — usa quantidade informada no campo ou busca cotação ao vivo (CoinGecko)
-    if (ativo === 'Bitcoin') {
-      portfolioData.bitcoin_invested_eur = (portfolioData.bitcoin_invested_eur || 0) + valorNativo;
-      if (qtd && parseFloat(qtd) > 0) {
-        portfolioData.bitcoin = (portfolioData.bitcoin || 0) + parseFloat(qtd);
-      } else {
-        const btcPrice = await fetchBTCPriceEUR();
-        if (btcPrice) {
-          portfolioData.bitcoin = (portfolioData.bitcoin || 0) + (valorNativo / btcPrice);
-        } else {
-          showToast('⚠️ CoinGecko indisponível — preencha o campo "Quantidade" com os BTC recebidos no Revolut para registrar corretamente.');
-        }
-      }
+    if (TEST_MODE) {
+      applyAporteToPortfolio(portfolioData, delta);
+    } else {
+      // Relê a carteira do Firebase e aplica o aporte numa transação: se outro aparelho
+      // registrou algo depois que este abriu o app, nada é sobrescrito
+      await updatePortfolioAtomic(p => applyAporteToPortfolio(p, delta));
     }
-
-    // Update portfolio data in memory (ativos com cotas já foram atualizados acima quando qtd foi informado)
-    const temQtd = qtd && parseFloat(qtd) > 0;
-    if (ativo === 'MXRF11' && !temQtd) portfolioData.mxrf11 += valorNativo;
-    else if (ativo === 'HGLG11' && !temQtd) portfolioData.hglg11 += valorNativo;
-    else if (ativo === 'KNRI11' && !temQtd) portfolioData.knri11 += valorNativo;
-    else if (ativo === 'IPCA+') portfolioData.ipca += valorNativo;
-    else if (ativo === 'Selic') portfolioData.selic += valorNativo;
-    else if (ativo === 'VWCE' && !temQtd) portfolioData.vwce += valorNativo;
-    else if (ativo === 'EUNA' && !temQtd) portfolioData.euna += valorNativo;
-    else if (ativo === 'Caixinha') portfolioData.caixinha += valorNativo;
-    else if (ativo === 'Dividendo') portfolioData.dividendos += valorNativo;
-    else if (ativo === 'Reserva') {
-      portfolioData.reserva = Math.max(0, (portfolioData.reserva || 0) + (tipoReserva === 'retirada' ? -valorNativo : valorNativo));
-    }
-
-    // Save updated portfolio to Firebase
-    await savePortfolio();
 
     document.getElementById('f-valor').value = '';
     document.getElementById('f-qtd').value = '';
@@ -2911,6 +2932,69 @@ async function registrarAporte() {
     btn.disabled = false;
     btn.innerHTML = btnOriginalText;
   }
+}
+
+// Aplica um aporte à carteira p (muta p). Sem efeitos externos: pode rodar de novo
+// se a transação do Firebase for repetida.
+function applyAporteToPortfolio(p, a) {
+  const { ativo, valor, moeda, qtd, preco, tipoReserva, usarCaixinha, cambioDia, btcPrice } = a;
+  // Conversão de moeda: cada ativo tem moeda nativa (FIIs/Tesouro/Caixinha/Dividendo em BRL,
+  // ETFs/Bitcoin em EUR). Se o valor foi informado na outra moeda, converte pelo câmbio do dia
+  // para os cálculos da carteira — o registro no histórico mantém a moeda original.
+  const NATIVO_BRL = ['MXRF11', 'HGLG11', 'KNRI11', 'IPCA+', 'Selic', 'Caixinha', 'Dividendo'];
+  let valorNativo = valor;
+  if (NATIVO_BRL.includes(ativo) && moeda === 'EUR') valorNativo = valor * cambioDia;
+  if (!NATIVO_BRL.includes(ativo) && moeda === 'BRL') valorNativo = valor / cambioDia;
+
+  const qtdNum = parseFloat(qtd) > 0 ? parseFloat(qtd) : 0;
+  const key = { MXRF11: 'mxrf11', HGLG11: 'hglg11', KNRI11: 'knri11', VWCE: 'vwce', EUNA: 'euna' }[ativo];
+
+  if (key) {
+    if (qtdNum) {
+      // Preço por cota é opcional: se não informado, é derivado de valor/qtd (o app faz a conta).
+      p[key + '_cotas'] = (p[key + '_cotas'] || 0) + qtdNum;
+      p[key + '_preco'] = preco ? parseFloat(preco) : (valorNativo / qtdNum);
+      p[key] = p[key + '_cotas'] * p[key + '_preco'];
+    } else {
+      p[key] = (p[key] || 0) + valorNativo;
+    }
+  }
+
+  // Pagar com a Caixinha — só quando o checkbox do formulário estiver marcado
+  // (para ativos BR, valorNativo já está em BRL)
+  if (usarCaixinha) p.caixinha = Math.max(0, (p.caixinha || 0) - valorNativo);
+
+  if (ativo === 'Bitcoin') {
+    p.bitcoin_invested_eur = (p.bitcoin_invested_eur || 0) + valorNativo;
+    if (qtdNum) p.bitcoin = (p.bitcoin || 0) + qtdNum;
+    else if (btcPrice) p.bitcoin = (p.bitcoin || 0) + (valorNativo / btcPrice);
+  }
+  else if (ativo === 'IPCA+')    p.ipca = (p.ipca || 0) + valorNativo;
+  else if (ativo === 'Selic')    p.selic = (p.selic || 0) + valorNativo;
+  else if (ativo === 'Caixinha') p.caixinha = (p.caixinha || 0) + valorNativo;
+  else if (ativo === 'Dividendo') p.dividendos = (p.dividendos || 0) + valorNativo;
+  else if (ativo === 'Reserva') {
+    p.reserva = Math.max(0, (p.reserva || 0) + (tipoReserva === 'retirada' ? -valorNativo : valorNativo));
+  }
+}
+
+// Lê portfolio/main do Firebase, aplica a mudança e grava — tudo numa transação.
+// Evita que um aparelho com a carteira desatualizada em memória apague o que outro gravou.
+async function updatePortfolioAtomic(mutator) {
+  const db = window._db;
+  if (!db || !window._dbFns) throw new Error('Firebase não carregou — verifique a conexão');
+  const { doc, runTransaction } = window._dbFns;
+  const ref = doc(db, 'portfolio', 'main');
+  const fresh = await runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    const base = { ...portfolioData, ...(snap.exists() ? snap.data() : {}) };
+    mutator(base);
+    base.updated = new Date().toISOString();
+    tx.set(ref, base);
+    return base;
+  });
+  portfolioData = fresh;
+  if (lastMarketData) applyLivePrices(lastMarketData); // reaplica as cotações do dia sobre os dados relidos
 }
 
 async function savePortfolio() {
@@ -2983,22 +3067,19 @@ async function loadPortfolio() {
           await savePortfolio();
         } catch (e) { console.error('migração v6:', e); }
       }
-      if (proxyAvailable) {
-        try {
-          const md = await fetch(proxyBase + '/market-data').then(r => r.json());
-          applyLivePrices(md);
-        } catch(e) {}
-      }
-      updateDashboard(getRate());
-      updatePortfolioTable();
+      // Cotações já buscadas por loadMarketData: reaplica sobre a carteira recém-carregada
+      if (lastMarketData) applyLivePrices(lastMarketData);
       seedMayAportes();
     }
-  } catch(e) { console.error('Erro ao carregar portfólio:', e); }
-}
-
-function updatePortfolioTable() {
-  // Tabela detalhada de ativos foi removida da Home (foco em decisão).
-  // Mantida como função vazia para não quebrar chamadas existentes.
+    // Documento inexistente = primeira vez: os valores iniciais do código viram o ponto de partida
+    portfolioLoaded = true;
+    updateDashboard(getRate());
+  } catch(e) {
+    console.error('Erro ao carregar portfólio:', e);
+    const g = document.getElementById('hero-growth');
+    if (g) { g.textContent = '⚠️ Não foi possível carregar sua carteira — verifique a conexão e recarregue'; g.style.color = 'var(--amber)'; }
+    showToast('❌ Erro ao carregar sua carteira do Firebase');
+  }
 }
 
 let historicoFilter = 'total';
@@ -3145,7 +3226,7 @@ const _EVO_ASSET = {
   'Caixinha': { get: () => portfolioData.caixinha || 0,            sym: 'R$' },
   'VWCE':     { get: () => portfolioData.vwce || 0,                sym: '€'  },
   'EUNA':     { get: () => portfolioData.euna || 0,                sym: '€'  },
-  'Bitcoin':  { get: () => portfolioData.bitcoin_invested_eur || 0, sym: '€' },
+  'Bitcoin':  { get: () => btcPriceEur ? (portfolioData.bitcoin || 0) * btcPriceEur : (portfolioData.bitcoin_invested_eur || 0), sym: '€' },
 };
 
 function renderEvoForAsset(ativo, docs) {
@@ -3157,12 +3238,19 @@ function renderEvoForAsset(ativo, docs) {
   let points = [], months = [], isReal = false;
 
   if (filtered.length > 0) {
-    // Dados reais do Firebase
+    // Dados reais do Firebase — cada aporte convertido para a moeda nativa do ativo
+    // (um aporte de FII informado em € não pode somar como se fosse R$)
+    const rate = getRate();
+    const nativeCur = ASSET_CURRENCY[ativo] || 'EUR';
     const byMonth = {};
     filtered.forEach(d => {
-      const dt = new Date(d.data);
-      const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
-      byMonth[key] = (byMonth[key] || 0) + parseFloat(d.valor);
+      const key = monthKeyOf(d.data);
+      if (!key) return;
+      let v = parseFloat(d.valor) || 0;
+      if (d.moeda === 'EUR' && nativeCur === 'BRL') v *= rate;
+      if (d.moeda === 'BRL' && nativeCur === 'EUR') v /= rate;
+      if (ativo === 'Reserva' && d.tipo === 'retirada') v = -v;
+      byMonth[key] = (byMonth[key] || 0) + v;
     });
     const sortedKeys = Object.keys(byMonth).sort();
     let cumulative = 0;
@@ -3188,11 +3276,16 @@ function renderEvoForAsset(ativo, docs) {
   const tagEl  = document.getElementById('evo-tag');
   const noteEl = document.querySelector('.evo-note');
   if (tagEl)  tagEl.textContent  = isReal ? 'dados reais' : 'tendência ilustrativa';
+  // Valor de mercado de hoje como trecho tracejado — só para posições de investimento
+  // (Caixinha, Dividendo e afins não têm "valor de mercado" diferente do registrado)
+  const MERCADO = ['MXRF11', 'HGLG11', 'KNRI11', 'VWCE', 'EUNA', 'Bitcoin'];
+  const nowVal = isReal && MERCADO.includes(ativo) && info ? info.get() : null;
+
   if (noteEl) noteEl.textContent = isReal
-    ? `Evolução acumulada de ${ativo} com base nos aportes registrados.`
+    ? `Linha cheia: quanto você aportou em ${ativo}, acumulado.${nowVal !== null ? ' Tracejado dourado: quanto vale hoje.' : ''}`
     : `Curva estimada para ${ativo} — registre aportes para ver dados reais.`;
 
-  _drawEvoChart(points, months, sym);
+  _drawEvoChart(points, months, sym, nowVal);
 }
 
 async function onEvoChange() {
@@ -3252,14 +3345,14 @@ function renderMsgs() {
   msgs.innerHTML = `<div style="text-align:center;padding:12px 0"><span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">— conversa iniciada —</span></div>`;
 
   if (chatHistory.length === 0) {
-    msgs.innerHTML += buildAgentMsg(getWelcome());
+    msgs.innerHTML += buildAgentMsg(getWelcome(), true);
     // Update welcome with real data
     setTimeout(() => {
       const w0c = document.getElementById('w0-cambio');
       const w0s = document.getElementById('w0-selic');
       const w0b = document.getElementById('w0-brl');
       if(w0c) w0c.textContent = 'R$' + fmtNum(getRate());
-      if(w0s) w0s.textContent = fmtNum(marketRates.selic ?? 14.25) + '%';
+      if(w0s) w0s.textContent = selicLabel();
       if(w0b) w0b.textContent = 'R$' + fmtNum(profileData.aporteBrEur * getRate(), 0);
     }, 500);
   } else {
@@ -3274,14 +3367,15 @@ function renderMsgs() {
   msgs.scrollTop = msgs.scrollHeight;
 }
 
-function buildAgentMsg(text) {
-  const fmt = text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<em>$1</em>');
+// raw = HTML do próprio app (boas-vindas); qualquer texto vindo da IA passa pelo mdLite, que escapa antes
+function buildAgentMsg(text, raw = false) {
+  const fmt = raw ? text : mdLite(text);
   return `<div class="msg agent"><div class="mavatar" style="background:${ASSISTANT.color}">${ASSISTANT.icon}</div><div><div class="mbubble">${fmt}</div><div class="mmeta">${ASSISTANT.name}</div></div></div>`;
 }
 
 function buildUserMsg(text) {
   const inicial = (profileData.nome || 'T').charAt(0).toUpperCase();
-  return `<div class="msg user"><div class="mavatar" style="background:var(--surf2)">${inicial}</div><div><div class="mbubble">${text}</div><div class="mmeta">${profileData.nome}</div></div></div>`;
+  return `<div class="msg user"><div class="mavatar" style="background:var(--surf2)">${escapeHtml(inicial)}</div><div><div class="mbubble">${escapeHtml(text).replace(/\n/g, '<br>')}</div><div class="mmeta">${profileData.nome}</div></div></div>`;
 }
 
 function sendQuick(t) { document.getElementById('userInput').value = t; sendMsg(); }
@@ -3316,20 +3410,24 @@ async function sendMsg() {
 
   try {
     const modeCtx = chatMode ? '\n\n' + MODES[chatMode].system : '';
-    const styleReminder = '\n\nLEMBRETE FINAL (PRIORIDADE MÁXIMA, sobrepõe qualquer instrução anterior de formato): responda em NO MÁXIMO 120 palavras, em texto corrido, SEM títulos, SEM seções e SEM listas com asteriscos. Mesmo que mensagens anteriores desta conversa tenham sido longas e estruturadas, a partir de agora responda curto. Se precisar aprofundar, resuma e pergunte se o Thales quer os detalhes.';
+    const styleReminder = '\n\nLEMBRETE FINAL (PRIORIDADE MÁXIMA, sobrepõe qualquer instrução anterior de formato): responda em NO MÁXIMO 120 palavras, em texto corrido, SEM títulos, SEM seções e SEM listas com asteriscos. Mesmo que mensagens anteriores desta conversa tenham sido longas e estruturadas, a partir de agora responda curto. Se precisar aprofundar, resuma e pergunte se o ' + profileData.nome + ' quer os detalhes.';
     const fullSystem = getAssistantSystem() + '\n\n' + getProfile() + modeCtx + styleReminder;
-    const reply = await callAI(fullSystem, chatHistory, 450);
+    // Só as últimas mensagens vão para a IA: o custo não cresce para sempre com a conversa.
+    // A janela sempre começa numa mensagem do usuário (exigência das APIs).
+    let janela = chatHistory.slice(-CHAT_CONTEXT_MSGS);
+    while (janela.length && janela[0].role !== 'user') janela = janela.slice(1);
+    const reply = await callAI(fullSystem, janela, 450);
     chatHistory.push({ role: 'assistant', content: reply });
     saveHistories();
 
     const el = document.getElementById(tid);
-    if (el) el.innerHTML = `<div class="mavatar" style="background:${ASSISTANT.color}">${ASSISTANT.icon}</div><div><div class="mbubble">${reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<em>$1</em>')}</div><div class="mmeta">${ASSISTANT.name} · agora</div></div>`;
+    if (el) el.innerHTML = `<div class="mavatar" style="background:${ASSISTANT.color}">${ASSISTANT.icon}</div><div><div class="mbubble">${mdLite(reply)}</div><div class="mmeta">${ASSISTANT.name} · agora</div></div>`;
 
   } catch (err) {
     chatHistory.pop();
     saveHistories();
     const el = document.getElementById(tid);
-    const msg = err.message.includes('401') ? '❌ Chave API inválida. Vá em Configurar API e verifique.' : `❌ Erro: ${err.message}`;
+    const msg = err.message.includes('401') ? '❌ Chave API inválida. Vá em Configurar API e verifique.' : `❌ Erro: ${escapeHtml(err.message)}`;
     if (el) el.innerHTML = `<div class="mavatar" style="background:var(--rdim)">⚠️</div><div><div class="mbubble" style="color:var(--red)">${msg}</div></div>`;
   }
 
@@ -3385,6 +3483,16 @@ function saveApiKey() {
 // ─────────────────────────────────────────
 // UTILS
 // ─────────────────────────────────────────
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Markdown mínimo para respostas da IA — escapa o HTML ANTES de formatar, então nada
+// que venha da IA (ou do histórico salvo) consegue injetar tags ou scripts na página
+function mdLite(text) {
+  return escapeHtml(text).replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<em>$1</em>');
+}
+
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -3395,13 +3503,15 @@ function showToast(msg) {
 // ─────────────────────────────────────────
 // PIN LOCK
 // ─────────────────────────────────────────
-const PIN_HASH = '18a2c351a154bda5eb86114c87f6a90e2d5288ffa5d713c30df8be074b3bf92d'; // SHA-256, PIN não fica visível no código
+// O PIN é conferido no SERVIDOR (api/login.js) — no navegador não existe hash nenhum para
+// alguém quebrar. Com o PIN certo o servidor devolve um token do Firebase do usuário 'wf-owner',
+// o único que as regras do Firestore aceitam. Enquanto o servidor ainda não tem a conta de
+// serviço configurada, ele devolve token null e o app usa o login anônimo antigo (modo transição).
 let enteredPin = '';
+let pinChecking = false;
 
-async function sha256(text) {
-  const enc = new TextEncoder().encode(text);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', enc);
-  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+function loginEndpoint() {
+  return location.protocol.startsWith('http') ? location.origin + '/api/login' : 'http://localhost:3001/login';
 }
 
 function updatePinDots() {
@@ -3409,29 +3519,61 @@ function updatePinDots() {
   dots.forEach((d, i) => d.classList.toggle('filled', i < enteredPin.length));
 }
 
-async function checkPin() {
-  const hash = await sha256(enteredPin);
-  if (hash === PIN_HASH) {
-    // PIN correto — autentica no Firebase e libera o app
-    try {
-      if (window._authFns && window._auth) {
-        await window._authFns.signInAnonymously(window._auth);
-      }
-    } catch (e) { console.error('Erro de autenticação:', e); }
+function pinFail(msg) {
+  document.getElementById('pinError').textContent = msg;
+  document.querySelectorAll('.pin-dot').forEach(d => d.classList.add('error'));
+  setTimeout(() => {
+    enteredPin = '';
+    updatePinDots();
+    document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('error'));
+    document.getElementById('pinError').textContent = '';
+  }, msg === 'PIN incorreto' ? 500 : 2500);
+}
 
+function unlockApp() {
+  document.getElementById('pinLock').style.display = 'none';
+  document.getElementById('appShell').style.display = 'flex';
+  init();
+}
+
+async function checkPin() {
+  if (pinChecking) return;
+  pinChecking = true;
+  document.getElementById('pinError').textContent = 'Verificando…';
+  try {
+    let res;
+    try {
+      res = await fetch(loginEndpoint(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: enteredPin })
+      });
+    } catch (e) {
+      pinFail('Servidor de login indisponível — verifique a internet');
+      return;
+    }
+    if (res.status === 401) { pinFail('PIN incorreto'); return; }
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok || !d.ok) { pinFail('Erro no login — tente de novo'); return; }
+
+    try {
+      if (d.token) {
+        await window._authFns.signInWithCustomToken(window._auth, d.token);
+        localStorage.setItem('wf_auth_mode', 'owner');
+      } else {
+        await window._authFns.signInAnonymously(window._auth);
+        localStorage.setItem('wf_auth_mode', 'anon');
+      }
+    } catch (e) {
+      console.error('Erro de autenticação:', e);
+      pinFail('Erro ao conectar no Firebase');
+      return;
+    }
+    document.getElementById('pinError').textContent = '';
     localStorage.setItem('wf_pin_session', Date.now().toString());
-    document.getElementById('pinLock').style.display = 'none';
-    document.getElementById('appShell').style.display = 'flex';
-    init();
-  } else {
-    document.getElementById('pinError').textContent = 'PIN incorreto';
-    document.querySelectorAll('.pin-dot').forEach(d => d.classList.add('error'));
-    setTimeout(() => {
-      enteredPin = '';
-      updatePinDots();
-      document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('error'));
-      document.getElementById('pinError').textContent = '';
-    }, 500);
+    unlockApp();
+  } finally {
+    pinChecking = false;
   }
 }
 
@@ -3479,21 +3621,33 @@ function checkExistingSession() {
   return false;
 }
 
+// Espera o Firebase restaurar o login salvo no aparelho (onAuthStateChanged dispara uma vez ao carregar)
+function waitForAuthUser() {
+  return new Promise(resolve => {
+    if (!window._authFns || !window._auth) return resolve(null);
+    const unsub = window._authFns.onAuthStateChanged(window._auth, user => { unsub(); resolve(user); });
+  });
+}
+
 async function startApp() {
   setupPinKeypad();
   maskThousandsInput(document.getElementById('f-valor'), 2);
   maskThousandsInput(document.getElementById('pf-renda'), 0);
   maskThousandsInput(document.getElementById('pf-meta-app'), 0);
+
+  const user = await waitForAuthUser();
   if (checkExistingSession()) {
-    try {
-      if (window._authFns && window._auth) {
-        await window._authFns.signInAnonymously(window._auth);
-      }
-    } catch (e) { console.error(e); }
-    document.getElementById('pinLock').style.display = 'none';
-    document.getElementById('appShell').style.display = 'flex';
-    init();
+    if (user && !user.isAnonymous) { unlockApp(); return; }
+    // Modo transição (servidor ainda sem conta de serviço): mantém o login anônimo antigo
+    if (localStorage.getItem('wf_auth_mode') === 'anon') {
+      try { await window._authFns.signInAnonymously(window._auth); } catch (e) { console.error(e); }
+      unlockApp();
+      return;
+    }
   }
+  // Sessão de 24h vencida (ou sem login válido): sai do Firebase e pede o PIN de novo
+  localStorage.removeItem('wf_pin_session');
+  if (user) { try { await window._authFns.signOut(window._auth); } catch {} }
 }
 
 if (document.readyState === 'loading') {
@@ -3532,20 +3686,14 @@ async function init() {
   if (geminiKey) document.getElementById('geminiKeyInput').value = geminiKey;
   await checkProxy();
   await loadMarketData();
-  if (window._dbReady) {
+  const loadUserData = async () => {
     await loadProfile();
     refreshDerivedFromProfile();
     await loadPortfolio();
-    updatePortfolioTable();
-  } else {
-    window.addEventListener('dbready', async () => {
-      await loadProfile();
-      refreshDerivedFromProfile();
-      await loadPortfolio();
-      updatePortfolioTable();
-    });
-  }
-  renderAlertas();
+    renderAlertas();
+  };
+  if (window._dbReady) await loadUserData();
+  else window.addEventListener('dbready', loadUserData, { once: true });
   // Inteligência embutida (fase 3): geradas 1x/dia e 1x/mês, com cache — custo mínimo
   loadDailyInsight();
   loadMonthlySummary();

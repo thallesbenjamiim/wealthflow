@@ -1,0 +1,11 @@
+{
+  "name": "wealthflow",
+  "private": true,
+  "description": "WealthFlow — carteira digital inteligente",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}
