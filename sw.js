@@ -13,6 +13,27 @@ self.addEventListener('activate', e => {
   );
 });
 
+// Notificações push (dia do aporte, dividendos) enviadas por api/cron-notify.js
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'WealthFlow', {
+    body: d.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: { url: d.url || '/' }
+  }));
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || '/', self.location.origin).href;
+  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) if (c.url.startsWith(self.location.origin)) { c.navigate(url); return c.focus(); }
+    return clients.openWindow(url);
+  }));
+});
+
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   // Só o shell da mesma origem; APIs e domínios externos passam direto

@@ -10,36 +10,10 @@
 // cai no login anônimo antigo — assim nada quebra antes da configuração ficar pronta.
 
 const crypto = require('crypto');
+const { getAdmin, readBody, OWNER_UID } = require('./_lib/admin');
 
-const OWNER_UID = 'wf-owner';
 // Hash antigo (estava no index.html, portanto já público) — só vale até WF_PIN_HASH ser definido
 const LEGACY_PIN_HASH = '18a2c351a154bda5eb86114c87f6a90e2d5288ffa5d713c30df8be074b3bf92d';
-
-let adminApp = null;
-function getAdmin() {
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!raw) return null;
-  try {
-    const admin = require('firebase-admin');
-    if (!adminApp) {
-      adminApp = admin.apps.length ? admin.app() : admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
-    }
-    return admin;
-  } catch (e) {
-    console.error('firebase-admin indisponível:', e.message);
-    return null;
-  }
-}
-
-function readBody(req) {
-  if (req.body && typeof req.body === 'object') return Promise.resolve(req.body);
-  return new Promise(resolve => {
-    let data = '';
-    req.on('data', c => data += c);
-    req.on('end', () => { try { resolve(JSON.parse(data || '{}')); } catch { resolve({}); } });
-    req.on('error', () => resolve({}));
-  });
-}
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');

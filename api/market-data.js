@@ -61,7 +61,7 @@ async function yahooLastDividend(symbol) {
   return { amount: last.amount, date: new Date(last.date * 1000).toISOString().slice(0, 10) };
 }
 
-module.exports = async (req, res) => {
+async function getMarketData() {
   const out = {};
 
   const [vwce, euna, mxrf11, hglg11, knri11, mxrf11Div, hglg11Div, knri11Div, cambio, rates] = await Promise.all([
@@ -89,9 +89,16 @@ module.exports = async (req, res) => {
   if (cambio?.rates?.BRL) out.eurbrl = cambio.rates.BRL.toFixed(4);
   if (Number.isFinite(rates.selic)) out.selic = rates.selic.toFixed(2);
   if (Number.isFinite(rates.ipca12m)) out.ipca12m = rates.ipca12m.toFixed(2);
+  return out;
+}
 
+module.exports = async (req, res) => {
+  const out = await getMarketData();
   res.setHeader('Access-Control-Allow-Origin', '*');
   // Cache de 5 min na CDN do Vercel — as fontes não mudam mais rápido que isso
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
   res.status(200).json(out);
 };
+
+// Usado também pelo aviso diário de dividendos (api/cron-notify.js)
+module.exports.getMarketData = getMarketData;
