@@ -3553,6 +3553,7 @@ async function checkPin() {
     }
     if (res.status === 401) { pinFail('PIN incorreto'); return; }
     const d = await res.json().catch(() => ({}));
+    if (d.error === 'config_pin_hash') { pinFail('WF_PIN_HASH mal configurado na Vercel'); return; }
     if (!res.ok || !d.ok) { pinFail('Erro no login — tente de novo'); return; }
 
     try {

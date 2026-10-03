@@ -46,7 +46,14 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
 
   const { pin } = await readBody(req);
-  const expected = (process.env.WF_PIN_HASH || LEGACY_PIN_HASH).toLowerCase();
+  // Tolera espaço, quebra de linha ou texto extra colado junto: pega só os 64 caracteres do hash
+  const envHash = process.env.WF_PIN_HASH;
+  const found = envHash ? (envHash.match(/[0-9a-f]{64}/i) || [])[0] : LEGACY_PIN_HASH;
+  if (!found) {
+    console.error('WF_PIN_HASH não contém um hash SHA-256 de 64 caracteres');
+    return res.status(500).json({ ok: false, error: 'config_pin_hash' });
+  }
+  const expected = found.toLowerCase();
   const got = crypto.createHash('sha256').update(String(pin || '')).digest('hex');
   const match = got.length === expected.length && crypto.timingSafeEqual(Buffer.from(got), Buffer.from(expected));
 
