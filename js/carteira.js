@@ -270,7 +270,7 @@ async function updateDashboard(cambio) {
     const refTxt = document.getElementById('alloc-ref-text');
     if (refBr) refBr.style.flex = planBr;
     if (refIntl) refIntl.style.flex = 100 - planBr;
-    if (refTxt) refTxt.textContent = `${planBr}% Brasil / ${100 - planBr}% Internacional`;
+    if (refTxt) refTxt.innerHTML = `<span class="alloc-item"><span class="alloc-dot" style="background:var(--alloc-br)"></span>${planBr}% Brasil</span><span class="alloc-item"><span class="alloc-dot" style="background:var(--alloc-intl)"></span>${100 - planBr}% Internacional</span>`;
   }
 
   // ── 6. SCORE — calculado a partir dos seus dados reais ──
