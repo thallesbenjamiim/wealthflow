@@ -227,50 +227,71 @@ async function salvarPerfil() {
 
 // ─────────────────────────────────────────
 // PERFIL COMPACTO — enviado ao assistente em toda pergunta
-// (versão enxuta: só os dados que mudam as respostas; o resto vive no system prompt)
+// Só fatos e números: o app acompanha a carteira, regras de investimento não entram aqui.
 // ─────────────────────────────────────────
+// Premissas da meta, as do plano original: retirada de 4% a.a. e inflação de ~3,94% a.a.
+// (R$30 mil hoje ≈ R$65 mil em 20 anos). O patrimônio-alvo vai em valores de hoje E no do ano-alvo.
+const META_RETIRADA = 0.04, META_INFLACAO = 0.0394;
+
 function getProfile() {
-  const cambio = 'R$' + fmtNum(getRate());
-  const selic = fmtNum(marketRates.selic ?? 13.75) + '%' + (marketRates.selicEstimada ? ' (ESTIMATIVA — dado do dia indisponível; não tire conclusões de gatilho com ela)' : '');
+  const rate = getRate();
+  const cambio = 'R$' + fmtNum(rate);
+  const selic = fmtNum(marketRates.selic ?? 13.75) + '%' + (marketRates.selicEstimada ? ' (ESTIMATIVA — dado do dia indisponível)' : '');
   const ipca = fmtNum(marketRates.ipca ?? 4.22) + '%' + (marketRates.ipcaEstimado ? ' (ESTIMATIVA)' : '');
   const fx = v => (v || 0).toFixed(2);
   const btcEur = btcPriceEur ? (portfolioData.bitcoin * btcPriceEur).toFixed(0) : (portfolioData.bitcoin_invested_eur || 0);
-  const patrimonioAlvo = (profileData.rendaPassivaAlvo * 650 / 1000000).toFixed(1);
+  const alvoHoje = profileData.rendaPassivaAlvo * 12 / META_RETIRADA;
+  const alvoNoAno = alvoHoje * Math.pow(1 + META_INFLACAO, Math.max(0, profileData.anoAlvo - new Date().getFullYear()));
+  const mi = v => fmtNum(v / 1e6, 1);
+  const plano = planoBrPct();
+  const div = divisao6040(rate);
+  const r = resumoParaIA; // números da última atualização do Início (custo por ativo, aportes, ritmo)
+
+  // Resultado por ativo: quanto foi aportado (custo) × quanto vale hoje, na moeda do ativo
+  const resultado = (nome, aportado, hoje, sym) => {
+    if (!(aportado > 0) || !(hoje > 0)) return null;
+    const p = (hoje - aportado) / aportado * 100;
+    return `${nome} aportado ${sym}${fx(aportado)} → hoje ${sym}${fx(hoje)} (${p >= 0 ? '+' : ''}${p.toFixed(1)}%)`;
+  };
+  const porAtivo = r ? [
+    ...ATIVOS.map(a => resultado(a.id, r.inv[a.id], portfolioData[a.key], a.moeda === 'BRL' ? 'R$' : '€')),
+    resultado('Tesouro IPCA+', r.inv['IPCA+'], ipcaValor(), 'R$'),
+    resultado('Bitcoin', r.inv['Bitcoin'], r.btcValueEur, '€')
+  ].filter(Boolean).join(' · ') : '';
+  const mes = r ? resumoAportesDoMes(r.docs, currentMonthKey(), rate) : null;
 
   return `PERFIL — ${profileData.nome}, ${profileData.idade} anos, morando em ${profileData.pais} (${profileData.cidadania}), volta ao Brasil em ~${profileData.horizonteRetorno}. ${profileData.perfilRisco}.
 HOJE (${new Date().toLocaleDateString('pt-BR')}): EUR/BRL ${cambio} · Selic ${selic} · IPCA 12m ${ipca}.
 CARTEIRA ATUAL:
 - Brasil (Nubank): ${ATIVOS_BR.filter(a => (portfolioData[a.key + '_cotas'] || 0) > 0 || (portfolioData[a.key] || 0) > 0).map(a => `${a.id} R$${fx(portfolioData[a.key])} (${portfolioData[a.key + '_cotas'] || 0} cotas${a.descricaoIA ? ', ' + a.descricaoIA : ''}${a.dividendos ? `, último dividendo R$${divPerShare[a.key]}/cota/mês` : ''})`).join(' · ')} · Tesouro IPCA+ R$${fx(ipcaValor())}${portfolioData.ipca_mercado != null ? ` (valor de mercado; aplicado R$${fx(portfolioData.ipca)})` : " (valor aplicado)"} · Dividendos recebidos R$${fx(portfolioData.dividendos)}
-- Internacional (Revolut): ${ATIVOS_INTL.map(a => `${a.id} €${fx(portfolioData[a.key])}`).join(' · ')} (${ATIVOS_INTL.length === 2 ? 'ambos' : 'todos'} Acc — sem imposto anual de dividendos)
-- Bitcoin informal (fora do plano): ${portfolioData.bitcoin || 0} BTC (~€${btcEur})
-- Reserva de emergência (fora do plano de investimento, intocável): €${fx(portfolioData.reserva)} de uma meta de €${profileData.reservaMetaEur}
-META: renda passiva de R$${fmtNum(profileData.rendaPassivaAlvo, 0)}/mês em valores de hoje aos ${profileData.anoAlvo} — patrimônio-alvo ~R$${patrimonioAlvo} mi. Meta intermediária do app: R$${fmtNum(profileData.metaIntermediariaBRL, 0)}.
-APORTE: €${profileData.aporteMensalEur}/mês todo dia ${profileData.diaAporte} (€${profileData.aporteBrEur} Brasil + €${profileData.aporteIntlEur} Internacional). Referência 60/40 Brasil/Internacional — é referência, não regra rígida; EUNA sempre considerado no lado internacional. Bitcoin €${profileData.bitcoinMensalEur}/mês informal. Reserva de emergência €${profileData.reservaMetaEur} separada e INTOCÁVEL.
-REGRAS DO PLANO: NUNCA Tesouro Selic; nunca day trade/alavancagem/margem/especulação; reinvestir 100% dos dividendos; aportar todo mês independente do mercado; só realocar em desvio ESTRUTURAL (oscilação cambial de semanas é ruído); mudanças graduais (5-10% por vez); KNRI11 já faz parte dos FIIs acompanhados, ao lado de MXRF11 e HGLG11.
-FISCAL: Irlanda — Exit Tax 38% sobre ETFs, deemed disposal 8 anos após CADA compra (o 1º, pelo histórico registrado, em ${primeiroDeemedDisposal ? primeiroDeemedDisposal.toLocaleDateString('pt-BR') : 'data a calcular'}; planejar liquidez 1 ano antes). Brasil — dividendos de FII isentos de IR; Tesouro com IR retido na fonte.
-GATILHOS: Selic <10% → migrar aporte renda fixa p/ FIIs e internacional; Selic <7% → realocar gradual BR→Intl; ETFs -20% → comprar mais; 2 anos antes de voltar ao Brasil → parar ETFs europeus e converter gradualmente.`;
+- Internacional (Revolut): ${ATIVOS_INTL.map(a => `${a.id} €${fx(portfolioData[a.key])}`).join(' · ')} (${ATIVOS_INTL.length === 2 ? 'ambos' : 'todos'} Acc — não distribuem dividendos)
+- Bitcoin (fora do plano): ${portfolioData.bitcoin || 0} BTC (~€${btcEur})
+- Reserva de emergência (fora dos investimentos): €${fx(portfolioData.reserva)} de uma meta de €${profileData.reservaMetaEur}
+${r ? `RESULTADO: do bolso €${fx(r.investedEur)} → vale hoje €${fx(r.totalEur)}. Por ativo: ${porAtivo || 'sem dados'}.\n` : ''}DIVISÃO 60/40 (sem o Bitcoin): hoje ${div.brPct}% Brasil / ${div.intlPct}% Internacional. O plano é ${plano}/${100 - plano} e o ${profileData.nome} considera a carteira equilibrada com até ${FOLGA_6040} pontos de diferença (Brasil entre ${plano - FOLGA_6040}% e ${plano + FOLGA_6040}%).
+APORTES: plano de €${profileData.aporteMensalEur}/mês todo dia ${profileData.diaAporte} (€${profileData.aporteBrEur} Brasil + €${profileData.aporteIntlEur} Internacional), mais €${profileData.bitcoinMensalEur}/mês de Bitcoin por fora.${mes ? ` Registrado este mês: ${mes.totalEur > 0 ? `€${fx(mes.totalEur)} (${mes.brPct}% Brasil / ${mes.intlPct}% Internacional)` : 'nenhum aporte ainda'}${mes.bitcoinEur > 0 ? ` + €${fx(mes.bitcoinEur)} em Bitcoin` : ''}. Ritmo real: ${r.ritmo.meses ? `€${fx(r.ritmo.eurMes)}/mês (média dos últimos ${r.ritmo.meses} meses)` : 'ainda sem mês fechado'}.` : ''}
+META: renda passiva de R$${fmtNum(profileData.rendaPassivaAlvo, 0)}/mês em valores de hoje em ${profileData.anoAlvo} — patrimônio-alvo ~R$${mi(alvoHoje)} mi em valores de hoje (~R$${mi(alvoNoAno)} mi em ${profileData.anoAlvo}, com inflação de ~4% a.a. e retirada de 4% a.a.). Meta intermediária do app: R$${fmtNum(profileData.metaIntermediariaBRL, 0)}.
+FISCAL: Irlanda — Exit Tax 38% sobre os ETFs, deemed disposal 8 anos após CADA compra (o 1º, pelo histórico registrado, em ${primeiroDeemedDisposal ? primeiroDeemedDisposal.toLocaleDateString('pt-BR') : 'data a calcular'}; planejar liquidez 1 ano antes). Brasil — dividendos de FII isentos de IR no Brasil; Tesouro com IR retido na fonte. Na Irlanda, a tributação da renda brasileira (FIIs, Tesouro, BOVA11) e do Bitcoin depende da situação fiscal dele, e não há acordo Brasil–Irlanda contra bitributação: trate como "possível obrigação" e indique contador.`;
 }
 
 // ─────────────────────────────────────────
 // ASSISTENTE ÚNICO (v2) — substitui os 5 agentes
 // ─────────────────────────────────────────
 
-const getAssistantSystem = () => `Você é o ASSISTENTE do WealthFlow, a carteira digital inteligente do ${profileData.nome}. Você cobre todos os assuntos num só lugar: alocação e rebalanceamento, dividendos e reinvestimento, projeções de longo prazo, questões fiscais (Brasil + Irlanda) e gestão de risco — além de dúvidas conceituais sobre investimentos.
+const getAssistantSystem = () => `Você é o ASSISTENTE do WealthFlow, a carteira digital do ${profileData.nome}. O app serve para ACOMPANHAR os investimentos dele, não para decidir onde investir. Seu papel: explicar os números da carteira e tirar dúvidas sobre investimentos, impostos e conceitos.
 
 COMO RESPONDER:
 - Pergunta CONCEITUAL/educativa (ex: "o que é um FII?", "Acc vs Dist?"): responda como um bom professor, claro e neutro, SEM citar os dados pessoais do ${profileData.nome}.
-- Pergunta sobre A CARTEIRA ou a situação dele: use os números reais do perfil abaixo.
-- Dividendo informado: mostrar o efeito composto de reinvestir em cada ativo Brasil elegível (FIIs ou IPCA+ — nunca Selic), sem indicar uma preferida — a escolha é do ${profileData.nome}.
+- Pergunta sobre A CARTEIRA ou a situação dele: use os números reais do perfil abaixo e descreva o que eles mostram.
+- NUNCA diga o que comprar, vender ou onde aportar, nem indique um ativo preferido — essa decisão é do ${profileData.nome}, fora do app. Se ele pedir, mostre os prós e contras de cada opção sem escolher por ele.
 - Projeções: sempre cenário conservador E otimista, com números.
 - Assunto fiscal: nunca aconselhamento definitivo — diga "possível obrigação fiscal" e recomende validação com contador qualificado.
-- Risco/desvio estrutural detectado: alerte com motivo, risco e sugestão — a decisão final é sempre do ${profileData.nome}. Nada é executado automaticamente.
-- NUNCA incentivar: day trade, alavancagem, margem, ETFs alavancados, especulação, Tesouro Selic.
 - SEMPRE em português do Brasil.`;
 
 const MODES = {
   risco:  { label: 'Risco', icon: 'shield',       system: 'PARA ESTA RESPOSTA: adote o olhar de um GESTOR DE RISCO conservador — proteção patrimonial antes de retorno; foque concentração, equilíbrio Brasil/Internacional e exposição cambial estrutural.' },
   fiscal: { label: 'Fiscal', icon: 'scale',      system: 'PARA ESTA RESPOSTA: adote o olhar de um CONTADOR FISCAL Brasil+Irlanda — Exit Tax 38%, deemed disposal 8 anos após cada compra, Revenue (Form 11) e Receita Federal. Linguagem de "possível obrigação"; recomende validação com contador.' },
-  longo:  { label: 'Longo prazo', icon: 'hourglass', system: 'PARA ESTA RESPOSTA: adote o olhar de um PLANEJADOR DE LONGO PRAZO — projeções realistas até 2046 (cenário conservador e otimista) e disciplina emocional: quando o mercado cai, o plano não muda.' }
+  // O ano vem do Perfil (getter: lido na hora da pergunta)
+  longo:  { label: 'Longo prazo', icon: 'hourglass', get system() { return `PARA ESTA RESPOSTA: adote o olhar de um PLANEJADOR DE LONGO PRAZO — projeções realistas até ${profileData.anoAlvo} (cenário conservador e otimista) e disciplina emocional: quando o mercado cai, o plano não muda.`; } }
 };
 let chatMode = null;
 
@@ -291,7 +312,7 @@ const pageTitles = {
   carteira: ['Carteira', 'Tudo o que você tem, quanto vale e quanto rendeu'],
   agentes: ['Assistente', 'Pergunte sobre sua carteira, impostos ou investimentos'],
   aportar: ['Registrar aporte', 'Atualize a carteira depois de cada compra'],
-  alertas: ['Alertas', 'Gatilhos do seu plano e avisos importantes'],
+  alertas: ['Alertas', 'Lembretes e avisos'],
   config: ['Chaves de IA', 'Conecte o Gemini ou o Claude para ativar o Assistente'],
   perfil: ['Perfil e plano', 'Seus dados, metas e plano de aportes']
 };
@@ -300,10 +321,6 @@ const pageTitles = {
 // Mantido só para não quebrar chamadas antigas do tipo showPage('x', el).
 function showPage(id) {
   if (!pageTitles[id]) id = 'dashboard';
-  // Ao sair de Alertas, a nota atual do Score passa a ser a "vista" (o aviso "subiu/caiu" compara com ela)
-  if (id !== 'alertas' && document.getElementById('page-alertas')?.classList.contains('active') && typeof scoreAtual !== 'undefined' && scoreAtual) {
-    try { localStorage.setItem('wf_score_visto', JSON.stringify({ total: scoreAtual.total })); } catch {}
-  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('.nav-item, .bnav-item').forEach(n => n.classList.toggle('active', n.dataset.page === id));

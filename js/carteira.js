@@ -161,8 +161,26 @@ function totalInvestedEur(inv, rate) {
 // renderiza, para nunca mostrar os valores de exemplo do código como se fossem seus.
 let portfolioLoaded = false;
 
-// Último WealthFlow Score calculado (notas + motivos) — lido por renderAlertas()
-let scoreAtual = null;
+// O 60/40 do plano: Brasil × Internacional só com o que está investido — o Bitcoin (fora do plano)
+// e a Reserva ficam de fora. O centro vem do Perfil (parte Brasil ÷ aporte total) e a carteira é
+// "equilibrada" com até 10 pontos de diferença para cada lado (no 60/40: Brasil entre 50% e 70%).
+// Com essa folga, o câmbio sozinho quase nunca muda o selo: o euro teria que subir uns 50%.
+const FOLGA_6040 = 10;
+function planoBrPct() {
+  const total = (profileData.aporteBrEur || 0) + (profileData.aporteIntlEur || 0);
+  return total > 0 ? Math.round((profileData.aporteBrEur / total) * 100) : 60;
+}
+function divisao6040(rate) {
+  const br = (somaAtivos(ATIVOS_BR) + ipcaValor() + (portfolioData.selic || 0)) / rate;
+  const intl = somaAtivos(ATIVOS_INTL);
+  const total = br + intl;
+  const brPct = total > 0 ? Math.round((br / total) * 100) : 0;
+  return { total, brPct, intlPct: total > 0 ? 100 - brPct : 0, dentro: total <= 0 || Math.abs(brPct - planoBrPct()) <= FOLGA_6040 };
+}
+
+// Última foto dos números da carteira (custo por ativo, aportes, ritmo) — lida por getProfile()
+// para o texto enviado à IA
+let resumoParaIA = null;
 
 async function updateDashboard(cambio) {
   if (!portfolioLoaded) return;
@@ -178,25 +196,23 @@ async function updateDashboard(cambio) {
   document.getElementById('hero-total').textContent = '€' + fmtNum(totalEur, 0);
   document.getElementById('hero-total-brl').textContent = '≈ R$' + fmtNum(totalEur * rate, 0);
 
-  const brPct = totalEur > 0 ? brInvestedEur / totalEur : 0;
-  const concentrationOk = brPct < 0.75 && brPct > 0.15;
-  const statusEl = document.getElementById('hero-status');
-  const statusText = document.getElementById('hero-status-text');
-  if (concentrationOk) {
-    statusEl.className = 'hero-status';
-    statusText.textContent = 'Carteira equilibrada';
-  } else {
-    statusEl.className = 'hero-status amber';
-    statusText.textContent = 'Atenção à alocação';
-  }
+  // Selo do 60/40 — fora da faixa, mostra o número
+  const div6040 = divisao6040(rate);
+  const plano = planoBrPct();
+  document.getElementById('hero-status').className = div6040.dentro ? 'hero-status' : 'hero-status amber';
+  document.getElementById('hero-status-text').textContent = div6040.dentro
+    ? 'Carteira equilibrada'
+    : `Fora do ${plano}/${100 - plano} · Brasil ${div6040.brPct}%`;
+
   // Rentabilidade real: valor de mercado vs total aportado (dos registros de aporte)
   const growthEl = document.getElementById('hero-growth');
   const investedEl = document.getElementById('hero-invested');
-  let invDocs = []; // reutilizado no cálculo de Disciplina do Score
+  let invDocs = [], inv = {}, investedEur = 0; // reutilizados na previsão da meta e no texto da IA
   try {
     invDocs = await loadAportesForEvo();
     primeiroDeemedDisposal = calcularLotesExitTax(invDocs, rate)[0]?.disposal || null;
-    const investedEur = totalInvestedEur(computeInvested(invDocs, rate), rate);
+    inv = computeInvested(invDocs, rate);
+    investedEur = totalInvestedEur(inv, rate);
     if (investedEur > 1) {
       const diff = totalEur - investedEur;
       const diffPct = (diff / investedEur) * 100;
@@ -222,18 +238,21 @@ async function updateDashboard(cambio) {
   document.getElementById('goal-bar-fill').style.width = Math.max(pct, 0.3) + '%';
   document.getElementById('goal-current').textContent = 'R$' + fmtNum(totalEur * rate, 0);
 
-  // Projeção simples: total atual + aportes mensais crescendo a ~0.6%/mês até atingir a meta
+  // Projeção simples: total atual + o seu RITMO REAL de aporte (média dos últimos 6 meses fechados;
+  // o valor do plano só enquanto não houver mês fechado), rendendo ~0,6%/mês até atingir a meta
+  const ritmo = ritmoDeAporte(invDocs, rate);
   const monthlyReturn = 0.006;
   let bal = totalEur;
   let months = 0;
   while (bal < goalTargetEur && months < 12 * 60) {
-    bal = bal * (1 + monthlyReturn) + MONTHLY_APORTE_EUR;
+    bal = bal * (1 + monthlyReturn) + ritmo.eurMes;
     months++;
   }
   // Ano em que a meta é atingida = hoje + N meses (não um ano-base fixo)
   const hojeD = new Date();
   const projYear = new Date(hojeD.getFullYear(), hojeD.getMonth() + months, 1).getFullYear();
   document.getElementById('goal-year').textContent = months >= 12 * 60 ? 'mais de 60 anos' : projYear;
+  document.getElementById('goal-year-label').textContent = `Previsão · ${ritmo.meses ? '' : 'plano '}€${fmtNum(ritmo.eurMes, 0)}/mês`;
 
   // ── 3b. RESERVA DE EMERGÊNCIA (independente da meta de R$1.000.000) ──
   const reservaEur = portfolioData.reserva || 0;
@@ -264,7 +283,7 @@ async function updateDashboard(cambio) {
   // Referência do plano (proporção Brasil/Internacional dos aportes definidos no Perfil)
   const planTotal = (profileData.aporteBrEur || 0) + (profileData.aporteIntlEur || 0);
   if (planTotal > 0) {
-    const planBr = Math.round((profileData.aporteBrEur / planTotal) * 100);
+    const planBr = plano;
     const refBr = document.getElementById('alloc-ref-br');
     const refIntl = document.getElementById('alloc-ref-intl');
     const refTxt = document.getElementById('alloc-ref-text');
@@ -273,109 +292,11 @@ async function updateDashboard(cambio) {
     if (refTxt) refTxt.innerHTML = `<span class="alloc-item"><span class="alloc-dot" style="background:var(--alloc-br)"></span>${planBr}% Brasil</span><span class="alloc-item"><span class="alloc-dot" style="background:var(--alloc-intl)"></span>${100 - planBr}% Internacional</span>`;
   }
 
-  // ── 6. SCORE — calculado a partir dos seus dados reais ──
-  // Cada posição convertida para EUR, para medir concentração e diversificação de verdade
-  const positions = [
-    ...ATIVOS_BR.map(a => ({ name: a.key, eur: (portfolioData[a.key] || 0) / rate })),
-    { name: 'ipca', eur: ipcaValor() / rate },
-    { name: 'selic', eur: (portfolioData.selic || 0) / rate },
-    ...ATIVOS_INTL.map(a => ({ name: a.key, eur: portfolioData[a.key] || 0 })),
-    { name: 'bitcoin', eur: btcValueEur }
-  ];
-  const positionsTotal = positions.reduce((s, p) => s + p.eur, 0) || 1;
-  const activeCount = positions.filter(p => p.eur > 0).length;
-  const maxWeightPct = Math.max(...positions.map(p => (p.eur / positionsTotal) * 100));
+  // Hoje, na mesma conta do selo: o 60/40 da carteira sem o Bitcoin
+  const hojeEl = document.getElementById('alloc-hoje');
+  if (hojeEl) hojeEl.textContent = div6040.total > 0 ? `Hoje, sem o Bitcoin: ${div6040.brPct}% Brasil · ${div6040.intlPct}% Internacional` : '';
 
-  // Selo do hero fica coerente com os Alertas: concentração >30% também tira o "equilibrada"
-  if (concentrationOk && maxWeightPct > 30) {
-    statusEl.className = 'hero-status amber';
-    statusText.textContent = 'Concentração alta — veja Alertas';
-  }
-
-  // Cada item do Score guarda os motivos que tiraram pontos — a explicação aparece em Alertas,
-  // não no Início, para a tela principal não ficar carregada.
-  const NOMES = { ...Object.fromEntries(ATIVOS.map(a => [a.key, a.id])), ipca: 'Tesouro IPCA+', selic: 'Tesouro Selic', bitcoin: 'Bitcoin' };
-  const pctTxt = v => v.toFixed(0) + '%';
-
-  // Diversificação: as 4 classes que o plano quer ter — FIIs, renda fixa Brasil (IPCA+),
-  // ações globais (VWCE) e títulos internacionais (EUNA). Tesouro Selic não conta (fora do plano).
-  // Uma classe só vale com pelo menos 3% da carteira: R$1 num ativo não diversifica nada.
-  const pesoDe = eur => (eur / positionsTotal) * 100;
-  // Peso (em % da carteira) de uma classe da lista única, convertendo para € pela moeda de cada ativo
-  const pesoClasse = classe => pesoDe(ATIVOS.filter(a => a.classe === classe)
-    .reduce((s, a) => s + (a.moeda === 'BRL' ? (portfolioData[a.key] || 0) / rate : (portfolioData[a.key] || 0)), 0));
-  const idsDa = classe => ATIVOS.filter(a => a.classe === classe).map(a => a.id).join('/');
-  const classes = [
-    { nome: 'FIIs', peso: pesoClasse('fii') },
-    { nome: 'renda fixa Brasil (IPCA+)', peso: pesoDe(ipcaValor() / rate) },
-    { nome: `ações globais (${idsDa('acoes-global')})`, peso: pesoClasse('acoes-global') },
-    { nome: `títulos internacionais (${idsDa('titulos-intl')})`, peso: pesoClasse('titulos-intl') }
-  ];
-  const faltando = classes.filter(c => c.peso < 3);
-  const diversificacaoScore = Math.round(((classes.length - faltando.length) / classes.length) * 100);
-  const motivosDiv = faltando.map(c => c.peso > 0 ? `${c.nome} com só ${pctTxt(c.peso)} da carteira (mínimo 3%)` : `sem ${c.nome}`);
-
-  // Controle de risco: começa em 100 e desconta fatores reais — concentração numa única posição,
-  // cripto acima de 5% da carteira e desvio estrutural da referência 60/40. 100 = risco bem controlado.
-  const maior = positions.reduce((m, p) => p.eur > m.eur ? p : m, positions[0]);
-  const descontos = [
-    { pts: Math.max(0, maxWeightPct - 25) * 1.6, txt: `${NOMES[maior.name]} com ${pctTxt(maxWeightPct)} da carteira (ideal até 25% num único ativo)` },
-    { pts: Math.max(0, btcPct - 5) * 2.2, txt: `cripto com ${pctTxt(btcPct)} da carteira (limite 5%)` },
-    { pts: Math.max(0, Math.abs(brPct * 100 - 60) - 15) * 0.8, txt: `Brasil em ${pctTxt(brPct * 100)} (referência 60%, tolerância de 15 pontos)` }
-  ];
-  const riscoScore = Math.round(Math.max(10, Math.min(100, 100 - descontos.reduce((s, d) => s + d.pts, 0))));
-  const motivosRisco = descontos.filter(d => d.pts >= 0.5).map(d => `${d.txt}: −${Math.round(d.pts)}`);
-
-  // Disciplina: consistência REAL de aportes — meses fechados com registro (janela de 3)
-  // e dividendos reinvestindo. Pular um mês agora derruba o número. O critério antigo de
-  // "pouco dinheiro parado na Caixinha" saiu junto com a Caixinha: os 10 pontos dele ficam fixos.
-  const firstMonth = (invDocs || []).map(d => monthKeyOf(d.data)).filter(Boolean).sort()[0] || null;
-  let mesesAvaliados = 0, mesesComAporte = 0;
-  const mesesSemAporte = [];
-  if (firstMonth) {
-    for (let i = 1; i <= 3; i++) {
-      const key = currentMonthKey(-i);
-      if (key < firstMonth) break; // não penaliza meses antes do app existir
-      mesesAvaliados++;
-      if ((invDocs || []).some(dc => monthKeyOf(dc.data) === key && !['Dividendo', 'Reserva', 'Caixinha'].includes(dc.ativo))) mesesComAporte++;
-      else { const [a, m] = key.split('-').map(Number); mesesSemAporte.push(new Date(a, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long' })); }
-    }
-  }
-  const aderencia = mesesAvaliados > 0 ? mesesComAporte / mesesAvaliados : 0.5; // sem mês fechado ainda: neutro
-  let disciplinaScore = 40 + aderencia * 50;
-  if (portfolioData.dividendos > 0) disciplinaScore += 10;
-  disciplinaScore = Math.round(Math.max(10, Math.min(100, disciplinaScore)));
-  const motivosDisc = [];
-  if (mesesSemAporte.length) motivosDisc.push(`sem aporte registrado em ${mesesSemAporte.join(', ')}`);
-  if (mesesAvaliados === 0) motivosDisc.push('ainda não há mês fechado para medir a regularidade dos aportes');
-  if (!(portfolioData.dividendos > 0)) motivosDisc.push('nenhum dividendo registrado ainda');
-
-  // O progresso até a meta fica no card próprio da Meta — não entra no Score
-  document.getElementById('score-bar-disciplina').style.width = disciplinaScore + '%';
-  document.getElementById('score-bar-diversificacao').style.width = diversificacaoScore + '%';
-  document.getElementById('score-bar-risco').style.width = riscoScore + '%';
-  document.getElementById('score-num-disciplina').textContent = disciplinaScore;
-  document.getElementById('score-num-diversificacao').textContent = diversificacaoScore;
-  document.getElementById('score-num-risco').textContent = riscoScore;
-
-  const overallScore = Math.round((disciplinaScore + diversificacaoScore + riscoScore) / 3);
-  document.getElementById('score-value').textContent = overallScore;
-  const circumference = 2 * Math.PI * 52; // r=52 no SVG
-  const offset = circumference * (1 - overallScore / 100);
-  document.getElementById('score-ring-fill').setAttribute('stroke-dasharray', circumference.toFixed(1));
-  document.getElementById('score-ring-fill').setAttribute('stroke-dashoffset', offset.toFixed(1));
-
-  const novoScore = {
-    total: overallScore,
-    itens: [
-      { nome: 'Disciplina', valor: disciplinaScore, motivos: motivosDisc },
-      { nome: 'Diversificação', valor: diversificacaoScore, motivos: motivosDiv },
-      { nome: 'Controle de risco', valor: riscoScore, motivos: motivosRisco }
-    ]
-  };
-  const mudou = JSON.stringify(novoScore) !== JSON.stringify(scoreAtual);
-  scoreAtual = novoScore;
-  if (mudou) renderAlertas(); // a explicação do Score vive em Alertas
+  resumoParaIA = { inv, investedEur, totalEur, btcValueEur, docs: invDocs, ritmo };
 
   // ── 7. EVOLUÇÃO (tendência ilustrativa a partir do total atual) ──
   renderEvolution(totalEur);

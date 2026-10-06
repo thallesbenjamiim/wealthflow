@@ -241,7 +241,7 @@
             </div>
             <div class="goal-foot">
               <div class="goal-foot-item"><span>Hoje você tem</span><strong class="mval" id="goal-current">—</strong></div>
-              <div class="goal-foot-item"><span>Previsão de chegada</span><strong id="goal-year">—</strong></div>
+              <div class="goal-foot-item"><span id="goal-year-label">Previsão de chegada</span><strong id="goal-year">—</strong></div>
             </div>
           </div>
 
@@ -263,48 +263,27 @@
           </div>
         </div>
 
-        <!-- 3. ALOCAÇÃO + SCORE -->
-        <div class="dash-pair">
-          <div class="card alloc-section">
-            <div class="section-title">Alocação</div>
-            <div class="alloc-simple-bar" id="alloc-simple-bar">
-              <div class="alloc-seg" id="alloc-seg-br" style="background:var(--alloc-br);flex:1"></div>
-              <div class="alloc-seg" id="alloc-seg-intl" style="background:var(--alloc-intl);flex:1"></div>
-              <div class="alloc-seg" id="alloc-seg-btc" style="background:var(--alloc-btc);flex:0"></div>
-            </div>
-            <div class="alloc-legend">
-              <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-br)"></div><span class="alloc-name">Brasil</span><span class="alloc-val" id="alloc-pct-br">—</span></div>
-              <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-intl)"></div><span class="alloc-name">Internacional</span><span class="alloc-val" id="alloc-pct-intl">—</span></div>
-              <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-btc)"></div><span class="alloc-name">Cripto</span><span class="alloc-val" id="alloc-pct-btc">—</span></div>
-            </div>
-            <div class="alloc-ref">
-              <div class="mc-label" style="margin-bottom:0">Referência do plano de aportes</div>
-              <div class="alloc-ref-bar">
-                <div id="alloc-ref-br" style="background:var(--alloc-br);flex:60"></div>
-                <div id="alloc-ref-intl" style="background:var(--alloc-intl);flex:40"></div>
-              </div>
-              <div class="alloc-ref-text" id="alloc-ref-text"></div>
-            </div>
+        <!-- 3. ALOCAÇÃO (o selo do 60/40 fica no topo do Início) -->
+        <div class="card alloc-section">
+          <div class="section-title">Alocação</div>
+          <div class="alloc-simple-bar" id="alloc-simple-bar">
+            <div class="alloc-seg" id="alloc-seg-br" style="background:var(--alloc-br);flex:1"></div>
+            <div class="alloc-seg" id="alloc-seg-intl" style="background:var(--alloc-intl);flex:1"></div>
+            <div class="alloc-seg" id="alloc-seg-btc" style="background:var(--alloc-btc);flex:0"></div>
           </div>
-
-          <div class="card score-card">
-            <div class="section-title">WealthFlow Score</div>
-            <div class="score-body">
-              <div class="score-ring-wrap">
-                <svg viewBox="0 0 120 120" class="score-ring">
-                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--surf3)" stroke-width="9"/>
-                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round"
-                    stroke-dasharray="326.7" stroke-dashoffset="326.7" id="score-ring-fill" transform="rotate(-90 60 60)"/>
-                </svg>
-                <div class="score-ring-label"><span id="score-value">—</span><small>/100</small></div>
-              </div>
-              <div class="score-bars">
-                <div class="score-bar-row"><span>Disciplina</span><div class="score-bar-track"><div class="score-bar-fill" id="score-bar-disciplina" style="width:0%"></div></div><b id="score-num-disciplina">—</b></div>
-                <div class="score-bar-row"><span>Diversificação</span><div class="score-bar-track"><div class="score-bar-fill" id="score-bar-diversificacao" style="width:0%"></div></div><b id="score-num-diversificacao">—</b></div>
-                <div class="score-bar-row"><span>Controle de risco</span><div class="score-bar-track"><div class="score-bar-fill" id="score-bar-risco" style="width:0%"></div></div><b id="score-num-risco">—</b></div>
-              </div>
+          <div class="alloc-legend">
+            <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-br)"></div><span class="alloc-name">Brasil</span><span class="alloc-val" id="alloc-pct-br">—</span></div>
+            <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-intl)"></div><span class="alloc-name">Internacional</span><span class="alloc-val" id="alloc-pct-intl">—</span></div>
+            <div class="alloc-item"><div class="alloc-dot" style="background:var(--alloc-btc)"></div><span class="alloc-name">Cripto</span><span class="alloc-val" id="alloc-pct-btc">—</span></div>
+          </div>
+          <div class="alloc-ref">
+            <div class="mc-label" style="margin-bottom:0">Referência do plano de aportes</div>
+            <div class="alloc-ref-bar">
+              <div id="alloc-ref-br" style="background:var(--alloc-br);flex:60"></div>
+              <div id="alloc-ref-intl" style="background:var(--alloc-intl);flex:40"></div>
             </div>
-            <button class="btn btn-secondary btn-block score-ask-btn" onclick="askRiskAgentAboutScore()"><svg class="i"><use href="#i-sparkles"/></svg> Pedir análise de risco ao Assistente</button>
+            <div class="alloc-ref-text" id="alloc-ref-text"></div>
+            <div class="alloc-hoje" id="alloc-hoje"></div>
           </div>
         </div>
 

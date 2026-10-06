@@ -1,6 +1,6 @@
 // WealthFlow — LISTA ÚNICA dos ativos negociados em cotas (FIIs e ETFs).
 // Para adicionar um ativo novo, basta acrescentar um item aqui: formulário de aporte, cotação ao vivo,
-// carteira, alocação, Score, alertas, conferência, gráfico, dividendos e o perfil enviado à IA
+// carteira, alocação, alertas, conferência, gráfico, dividendos e o perfil enviado à IA
 // leem desta lista. Os ativos com regras próprias (Tesouro IPCA+, Tesouro Selic, Bitcoin,
 // Dividendo e Reserva) continuam tratados à parte no código.
 //
@@ -12,7 +12,7 @@
 //   key         prefixo dos campos na carteira do Firebase: <key>, <key>_cotas, <key>_preco
 //   moeda       'BRL' ou 'EUR' — moeda em que o ativo é cotado
 //   lado        'br' ou 'intl' — lado do 60/40
-//   classe      'fii' | 'acoes-br' | 'acoes-global' | 'titulos-intl' (usada na Diversificação do Score)
+//   classe      'fii' | 'acoes-br' | 'acoes-global' | 'titulos-intl' (tipo do ativo; hoje só informativo)
 //   tipo        texto da Carteira, antes da corretora
 //   opcao       texto no formulário de aporte
 //   icone       nome do ícone do sprite do index.html
@@ -49,8 +49,17 @@ const ATIVOS_BR = ATIVOS.filter(a => a.lado === 'br');
 const ATIVOS_INTL = ATIVOS.filter(a => a.lado === 'intl');
 const ATIVOS_DIVIDENDOS = ATIVOS.filter(a => a.dividendos);
 
+// O que conta como APORTE do mês: a compra de um ativo da carteira (FIIs, ETFs, Tesouro), com
+// qualquer dinheiro. Não contam: Bitcoin (fora do plano), Reserva de emergência, dividendo, ajuste
+// da conferência e os depósitos antigos na Caixinha. Regra única para o app inteiro (lembrete,
+// "Este mês", resumo do mês, previsão da meta) e para a notificação do servidor.
+const NAO_E_APORTE = ['Bitcoin', 'Reserva', 'Dividendo', 'Caixinha'];
+function ehAporte(d) {
+  return !!d && d.tipo !== 'ajuste' && !NAO_E_APORTE.includes(d.ativo);
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { ATIVOS, ATIVO_POR_ID, ATIVOS_BR, ATIVOS_INTL, ATIVOS_DIVIDENDOS };
+  module.exports = { ATIVOS, ATIVO_POR_ID, ATIVOS_BR, ATIVOS_INTL, ATIVOS_DIVIDENDOS, ehAporte };
 }
 
 // Navegador: coloca os ativos no formulário de aporte — os do Brasil antes do Tesouro IPCA+,

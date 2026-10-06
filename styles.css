@@ -204,7 +204,7 @@ a:hover { text-decoration: underline; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── CARDS ── */
-.card, .goal-card, .form-section, .wallet-card, .evo-card, .alloc-section, .score-card {
+.card, .goal-card, .form-section, .wallet-card, .evo-card, .alloc-section {
   background: var(--surf);
   border: 1px solid var(--bdr);
   border-radius: var(--r-lg);
@@ -282,7 +282,7 @@ a:hover { text-decoration: underline; }
 .goal-foot-item span { font-size: 12px; color: var(--muted); }
 .goal-foot-item strong { font-weight: 600; color: var(--txt); font-size: 14px; }
 
-/* ── 3. ALOCAÇÃO + SCORE ── */
+/* ── 3. ALOCAÇÃO ── */
 .alloc-section { padding: 20px 22px; display: flex; flex-direction: column; }
 .alloc-simple-bar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; gap: 2px; margin: 4px 0 14px; }
 .alloc-seg { height: 100%; transition: flex .5s var(--ease); }
@@ -295,21 +295,7 @@ a:hover { text-decoration: underline; }
 .alloc-ref-bar { display: flex; height: 5px; border-radius: 999px; overflow: hidden; gap: 2px; margin: 8px 0 6px; opacity: .75; }
 .alloc-ref-text { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); }
 .alloc-ref-text .alloc-item { font-size: 12px; }
-
-.score-card { padding: 20px 22px; }
-.score-body { display: flex; align-items: center; gap: 20px; }
-.score-ring-wrap { position: relative; width: 104px; height: 104px; flex-shrink: 0; }
-.score-ring { width: 100%; height: 100%; display: block; }
-.score-ring-fill, #score-ring-fill { transition: stroke-dashoffset .6s var(--ease); }
-.score-ring-label { position: absolute; inset: 0; text-align: center; line-height: 104px; font-weight: 650; font-size: 26px; color: var(--txt); letter-spacing: -.02em; white-space: nowrap; }
-.score-ring-label small { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0; margin-left: 1px; }
-.score-bars { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.score-bar-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
-.score-bar-row span { width: 112px; flex-shrink: 0; }
-.score-bar-track { flex: 1; height: 5px; border-radius: 999px; background: var(--surf3); overflow: hidden; }
-.score-bar-fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width .5s var(--ease); }
-.score-bar-row b { width: 26px; text-align: right; flex-shrink: 0; font-weight: 600; color: var(--txt); font-size: 12px; }
-.score-ask-btn { margin-top: 18px; }
+.alloc-hoje { font-size: 12px; color: var(--txt2); margin-top: 6px; }
 
 /* ── 4. EVOLUÇÃO ── */
 .evo-card { padding: 20px 22px; margin-bottom: 16px; }
@@ -345,7 +331,6 @@ a:hover { text-decoration: underline; }
 .wallet-icon .i { width: 17px; height: 17px; }
 .wallet-icon-br { color: var(--alloc-br); background: rgba(27,175,122,.12); }
 .wallet-icon-intl { color: var(--alloc-intl); background: rgba(79,142,255,.12); }
-.wallet-icon-cash { color: #E0A93A; background: rgba(201,133,0,.14); }
 .wallet-icon-btc { color: #F0844F; background: rgba(217,89,38,.14); }
 .wallet-icon-reserva { color: var(--blue); background: rgba(143,182,255,.12); }
 .wallet-name { font-size: 14px; font-weight: 600; color: var(--txt); }
@@ -398,14 +383,10 @@ a:hover { text-decoration: underline; }
 .alert-card.amber .alert-icon { background: var(--adim); color: var(--amber); }
 .alert-card.green .alert-icon { background: var(--pos-dim); color: var(--pos); }
 .alert-card.blue .alert-icon { background: var(--bdim); color: var(--blue); }
-.alert-card.action { border-color: var(--bdr2); }
 .alert-title { font-size: 14px; font-weight: 600; color: var(--txt); margin-bottom: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .alert-desc { font-size: 13px; color: var(--muted); line-height: 1.55; }
 .alert-desc strong { color: var(--txt2); font-weight: 600; }
 .alert-btn { margin-top: 10px; }
-.alert-badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; }
-.alert-card.red .alert-badge { background: var(--rdim); color: var(--red); }
-.alert-card.amber .alert-badge { background: var(--adim); color: var(--amber); }
 
 /* ── ASSISTENTE ── */
 /* O chat ocupa toda a altura que sobrar da tela (com ou sem o aviso de chave) */
@@ -705,7 +686,7 @@ textarea::placeholder { color: var(--muted2); }
   .dash-pair, .dash-pair-even, .aporte-grid, .settings-grid { grid-template-columns: 1fr; }
   .settings-save .btn { width: 100%; }
 
-  .hero-card, .goal-card, .card, .form-section, .wallet-card, .evo-card, .alloc-section, .score-card { padding: 18px; }
+  .hero-card, .goal-card, .card, .form-section, .wallet-card, .evo-card, .alloc-section { padding: 18px; }
   .hero-amount { font-size: 28px; }
   /* Resultado e investido viram linhas "rótulo ··· valor" */
   .hero-foot { flex-direction: column; gap: 10px; }
@@ -715,10 +696,6 @@ textarea::placeholder { color: var(--muted2); }
   .goal-target { font-size: 16px; }
   .stack-mobile { flex-direction: column; align-items: flex-start; }
   /* Score: nome e nota numa linha, barra embaixo — cabe ao lado do anel mesmo em tela estreita */
-  .score-body { gap: 16px; }
-  .score-bar-row { display: grid; grid-template-columns: 1fr auto; row-gap: 5px; }
-  .score-bar-row span { width: auto; }
-  .score-bar-track { grid-column: 1 / -1; grid-row: 2; }
 
   /* Assistente: no celular o chat desconta a barra inferior */
   .content:has(#page-agentes.active) { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }

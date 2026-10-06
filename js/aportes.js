@@ -49,38 +49,59 @@ async function seedMayAportes() {
 const COTA_ASSETS = ATIVOS.map(a => a.id);
 
 
-// Resumo neutro do mês: quanto já foi aportado e como ficou dividido Brasil/Internacional —
-// sem indicar o que comprar a seguir (a decisão de alocação é do usuário).
+// Lado do 60/40 de um registro: os ativos da lista única dizem o lado; o Tesouro é Brasil
+function ladoDoAporte(d) {
+  return ATIVO_POR_ID[d.ativo]?.lado || (['IPCA+', 'Selic'].includes(d.ativo) ? 'br' : null);
+}
+
+// Soma os aportes de um mês pela regra única (ehAporte, em ativos.js), em €, separando Brasil e
+// Internacional. Valores em reais viram euro pelo câmbio do dia do registro. O Bitcoin vem à
+// parte: é dinheiro investido, mas fora do plano.
+function resumoAportesDoMes(docs, mesKey, rate) {
+  let br = 0, intl = 0, bitcoin = 0;
+  (docs || []).forEach(d => {
+    if (monthKeyOf(d.data) !== mesKey || d.tipo === 'ajuste') return;
+    const v = parseFloat(d.valor) || 0;
+    const eur = d.moeda === 'EUR' ? v : v / (d.cambio || rate);
+    if (d.ativo === 'Bitcoin') bitcoin += eur;
+    else if (ehAporte(d)) { if (ladoDoAporte(d) === 'intl') intl += eur; else br += eur; }
+  });
+  const total = br + intl;
+  const brPct = total > 0 ? Math.round((br / total) * 100) : 0;
+  return { totalEur: total, brEur: br, intlEur: intl, brPct, intlPct: total > 0 ? 100 - brPct : 0, bitcoinEur: bitcoin };
+}
+
+// Ritmo real de aporte: média por mês dos últimos 6 meses fechados (ou desde o 1º aporte, se
+// houver menos). Sem nenhum mês fechado ainda, vale o aporte do plano (Perfil).
+function ritmoDeAporte(docs, rate) {
+  const primeiro = (docs || []).filter(ehAporte).map(d => monthKeyOf(d.data)).filter(Boolean).sort()[0];
+  let soma = 0, meses = 0;
+  if (primeiro) {
+    for (let i = 1; i <= 6; i++) {
+      const key = currentMonthKey(-i);
+      if (key < primeiro) break;
+      soma += resumoAportesDoMes(docs, key, rate).totalEur;
+      meses++;
+    }
+  }
+  return meses ? { eurMes: soma / meses, meses } : { eurMes: profileData.aporteMensalEur || 0, meses: 0 };
+}
+
+// Resumo neutro do mês: quanto você registrou de verdade, comparado com o plano, e a divisão
+// Brasil/Internacional — sem indicar o que comprar a seguir (a decisão de alocação é do usuário).
 async function renderAporteGuide() {
   const textEl = document.getElementById('guide-text');
   if (!textEl) return;
-  const rate = getRate();
-
   const docs = await loadAportesForEvo().catch(() => []);
-  const mesAtual = currentMonthKey();
-  const BR_NATIVE = [...ATIVOS_BR.map(a => a.id), 'IPCA+', 'Selic'];
-  let brEur = 0, intlEur = 0;
-  (docs || []).forEach(d => {
-    // Renda, reserva e depósitos antigos na Caixinha não são "aporte de investimento":
-    // o dinheiro da Caixinha conta quando vira a compra de um ativo
-    if (['Dividendo', 'Reserva', 'Caixinha'].includes(d.ativo)) return;
-    if (monthKeyOf(d.data) !== mesAtual) return;
-    const v = parseFloat(d.valor) || 0;
-    const nativoBRL = BR_NATIVE.includes(d.ativo);
-    const valorEur = nativoBRL
-      ? (d.moeda === 'EUR' ? v : v / rate)
-      : (d.moeda === 'BRL' ? v / rate : v);
-    if (nativoBRL) brEur += valorEur; else intlEur += valorEur;
-  });
-
-  const totalEur = brEur + intlEur;
-  if (totalEur <= 0) {
-    textEl.innerHTML = 'Nenhum aporte registrado este mês ainda.';
+  const m = resumoAportesDoMes(docs, currentMonthKey(), getRate());
+  const plano = profileData.aporteMensalEur;
+  const pb = planoBrPct();
+  const btc = m.bitcoinEur > 0 ? ` Mais €${fmtNum(m.bitcoinEur)} em Bitcoin, fora do plano.` : '';
+  if (m.totalEur <= 0) {
+    textEl.innerHTML = 'Nenhum aporte registrado este mês ainda.' + btc;
     return;
   }
-  const brPct = (brEur / totalEur) * 100;
-  const intlPct = (intlEur / totalEur) * 100;
-  textEl.innerHTML = `Você aportou <strong>€${fmtNum(totalEur)}</strong> este mês — <strong>${brPct.toFixed(0)}% Brasil</strong> / <strong>${intlPct.toFixed(0)}% Internacional</strong> (referência 60/40).`;
+  textEl.innerHTML = `Você aportou <strong>€${fmtNum(m.totalEur)}</strong> este mês${plano ? ` (plano: €${fmtNum(plano, 0)})` : ''} — <strong>${m.brPct}% Brasil</strong> / <strong>${m.intlPct}% Internacional</strong> (referência ${pb}/${100 - pb}).${btc}`;
 }
 
 // Tesouro Selic não faz parte do plano: só aparece no formulário se já existir saldo nele
@@ -198,16 +219,21 @@ async function registrarAporte() {
     document.getElementById('f-nota').value = '';
     document.getElementById('f-preco').value = '';
 
-    showToast(TEST_MODE ? '🧪 Aporte de TESTE registrado — não foi salvo' : '✓ Aporte registrado com sucesso!');
+    // A confirmação mostra o que você registrou de verdade no mês (não o valor do plano)
+    let resumo = '';
+    try {
+      if (ehAporte(aporteDoc)) {
+        const m = resumoAportesDoMes(await loadAportesForEvo(), currentMonthKey(), getRate());
+        const plano = profileData.aporteMensalEur;
+        if (m.totalEur > 0) resumo = ` · este mês: €${fmtNum(m.totalEur, 0)}${plano ? ` (plano €${fmtNum(plano, 0)})` : ''} · ${m.brPct}% Brasil / ${m.intlPct}% Internacional`;
+      }
+    } catch (e) { console.error(e); }
+    showToast((TEST_MODE ? '🧪 Aporte de TESTE registrado — não foi salvo' : '✓ Aporte registrado') + resumo);
     loadHistorico();
     renderAporteGuide();
     updateDashboard(getRate());
-
-    // Refaz os Alertas na hora (não só quando o usuário navegar até lá) e notifica se este aporte desequilibrou a carteira
-    const riskAlertCount = await renderAlertas();
-    if (riskAlertCount > 0) {
-      setTimeout(() => showToast('⚠️ Este aporte pode ter desequilibrado sua carteira — veja Alertas ou pergunte ao Assistente'), 3200);
-    }
+    renderAlertas();    // o lembrete do aporte do mês some na hora
+    loadDailyInsight(); // o insight do dia passa a considerar este aporte
 
   } catch (e) {
     showToast('❌ Erro ao salvar. Verifique a conexão.');

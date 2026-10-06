@@ -5,7 +5,7 @@
 const { getAdmin } = require('./_lib/admin');
 const { sendToAll, getSubs } = require('./_lib/push');
 const { getMarketData } = require('./market-data');
-const { ATIVOS_DIVIDENDOS } = require('../js/ativos.js');
+const { ATIVOS_DIVIDENDOS, ehAporte } = require('../js/ativos.js');
 
 const TZ = 'Europe/Dublin';
 
@@ -52,8 +52,8 @@ module.exports = async (req, res) => {
   if (hoje.d >= diaAviso && !sent['aporte-' + mesKey]) {
     const inicioMes = new Date(Date.UTC(hoje.y, hoje.m - 1, 1)).getTime() - 864e5; // folga de fuso
     const snap = await db.collection('aportes').where('timestamp', '>=', inicioMes).get();
-    const aportou = snap.docs.map(d => d.data()).some(d =>
-      String(d.data || '').slice(0, 7) === mesKey && !['Dividendo', 'Reserva', 'Caixinha'].includes(d.ativo) && d.tipo !== 'ajuste');
+    // Mesma regra de "aporte" do app (ehAporte, em js/ativos.js): Bitcoin, Reserva, dividendo e ajuste não contam
+    const aportou = snap.docs.map(d => d.data()).some(d => String(d.data || '').slice(0, 7) === mesKey && ehAporte(d));
     if (!aportou) {
       const total = profile.aporteMensalEur || 100, br = profile.aporteBrEur || 60, intl = profile.aporteIntlEur || 40;
       avisos.push({ key: 'aporte-' + mesKey, title: '📅 Dia de aporte', body: `Hora do aporte do mês: €${total} (€${br} Brasil + €${intl} Internacional). Depois registre em Aportar.`, url: '/?p=aportar' });
