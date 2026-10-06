@@ -143,17 +143,18 @@ function computeInvested(docs, rate) {
   return inv;
 }
 
-// Total tirado do bolso, em €: soma dos ativos (a Caixinha entra pelo SALDO atual —
-// o que saiu dela virou aporte em outro ativo e já está contado lá) MENOS os dividendos
+// Total tirado do bolso, em €: soma do que foi aportado em cada ativo MENOS os dividendos
 // recebidos: dividendo reinvestido é dinheiro que a carteira gerou, não que saiu do bolso.
 // (Se o dividendo não foi reinvestido, a conta dá no mesmo: valor + dividendos − aportado.)
+// A Caixinha fica fora: ela é controlada fora do app e o dinheiro só conta quando vira a
+// compra de um ativo. Registros antigos de depósito na Caixinha são ignorados.
 function totalInvestedEur(inv, rate) {
   let total = 0;
   Object.entries(inv).forEach(([ativo, v]) => {
     if (ativo === 'Caixinha' || ativo === 'Reserva') return;
     total += ASSET_CURRENCY[ativo] === 'BRL' ? v / rate : v;
   });
-  return total + (portfolioData.caixinha || 0) / rate - (portfolioData.dividendos || 0) / rate;
+  return total - (portfolioData.dividendos || 0) / rate;
 }
 
 // Só vira true quando a carteira real do Firebase chegou — antes disso o dashboard não
@@ -167,18 +168,17 @@ async function updateDashboard(cambio) {
   if (!portfolioLoaded) return;
   const rate = parseFloat(cambio) || 6.0;
   const brInvested = somaAtivos(ATIVOS_BR) + ipcaValor() + portfolioData.selic;
-  const cashEur = portfolioData.caixinha / rate;
   const brInvestedEur = brInvested / rate;
   const intlEur = somaAtivos(ATIVOS_INTL);
   const btcPrice = await fetchBTCPriceEUR();
   const btcValueEur = btcPrice ? portfolioData.bitcoin * btcPrice : (portfolioData.bitcoin_invested_eur || 0);
-  const totalEur = brInvestedEur + intlEur + cashEur + btcValueEur;
+  const totalEur = brInvestedEur + intlEur + btcValueEur;
 
   // ── 1. HERO ──
   document.getElementById('hero-total').textContent = '€' + fmtNum(totalEur, 0);
   document.getElementById('hero-total-brl').textContent = '≈ R$' + fmtNum(totalEur * rate, 0);
 
-  const brPct = totalEur > 0 ? (brInvestedEur + cashEur) / totalEur : 0;
+  const brPct = totalEur > 0 ? brInvestedEur / totalEur : 0;
   const concentrationOk = brPct < 0.75 && brPct > 0.15;
   const statusEl = document.getElementById('hero-status');
   const statusText = document.getElementById('hero-status-text');
@@ -248,7 +248,6 @@ async function updateDashboard(cambio) {
   // ── 4. ALOCAÇÃO SIMPLIFICADA ──
   const intlPct = totalEur > 0 ? (intlEur / totalEur) * 100 : 0;
   const brPctDisp = totalEur > 0 ? (brInvestedEur / totalEur) * 100 : 0;
-  const cashPct = totalEur > 0 ? (cashEur / totalEur) * 100 : 0;
   const btcPct = totalEur > 0 ? (btcValueEur / totalEur) * 100 : 0;
   const setAllocSeg = (id, pct) => {
     const el = document.getElementById(id);
@@ -257,11 +256,9 @@ async function updateDashboard(cambio) {
   };
   setAllocSeg('alloc-seg-intl', intlPct);
   setAllocSeg('alloc-seg-br', brPctDisp);
-  setAllocSeg('alloc-seg-cash', cashPct);
   setAllocSeg('alloc-seg-btc', btcPct);
   document.getElementById('alloc-pct-intl').textContent = intlPct.toFixed(0) + '%';
   document.getElementById('alloc-pct-br').textContent = brPctDisp.toFixed(0) + '%';
-  document.getElementById('alloc-pct-cash').textContent = cashPct.toFixed(0) + '%';
   document.getElementById('alloc-pct-btc').textContent = btcPct.toFixed(0) + '%';
 
   // Referência do plano (proporção Brasil/Internacional dos aportes definidos no Perfil)
@@ -281,7 +278,7 @@ async function updateDashboard(cambio) {
   const positions = [
     ...ATIVOS_BR.map(a => ({ name: a.key, eur: (portfolioData[a.key] || 0) / rate })),
     { name: 'ipca', eur: ipcaValor() / rate },
-    { name: 'selic', eur: (portfolioData.selic + portfolioData.caixinha) / rate },
+    { name: 'selic', eur: (portfolioData.selic || 0) / rate },
     ...ATIVOS_INTL.map(a => ({ name: a.key, eur: portfolioData[a.key] || 0 })),
     { name: 'bitcoin', eur: btcValueEur }
   ];
@@ -297,7 +294,7 @@ async function updateDashboard(cambio) {
 
   // Cada item do Score guarda os motivos que tiraram pontos — a explicação aparece em Alertas,
   // não no Início, para a tela principal não ficar carregada.
-  const NOMES = { ...Object.fromEntries(ATIVOS.map(a => [a.key, a.id])), ipca: 'Tesouro IPCA+', selic: 'Caixinha/Tesouro Selic', bitcoin: 'Bitcoin' };
+  const NOMES = { ...Object.fromEntries(ATIVOS.map(a => [a.key, a.id])), ipca: 'Tesouro IPCA+', selic: 'Tesouro Selic', bitcoin: 'Bitcoin' };
   const pctTxt = v => v.toFixed(0) + '%';
 
   // Diversificação: as 4 classes que o plano quer ter — FIIs, renda fixa Brasil (IPCA+),
@@ -324,13 +321,14 @@ async function updateDashboard(cambio) {
   const descontos = [
     { pts: Math.max(0, maxWeightPct - 25) * 1.6, txt: `${NOMES[maior.name]} com ${pctTxt(maxWeightPct)} da carteira (ideal até 25% num único ativo)` },
     { pts: Math.max(0, btcPct - 5) * 2.2, txt: `cripto com ${pctTxt(btcPct)} da carteira (limite 5%)` },
-    { pts: Math.max(0, Math.abs(brPct * 100 - 60) - 15) * 0.8, txt: `Brasil + Caixa em ${pctTxt(brPct * 100)} (referência 60%, tolerância de 15 pontos)` }
+    { pts: Math.max(0, Math.abs(brPct * 100 - 60) - 15) * 0.8, txt: `Brasil em ${pctTxt(brPct * 100)} (referência 60%, tolerância de 15 pontos)` }
   ];
   const riscoScore = Math.round(Math.max(10, Math.min(100, 100 - descontos.reduce((s, d) => s + d.pts, 0))));
   const motivosRisco = descontos.filter(d => d.pts >= 0.5).map(d => `${d.txt}: −${Math.round(d.pts)}`);
 
-  // Disciplina: consistência REAL de aportes — meses fechados com registro (janela de 3),
-  // dividendos reinvestindo e pouco dinheiro parado. Pular um mês agora derruba o número.
+  // Disciplina: consistência REAL de aportes — meses fechados com registro (janela de 3)
+  // e dividendos reinvestindo. Pular um mês agora derruba o número. O critério antigo de
+  // "pouco dinheiro parado na Caixinha" saiu junto com a Caixinha: os 10 pontos dele ficam fixos.
   const firstMonth = (invDocs || []).map(d => monthKeyOf(d.data)).filter(Boolean).sort()[0] || null;
   let mesesAvaliados = 0, mesesComAporte = 0;
   const mesesSemAporte = [];
@@ -339,20 +337,18 @@ async function updateDashboard(cambio) {
       const key = currentMonthKey(-i);
       if (key < firstMonth) break; // não penaliza meses antes do app existir
       mesesAvaliados++;
-      if ((invDocs || []).some(dc => monthKeyOf(dc.data) === key && dc.ativo !== 'Dividendo' && dc.ativo !== 'Reserva')) mesesComAporte++;
+      if ((invDocs || []).some(dc => monthKeyOf(dc.data) === key && !['Dividendo', 'Reserva', 'Caixinha'].includes(dc.ativo))) mesesComAporte++;
       else { const [a, m] = key.split('-').map(Number); mesesSemAporte.push(new Date(a, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long' })); }
     }
   }
   const aderencia = mesesAvaliados > 0 ? mesesComAporte / mesesAvaliados : 0.5; // sem mês fechado ainda: neutro
-  let disciplinaScore = 30 + aderencia * 50;
+  let disciplinaScore = 40 + aderencia * 50;
   if (portfolioData.dividendos > 0) disciplinaScore += 10;
-  if (cashPct < 35) disciplinaScore += 10;
   disciplinaScore = Math.round(Math.max(10, Math.min(100, disciplinaScore)));
   const motivosDisc = [];
   if (mesesSemAporte.length) motivosDisc.push(`sem aporte registrado em ${mesesSemAporte.join(', ')}`);
   if (mesesAvaliados === 0) motivosDisc.push('ainda não há mês fechado para medir a regularidade dos aportes');
   if (!(portfolioData.dividendos > 0)) motivosDisc.push('nenhum dividendo registrado ainda');
-  if (cashPct >= 35) motivosDisc.push(`${pctTxt(cashPct)} da carteira parado em Caixa (ideal abaixo de 35%)`);
 
   // O progresso até a meta fica no card próprio da Meta — não entra no Score
   document.getElementById('score-bar-disciplina').style.width = disciplinaScore + '%';
@@ -388,7 +384,7 @@ async function updateDashboard(cambio) {
   // ── CARTEIRA DETALHADA ──
   renderWallet(rate);
 
-  // Formulário de aporte: atualiza saldo/visibilidade da opção "pagar com a Caixinha"
+  // Formulário de aporte: mostra o Tesouro Selic só se houver saldo nele
   onAtivoChange();
 }
 
@@ -459,9 +455,6 @@ async function renderWallet(rate) {
   if (portfolioData.selic > 0) {
     items.push({ icon: 'banknote', name: 'Tesouro Selic', type: 'Liquidez · Nubank', cat: 'br', eur: portfolioData.selic / rate, val: showVal(portfolioData.selic, 'BRL'), meta: '' });
   }
-  if (portfolioData.caixinha > 0) {
-    items.push({ icon: 'coins', name: 'Caixinha CDI', type: 'Aguardando destino · Nubank', cat: 'cash', eur: portfolioData.caixinha / rate, val: showVal(portfolioData.caixinha, 'BRL'), meta: '' });
-  }
 
   ATIVOS_INTL.filter(temPosicao).forEach(a => items.push(itemDaLista(a)));
 
@@ -486,7 +479,6 @@ async function renderWallet(rate) {
   const GRUPOS = [
     { cat: 'br', nome: 'Brasil', cor: 'var(--alloc-br)' },
     { cat: 'intl', nome: 'Internacional', cor: 'var(--alloc-intl)' },
-    { cat: 'cash', nome: 'Caixa', cor: 'var(--alloc-cash)' },
     { cat: 'btc', nome: 'Cripto', cor: 'var(--alloc-btc)' },
     { cat: 'reserva', nome: 'Reserva de emergência', cor: 'var(--blue)' }
   ];
@@ -520,7 +512,7 @@ async function renderWallet(rate) {
   if (summaryEl) {
     const btcPriceNow = await fetchBTCPriceEUR();
     const btcNow = btcPriceNow ? (portfolioData.bitcoin || 0) * btcPriceNow : (portfolioData.bitcoin_invested_eur || 0);
-    const currentTotal = (somaAtivos(ATIVOS_BR) + ipcaValor() + portfolioData.selic + portfolioData.caixinha) / rate
+    const currentTotal = (somaAtivos(ATIVOS_BR) + ipcaValor() + portfolioData.selic) / rate
       + somaAtivos(ATIVOS_INTL) + btcNow;
     const investedTotal = totalInvestedEur(inv, rate);
     const diff = currentTotal - investedTotal;
@@ -574,7 +566,6 @@ function conferenciaItens() {
   const itens = [
     ...daLista(ATIVOS_BR),
     { ativo: 'IPCA+', campo: 'ipca_mercado', nome: 'Tesouro IPCA+', sub: 'valor atual (R$) · Nubank', dec: 2, un: 'R$', atual: () => ipcaValor() },
-    { ativo: 'Caixinha', campo: 'caixinha', nome: 'Caixinha CDI', sub: 'saldo (R$) · Nubank', dec: 2, un: 'R$' },
     ...daLista(ATIVOS_INTL),
     { ativo: 'Bitcoin', campo: 'bitcoin', nome: 'Bitcoin', sub: 'quantidade (BTC) · Revolut', dec: 8, un: 'BTC' },
     { ativo: 'Reserva', campo: 'reserva', nome: 'Reserva de emergência', sub: 'saldo (€) · Revolut', dec: 2, un: '€' }
@@ -841,8 +832,8 @@ async function renderEvolution(currentTotal) {
 
   if (docs && docs.length > 0) {
     // Dados reais: dinheiro do bolso acumulado mês a mês, em €.
-    // - Caixinha fica fora do histórico: o que entra nela vira aporte em outro ativo depois
-    //   (contar os dois seria dobrar); o saldo atual entra no mês corrente via totalInvestedEur.
+    // - Caixinha fica fora: o dinheiro só conta quando vira a compra de um ativo
+    //   (registros antigos de depósito nela são ignorados).
     // - Reserva de emergência não é investimento.
     // - Dividendo registrado é dinheiro gerado pela carteira: desconta (igual ao hero).
     const rate = getRate();
@@ -867,7 +858,7 @@ async function renderEvolution(currentTotal) {
       months.push(monthNames[parseInt(key.split('-')[1]) - 1]);
       points.push(cumulative);
     });
-    // Mês atual: usa exatamente o mesmo "do seu bolso" do hero (inclui saldo da Caixinha)
+    // Mês atual: usa exatamente o mesmo "do seu bolso" do hero
     points[points.length - 1] = totalInvestedEur(computeInvested(docs, rate), rate);
 
     if (points.length === 1) { months.unshift('início'); points.unshift(0); }

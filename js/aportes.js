@@ -47,8 +47,6 @@ async function seedMayAportes() {
 // Ativos negociados em cotas: a carteira calcula o valor deles como cotas × preço,
 // então um aporte sem quantidade seria apagado na próxima atualização de mercado.
 const COTA_ASSETS = ATIVOS.map(a => a.id);
-// A Caixinha é a reserva para o lado Brasil do próximo aporte — qualquer um destes pode ser pago com ela
-const BR_ASSETS = [...ATIVOS_BR.map(a => a.id), 'IPCA+', 'Selic'];
 
 
 // Resumo neutro do mês: quanto já foi aportado e como ficou dividido Brasil/Internacional —
@@ -60,10 +58,12 @@ async function renderAporteGuide() {
 
   const docs = await loadAportesForEvo().catch(() => []);
   const mesAtual = currentMonthKey();
-  const BR_NATIVE = [...ATIVOS_BR.map(a => a.id), 'IPCA+', 'Selic', 'Caixinha'];
+  const BR_NATIVE = [...ATIVOS_BR.map(a => a.id), 'IPCA+', 'Selic'];
   let brEur = 0, intlEur = 0;
   (docs || []).forEach(d => {
-    if (d.ativo === 'Dividendo' || d.ativo === 'Reserva') return; // renda e reserva não são "aporte de investimento"
+    // Renda, reserva e depósitos antigos na Caixinha não são "aporte de investimento":
+    // o dinheiro da Caixinha conta quando vira a compra de um ativo
+    if (['Dividendo', 'Reserva', 'Caixinha'].includes(d.ativo)) return;
     if (monthKeyOf(d.data) !== mesAtual) return;
     const v = parseFloat(d.valor) || 0;
     const nativoBRL = BR_NATIVE.includes(d.ativo);
@@ -108,14 +108,6 @@ function onAtivoChange() {
   }
   const el = document.getElementById('f-qtd-req');
   if (el) el.textContent = COTA_ASSETS.includes(ativo) ? 'obrigatória' : 'opcional';
-
-  const row = document.getElementById('row-usar-caixinha');
-  if (row) {
-    const show = BR_ASSETS.includes(ativo) && portfolioData.caixinha > 0;
-    row.style.display = show ? '' : 'none';
-    if (show) document.getElementById('f-caixinha-saldo').textContent = fmtNum(portfolioData.caixinha);
-    else document.getElementById('f-usar-caixinha').checked = false;
-  }
 
   const rowReserva = document.getElementById('row-tipo-reserva');
   if (rowReserva) rowReserva.style.display = ativo === 'Reserva' ? '' : 'none';
@@ -166,7 +158,6 @@ async function registrarAporte() {
   try {
     const preco = document.getElementById('f-preco').value;
     const cambio = getRate();
-    const usarCaixinha = !!document.getElementById('f-usar-caixinha')?.checked && BR_ASSETS.includes(ativo);
     let qtdFinal = qtd || null, qtdEstimada = false;
     // Bitcoin sem quantidade: estima pela cotação do momento e GRAVA no registro — assim,
     // se este aporte for editado ou excluído, dá para desfazer exatamente a mesma quantidade
@@ -183,7 +174,7 @@ async function registrarAporte() {
     const aporteDoc = {
       ativo, valor, moeda, qtd: qtdFinal, preco: preco || null, nota: nota || null,
       tipo: tipoReserva,
-      cambio, viaCaixinha: usarCaixinha,
+      cambio,
       ...(qtdEstimada ? { qtdEstimada: true } : {}),
       data: new Date().toISOString(),
       timestamp: Date.now()
@@ -206,7 +197,6 @@ async function registrarAporte() {
     document.getElementById('f-qtd').value = '';
     document.getElementById('f-nota').value = '';
     document.getElementById('f-preco').value = '';
-    document.getElementById('f-usar-caixinha').checked = false;
 
     showToast(TEST_MODE ? '🧪 Aporte de TESTE registrado — não foi salvo' : '✓ Aporte registrado com sucesso!');
     loadHistorico();
@@ -279,7 +269,8 @@ function applyAporteToPortfolio(p, a, sign = 1) {
     }
   }
 
-  // Pago com a Caixinha: o dinheiro saiu de lá (ao desfazer, volta para lá)
+  // Registros antigos pagos com a Caixinha: o dinheiro saiu de lá (ao desfazer, volta para lá).
+  // A Caixinha não aparece mais no app, mas o saldo guardado continua consistente.
   if (a.viaCaixinha) p.caixinha = Math.max(0, (p.caixinha || 0) - sv);
 
   if (ativo === 'Bitcoin') {

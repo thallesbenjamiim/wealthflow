@@ -55,7 +55,8 @@ async function loadMonthlySummary() {
   } catch {}
 
   const docs = await loadAportesForEvo();
-  const monthDocs = (docs || []).filter(d => monthKeyOf(d.data) === prevKey);
+  // Depósitos antigos na Caixinha ficam fora: o dinheiro dela conta quando vira a compra de um ativo
+  const monthDocs = (docs || []).filter(d => monthKeyOf(d.data) === prevKey && d.ativo !== 'Caixinha');
   if (monthDocs.length === 0) return; // sem movimentos no mês anterior — nada a resumir
 
   const linhas = monthDocs.map(d => `${d.ativo} ${d.moeda === 'EUR' ? '€' : 'R$'}${d.valor}${d.qtd ? ' (' + d.qtd + ' cotas)' : ''}`).join('; ');

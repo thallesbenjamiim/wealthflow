@@ -37,7 +37,6 @@ function populateEvoFromPortfolio() {
     ...daLista(ATIVOS_BR),
     { value: 'IPCA+',    label: 'IPCA+',        active: (portfolioData.ipca || 0) > 0 },
     { value: 'Selic',    label: 'Selic',        active: (portfolioData.selic || 0) > 0 },
-    { value: 'Caixinha', label: 'Caixinha CDI', active: (portfolioData.caixinha || 0) > 0 },
     ...daLista(ATIVOS_INTL),
     { value: 'Bitcoin',  label: 'Bitcoin',      active: (portfolioData.bitcoin || 0) > 0 || (portfolioData.bitcoin_invested_eur || 0) > 0 },
   ];
@@ -71,7 +70,6 @@ const _EVO_ASSET = {
   ...Object.fromEntries(ATIVOS.map(a => [a.id, { get: () => portfolioData[a.key] || 0, sym: a.moeda === 'BRL' ? 'R$' : '€' }])),
   'IPCA+':    { get: () => ipcaValor(),               sym: 'R$' },
   'Selic':    { get: () => portfolioData.selic || 0,               sym: 'R$' },
-  'Caixinha': { get: () => portfolioData.caixinha || 0,            sym: 'R$' },
   'Bitcoin':  { get: () => btcPriceEur ? (portfolioData.bitcoin || 0) * btcPriceEur : (portfolioData.bitcoin_invested_eur || 0), sym: '€' },
 };
 
@@ -123,7 +121,7 @@ function renderEvoForAsset(ativo, docs) {
   const noteEl = document.querySelector('.evo-note');
   if (tagEl)  tagEl.textContent  = isReal ? 'dados reais' : 'tendência ilustrativa';
   // Valor de mercado de hoje como trecho tracejado — só para posições de investimento
-  // (Caixinha, Dividendo e afins não têm "valor de mercado" diferente do registrado)
+  // (Dividendo, Reserva e afins não têm "valor de mercado" diferente do registrado)
   const MERCADO = [...ATIVOS.map(a => a.id), 'Bitcoin'];
   const nowVal = isReal && MERCADO.includes(ativo) && info ? info.get() : null;
 

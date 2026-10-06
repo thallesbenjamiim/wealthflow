@@ -19,17 +19,16 @@ async function renderAlertas() {
 
   // Gatilho de desequilíbrio Brasil/Internacional — mesma faixa 15%-75% usada no badge do Dashboard
   const brInvestedEur = (somaAtivos(ATIVOS_BR) + ipcaValor() + portfolioData.selic) / rate;
-  const cashEur = portfolioData.caixinha / rate;
   const intlEur = somaAtivos(ATIVOS_INTL);
   // Usa a cotação ao vivo do BTC quando já buscada nesta sessão — igual ao Dashboard
   const btcValueEur = btcPriceEur ? portfolioData.bitcoin * btcPriceEur : (portfolioData.bitcoin_invested_eur || 0);
-  const totalEur = brInvestedEur + intlEur + cashEur + btcValueEur;
-  const brPct = totalEur > 0 ? (brInvestedEur + cashEur) / totalEur : 0;
+  const totalEur = brInvestedEur + intlEur + btcValueEur;
+  const brPct = totalEur > 0 ? brInvestedEur / totalEur : 0;
 
   if (totalEur > 0 && (brPct >= 0.75 || brPct <= 0.15)) {
     const desc = brPct >= 0.75
-      ? `${(brPct*100).toFixed(0)}% da carteira está em Brasil/Caixa — considere reforçar Internacional (VWCE/EUNA) no próximo aporte. Pergunte ao Assistente (tom Risco) antes de agir.`
-      : `Só ${(brPct*100).toFixed(0)}% da carteira está em Brasil/Caixa, abaixo da referência 60/40. Pergunte ao Assistente (tom Risco) antes de agir.`;
+      ? `${(brPct*100).toFixed(0)}% da carteira está no Brasil — considere reforçar Internacional (VWCE/EUNA) no próximo aporte. Pergunte ao Assistente (tom Risco) antes de agir.`
+      : `Só ${(brPct*100).toFixed(0)}% da carteira está no Brasil, abaixo da referência 60/40. Pergunte ao Assistente (tom Risco) antes de agir.`;
     alerts.push({ type: 'red', icon: 'scale', title: 'Carteira desequilibrada', desc, action: true });
     actionableCount++;
   }
@@ -38,7 +37,7 @@ async function renderAlertas() {
   const positions = [
     ...ATIVOS_BR.map(a => ({ name: a.id, eur: (portfolioData[a.key] || 0) / rate })),
     { name: 'Tesouro IPCA+', eur: ipcaValor() / rate },
-    { name: 'Tesouro Selic + Caixinha', eur: (portfolioData.selic + portfolioData.caixinha) / rate },
+    { name: 'Tesouro Selic', eur: (portfolioData.selic || 0) / rate },
     ...ATIVOS_INTL.map(a => ({ name: a.id, eur: portfolioData[a.key] || 0 })),
     { name: 'Bitcoin', eur: btcValueEur }
   ];
@@ -59,12 +58,6 @@ async function renderAlertas() {
     actionableCount++;
   } else if (selicVal < 10) {
     alerts.push({ type: 'amber', icon: 'bell', title: 'Selic abaixo de 10%', desc: 'Migrar o aporte de renda fixa para FIIs e Internacional. Pergunte ao Assistente antes de agir.', action: true });
-    actionableCount++;
-  }
-
-  // Caixinha parada há muito tempo sem destino definido
-  if (portfolioData.caixinha > 150) {
-    alerts.push({ type: 'amber', icon: 'coins', title: 'Caixinha com saldo a decidir', desc: `R$${fmtNum(portfolioData.caixinha)} aguardando destino. Decida no próximo aporte (dia ${profileData.diaAporte}): ${ATIVOS_BR.map(a => a.id).join(', ')} ou IPCA+.`, action: true });
     actionableCount++;
   }
 

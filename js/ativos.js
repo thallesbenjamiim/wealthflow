@@ -1,7 +1,7 @@
 // WealthFlow — LISTA ÚNICA dos ativos negociados em cotas (FIIs e ETFs).
 // Para adicionar um ativo novo, basta acrescentar um item aqui: formulário de aporte, cotação ao vivo,
 // carteira, alocação, Score, alertas, conferência, gráfico, dividendos e o perfil enviado à IA
-// leem desta lista. Os ativos com regras próprias (Tesouro IPCA+, Tesouro Selic, Caixinha, Bitcoin,
+// leem desta lista. Os ativos com regras próprias (Tesouro IPCA+, Tesouro Selic, Bitcoin,
 // Dividendo e Reserva) continuam tratados à parte no código.
 //
 // Usado no navegador (script clássico, carregado antes de core.js) e no servidor (api/market-data.js
