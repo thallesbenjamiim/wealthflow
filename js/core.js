@@ -238,7 +238,7 @@ function getProfile() {
   const cambio = 'R$' + fmtNum(rate);
   const selic = fmtNum(marketRates.selic ?? 13.75) + '%' + (marketRates.selicEstimada ? ' (ESTIMATIVA — dado do dia indisponível)' : '');
   const ipca = fmtNum(marketRates.ipca ?? 4.22) + '%' + (marketRates.ipcaEstimado ? ' (ESTIMATIVA)' : '');
-  const fx = v => (v || 0).toFixed(2);
+  const fx = v => fmtNum(v || 0); // formato brasileiro (1.234,56): a IA repete o formato que recebe
   const btcEur = btcPriceEur ? (portfolioData.bitcoin * btcPriceEur).toFixed(0) : (portfolioData.bitcoin_invested_eur || 0);
   const alvoHoje = profileData.rendaPassivaAlvo * 12 / META_RETIRADA;
   const alvoNoAno = alvoHoje * Math.pow(1 + META_INFLACAO, Math.max(0, profileData.anoAlvo - new Date().getFullYear()));
@@ -251,25 +251,36 @@ function getProfile() {
   const resultado = (nome, aportado, hoje, sym) => {
     if (!(aportado > 0) || !(hoje > 0)) return null;
     const p = (hoje - aportado) / aportado * 100;
-    return `${nome} aportado ${sym}${fx(aportado)} → hoje ${sym}${fx(hoje)} (${p >= 0 ? '+' : ''}${p.toFixed(1)}%)`;
+    return `${nome} aportado ${sym}${fx(aportado)} → hoje ${sym}${fx(hoje)} (${p >= 0 ? '+' : ''}${fmtNum(p, 1)}%)`;
   };
+  const varPct = (de, para) => de > 0 ? `${para >= de ? '+' : ''}${fmtNum((para - de) / de * 100, 1)}%` : '—';
   const porAtivo = r ? [
     ...ATIVOS.map(a => resultado(a.id, r.inv[a.id], portfolioData[a.key], a.moeda === 'BRL' ? 'R$' : '€')),
     resultado('Tesouro IPCA+', r.inv['IPCA+'], ipcaValor(), 'R$'),
     resultado('Bitcoin', r.inv['Bitcoin'], r.btcValueEur, '€')
   ].filter(Boolean).join(' · ') : '';
   const mes = r ? resumoAportesDoMes(r.docs, currentMonthKey(), rate) : null;
+  const btcCusto = r ? (r.inv['Bitcoin'] || 0) : 0;
+
+  // Projeções feitas pelo APP (a IA só cita — modelos rápidos erram juros compostos de cabeça):
+  // patrimônio de hoje + ritmo real de aporte, juros mensais a 5% a.a. (conservador) e 8% a.a.
+  // (otimista). Valores futuros, sem descontar a inflação; renda = retirada de 4% a.a.
+  const projecoes = r ? [5, 10, 15, 20, 25, 30].map(anos => {
+    const futuro = taxa => { const i = taxa / 12, n = anos * 12, f = Math.pow(1 + i, n); return r.totalEur * f + r.ritmo.eurMes * (f - 1) / i; };
+    const c = futuro(0.05), o = futuro(0.08), eur = v => '€' + fmtNum(v, 0);
+    return `${new Date().getFullYear() + anos}: ${eur(c)} a ${eur(o)} (≈R$${fmtNum(c * rate, 0)} a R$${fmtNum(o * rate, 0)} no câmbio de hoje), renda de ${eur(c * META_RETIRADA / 12)} a ${eur(o * META_RETIRADA / 12)}/mês`;
+  }).join(' · ') : '';
 
   return `PERFIL — ${profileData.nome}, ${profileData.idade} anos, morando em ${profileData.pais} (${profileData.cidadania}), volta ao Brasil em ~${profileData.horizonteRetorno}. ${profileData.perfilRisco}.
 HOJE (${new Date().toLocaleDateString('pt-BR')}): EUR/BRL ${cambio} · Selic ${selic} · IPCA 12m ${ipca}.
 CARTEIRA ATUAL:
-- Brasil (Nubank): ${ATIVOS_BR.filter(a => (portfolioData[a.key + '_cotas'] || 0) > 0 || (portfolioData[a.key] || 0) > 0).map(a => `${a.id} R$${fx(portfolioData[a.key])} (${portfolioData[a.key + '_cotas'] || 0} cotas${a.descricaoIA ? ', ' + a.descricaoIA : ''}${a.dividendos ? `, último dividendo R$${divPerShare[a.key]}/cota/mês` : ''})`).join(' · ')} · Tesouro IPCA+ R$${fx(ipcaValor())}${portfolioData.ipca_mercado != null ? ` (valor de mercado; aplicado R$${fx(portfolioData.ipca)})` : " (valor aplicado)"} · Dividendos recebidos R$${fx(portfolioData.dividendos)}
+- Brasil (Nubank): ${ATIVOS_BR.filter(a => (portfolioData[a.key + '_cotas'] || 0) > 0 || (portfolioData[a.key] || 0) > 0).map(a => `${a.id} R$${fx(portfolioData[a.key])} (${portfolioData[a.key + '_cotas'] || 0} cotas${a.descricaoIA ? ', ' + a.descricaoIA : ''}${a.dividendos ? `, último dividendo R$${fx(divPerShare[a.key])}/cota/mês` : ''})`).join(' · ')} · Tesouro IPCA+ R$${fx(ipcaValor())}${portfolioData.ipca_mercado != null ? ` (valor de mercado; aplicado R$${fx(portfolioData.ipca)})` : " (valor aplicado)"} · Dividendos recebidos R$${fx(portfolioData.dividendos)}
 - Internacional (Revolut): ${ATIVOS_INTL.map(a => `${a.id} €${fx(portfolioData[a.key])}`).join(' · ')} (${ATIVOS_INTL.length === 2 ? 'ambos' : 'todos'} Acc — não distribuem dividendos)
 - Bitcoin (fora do plano): ${portfolioData.bitcoin || 0} BTC (~€${btcEur})
-- Reserva de emergência (fora dos investimentos): €${fx(portfolioData.reserva)} de uma meta de €${profileData.reservaMetaEur}
-${r ? `RESULTADO: do bolso €${fx(r.investedEur)} → vale hoje €${fx(r.totalEur)}. Por ativo: ${porAtivo || 'sem dados'}.\n` : ''}DIVISÃO 60/40 (sem o Bitcoin): hoje ${div.brPct}% Brasil / ${div.intlPct}% Internacional. O plano é ${plano}/${100 - plano} e o ${profileData.nome} considera a carteira equilibrada com até ${FOLGA_6040} pontos de diferença (Brasil entre ${plano - FOLGA_6040}% e ${plano + FOLGA_6040}%).
-APORTES: plano de €${profileData.aporteMensalEur}/mês todo dia ${profileData.diaAporte} (€${profileData.aporteBrEur} Brasil + €${profileData.aporteIntlEur} Internacional), mais €${profileData.bitcoinMensalEur}/mês de Bitcoin por fora.${mes ? ` Registrado este mês: ${mes.totalEur > 0 ? `€${fx(mes.totalEur)} (${mes.brPct}% Brasil / ${mes.intlPct}% Internacional)` : 'nenhum aporte ainda'}${mes.bitcoinEur > 0 ? ` + €${fx(mes.bitcoinEur)} em Bitcoin` : ''}. Ritmo real: ${r.ritmo.meses ? `€${fx(r.ritmo.eurMes)}/mês (média dos últimos ${r.ritmo.meses} meses)` : 'ainda sem mês fechado'}.` : ''}
-META: renda passiva de R$${fmtNum(profileData.rendaPassivaAlvo, 0)}/mês em valores de hoje em ${profileData.anoAlvo} — patrimônio-alvo ~R$${mi(alvoHoje)} mi em valores de hoje (~R$${mi(alvoNoAno)} mi em ${profileData.anoAlvo}, com inflação de ~4% a.a. e retirada de 4% a.a.). Meta intermediária do app: R$${fmtNum(profileData.metaIntermediariaBRL, 0)}.
+- Reserva de emergência (fora dos investimentos): €${fx(portfolioData.reserva)} de uma meta de €${fmtNum(profileData.reservaMetaEur, 0)}
+${r ? `RESULTADO (o total INCLUI o Bitcoin): do bolso €${fx(r.investedEur)} → vale hoje €${fx(r.totalEur)} (${varPct(r.investedEur, r.totalEur)}). Sem o Bitcoin: €${fx(r.investedEur - btcCusto)} → €${fx(r.totalEur - r.btcValueEur)} (${varPct(r.investedEur - btcCusto, r.totalEur - r.btcValueEur)}). Por ativo: ${porAtivo || 'sem dados'}.\n` : ''}DIVISÃO 60/40 (carteira inteira, sem o Bitcoin): hoje ${div.brPct}% Brasil / ${div.intlPct}% Internacional. O plano é ${plano}/${100 - plano} e o ${profileData.nome} considera a carteira equilibrada com até ${FOLGA_6040} pontos de diferença (Brasil entre ${plano - FOLGA_6040}% e ${plano + FOLGA_6040}%) — hoje está ${div.dentro ? 'DENTRO da faixa (o selo do app mostra "Carteira equilibrada")' : 'FORA da faixa'}. O 60/40 se mede pela carteira inteira, não pelo aporte de um mês.
+APORTES: plano de €${profileData.aporteMensalEur}/mês todo dia ${profileData.diaAporte} (€${profileData.aporteBrEur} Brasil + €${profileData.aporteIntlEur} Internacional), mais €${profileData.bitcoinMensalEur}/mês de Bitcoin por fora.${mes ? ` Registrado este mês (mês em andamento, até o dia ${new Date().getDate()}): ${mes.totalEur > 0 ? `€${fx(mes.totalEur)} (${mes.brPct}% Brasil / ${mes.intlPct}% Internacional)` : 'nenhum aporte ainda'}${mes.bitcoinEur > 0 ? ` + €${fx(mes.bitcoinEur)} em Bitcoin` : ''}. Ritmo real: ${r.ritmo.meses ? `€${fx(r.ritmo.eurMes)}/mês (média dos últimos ${r.ritmo.meses} meses)` : 'ainda sem mês fechado'}.` : ''}
+${r ? `PROJEÇÕES (calculadas pelo app a partir do patrimônio de hoje, €${fx(r.totalEur)}, + ${r.ritmo.meses ? 'ritmo real' : 'plano'} de €${fx(r.ritmo.eurMes)}/mês; 5% a.a. conservador a 8% a.a. otimista; valores futuros, sem descontar a inflação; renda = retirada de 4% a.a.): ${projecoes}.\n` : ''}META: renda passiva de R$${fmtNum(profileData.rendaPassivaAlvo, 0)}/mês em valores de hoje em ${profileData.anoAlvo} — patrimônio-alvo ~R$${mi(alvoHoje)} mi em valores de hoje (~R$${mi(alvoNoAno)} mi em ${profileData.anoAlvo}, com inflação de ~4% a.a. e retirada de 4% a.a.). Meta intermediária do app: R$${fmtNum(profileData.metaIntermediariaBRL, 0)}.
 FISCAL: Irlanda — Exit Tax 38% sobre os ETFs, deemed disposal 8 anos após CADA compra (o 1º, pelo histórico registrado, em ${primeiroDeemedDisposal ? primeiroDeemedDisposal.toLocaleDateString('pt-BR') : 'data a calcular'}; planejar liquidez 1 ano antes). Brasil — dividendos de FII isentos de IR no Brasil; Tesouro com IR retido na fonte. Na Irlanda, a tributação da renda brasileira (FIIs, Tesouro, BOVA11) e do Bitcoin depende da situação fiscal dele, e não há acordo Brasil–Irlanda contra bitributação: trate como "possível obrigação" e indique contador.`;
 }
 
@@ -283,12 +294,13 @@ COMO RESPONDER:
 - Pergunta CONCEITUAL/educativa (ex: "o que é um FII?", "Acc vs Dist?"): responda como um bom professor, claro e neutro, SEM citar os dados pessoais do ${profileData.nome}.
 - Pergunta sobre A CARTEIRA ou a situação dele: use os números reais do perfil abaixo e descreva o que eles mostram.
 - NUNCA diga o que comprar, vender ou onde aportar, nem indique um ativo preferido — essa decisão é do ${profileData.nome}, fora do app. Se ele pedir, mostre os prós e contras de cada opção sem escolher por ele.
-- Projeções: sempre cenário conservador E otimista, com números.
+- Projeções: use SÓ os números da linha PROJEÇÕES do perfil — não calcule juros compostos de cabeça. Para um ano fora da lista, use o mais próximo e diga que é aproximado. Sempre cenário conservador E otimista, avisando que são valores futuros, sem descontar a inflação.
+- Se perguntarem o que melhorar ou como está a carteira: compare com o plano dele (60/40 com a folga de 10 pontos, aporte mensal do plano) e diga o que está dentro e o que está fora, sem dar ordens. Um mês ainda em andamento não é desvio.
 - Assunto fiscal: nunca aconselhamento definitivo — diga "possível obrigação fiscal" e recomende validação com contador qualificado.
 - SEMPRE em português do Brasil.`;
 
 const MODES = {
-  risco:  { label: 'Risco', icon: 'shield',       system: 'PARA ESTA RESPOSTA: adote o olhar de um GESTOR DE RISCO conservador — proteção patrimonial antes de retorno; foque concentração, equilíbrio Brasil/Internacional e exposição cambial estrutural.' },
+  risco:  { label: 'Risco', icon: 'shield',       system: 'PARA ESTA RESPOSTA: olhe a carteira pelo lado do risco — concentração em poucos ativos, equilíbrio Brasil/Internacional (pela faixa do plano, não por um mês) e exposição ao câmbio — e descreva o que os números mostram, sem recomendar compra, venda ou onde aportar.' },
   fiscal: { label: 'Fiscal', icon: 'scale',      system: 'PARA ESTA RESPOSTA: adote o olhar de um CONTADOR FISCAL Brasil+Irlanda — Exit Tax 38%, deemed disposal 8 anos após cada compra, Revenue (Form 11) e Receita Federal. Linguagem de "possível obrigação"; recomende validação com contador.' },
   // O ano vem do Perfil (getter: lido na hora da pergunta)
   longo:  { label: 'Longo prazo', icon: 'hourglass', get system() { return `PARA ESTA RESPOSTA: adote o olhar de um PLANEJADOR DE LONGO PRAZO — projeções realistas até ${profileData.anoAlvo} (cenário conservador e otimista) e disciplina emocional: quando o mercado cai, o plano não muda.`; } }
